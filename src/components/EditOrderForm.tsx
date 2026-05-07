@@ -45,6 +45,12 @@ export default function EditOrderForm({ order, products }: { order: any, product
     setItems(newItems);
   };
 
+  const handlePriceChange = (index: number, price: number) => {
+    const newItems = [...items];
+    newItems[index].price = price;
+    setItems(newItems);
+  };
+
   const handleRemoveItem = (index: number) => {
     const newItems = [...items];
     newItems.splice(index, 1);
@@ -57,7 +63,7 @@ export default function EditOrderForm({ order, products }: { order: any, product
     if (!confirm("Tem certeza que deseja salvar estas alterações? O valor será atualizado e o boleto (se houver) será ajustado.")) return;
     setLoading(true);
     try {
-      await adminUpdateOrderItems(order.id, items.map((i: any) => ({ productId: i.productId, quantity: i.quantity })));
+      await adminUpdateOrderItems(order.id, items.map((i: any) => ({ productId: i.productId, quantity: i.quantity, price: i.price })));
       alert("Pedido atualizado com sucesso!");
       router.push("/admin/orders");
     } catch (e: any) {
@@ -93,18 +99,31 @@ export default function EditOrderForm({ order, products }: { order: any, product
                 ))}
               </select>
             </div>
-            <div style={{ flex: 1, display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
               <span className="font-bold">Qtd:</span>
               <input 
                 type="number" 
                 min="1" 
                 className="input" 
+                style={{ width: "70px" }}
                 value={item.quantity} 
                 onChange={e => handleQuantityChange(index, parseInt(e.target.value) || 1)} 
               />
             </div>
-            <div style={{ width: "100px", textAlign: "right", fontWeight: "bold" }}>
-              R$ {(item.price * item.quantity).toFixed(2)}
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <span className="font-bold">R$</span>
+              <input 
+                type="number" 
+                step="0.01" 
+                min="0" 
+                className="input" 
+                style={{ width: "110px" }}
+                value={item.price} 
+                onChange={e => handlePriceChange(index, parseFloat(e.target.value) || 0)} 
+              />
+            </div>
+            <div style={{ width: "120px", textAlign: "right", fontWeight: "bold", whiteSpace: "nowrap" }}>
+              = R$ {(item.price * item.quantity).toFixed(2)}
             </div>
             <button onClick={() => handleRemoveItem(index)} className="btn btn-outline" style={{ padding: "0.5rem", color: "var(--danger)" }}>
               <Trash2 size={20} />

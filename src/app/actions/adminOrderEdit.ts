@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-export async function adminUpdateOrderItems(orderId: string, items: { productId: string, quantity: number }[]) {
+export async function adminUpdateOrderItems(orderId: string, items: { productId: string, quantity: number, price?: number }[]) {
   const session = await getServerSession(authOptions);
   
   if (!session || ((session.user as any)?.role !== "ADMIN" && (session.user as any)?.role !== "STAFF")) {
@@ -33,11 +33,12 @@ export async function adminUpdateOrderItems(orderId: string, items: { productId:
   const itemsWithPrice = items.map(item => {
     const product = dbProducts.find(p => p.id === item.productId);
     if (!product) throw new Error(`Produto não encontrado.`);
-    newTotal += product.price * item.quantity;
+    const itemPrice = item.price !== undefined && item.price > 0 ? item.price : product.price;
+    newTotal += itemPrice * item.quantity;
     return {
       productId: product.id,
       quantity: item.quantity,
-      price: product.price
+      price: itemPrice
     };
   });
 
