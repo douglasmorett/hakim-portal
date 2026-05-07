@@ -33,8 +33,8 @@ export default function StoreNavbar({ userName, userCity }: { userName: string, 
           <Link href="/store/orders" className="btn btn-outline" style={{ border: "none" }}>
             Meus Pedidos
           </Link>
-          <Link href="/store/pedidos-clientes" className="btn btn-outline" style={{ border: "none", color: "var(--primary)" }}>
-            📋 Pedidos Clientes
+          <Link href="/store/cardapio" className="btn btn-outline" style={{ border: "none", color: "var(--primary)" }}>
+            🍽️ Cardápio Digital
           </Link>
           <Link href="/store/minha-loja" className="btn btn-outline" style={{ border: "none" }}>
             ⚙️ Minha Loja

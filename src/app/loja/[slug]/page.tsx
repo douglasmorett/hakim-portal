@@ -33,6 +33,9 @@ export default async function PublicStorePage({ params }: { params: Promise<{ sl
       storeLogo: true,
       storeHours: true,
       storeDeliveryOnly: true,
+      paymentFees: true,
+      deliveryZoneType: true,
+      deliveryZones: true,
       city: true,
       slug: true
     }
@@ -57,7 +60,19 @@ export default async function PublicStorePage({ params }: { params: Promise<{ sl
     }
   });
 
+  // Get store reviews
+  const reviewsData = await prisma.storeReview.aggregate({
+    where: { franchiseeId: franchisee.id },
+    _avg: { rating: true },
+    _count: { rating: true }
+  });
+
+  const storeRating = {
+    average: reviewsData._avg.rating || 0,
+    count: reviewsData._count.rating || 0
+  };
+
   return (
-    <CustomerStorePage franchisee={franchisee} menuProducts={menuProducts} />
+    <CustomerStorePage franchisee={franchisee} menuProducts={menuProducts} storeRating={storeRating} />
   );
 }

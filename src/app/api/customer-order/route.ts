@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { franchiseeSlug, customerName, customerPhone, customerAddress, deliveryType, notes, items } = body;
+    const { franchiseeSlug, customerName, customerPhone, customerAddress, deliveryType, paymentMethod, notes, items } = body;
 
     if (!franchiseeSlug || !customerName || !customerPhone || !items || items.length === 0) {
       return NextResponse.json({ error: "Dados incompletos." }, { status: 400 });
@@ -47,6 +47,7 @@ export async function POST(req: Request) {
         customerPhone,
         customerAddress: customerAddress || null,
         deliveryType: deliveryType || "DELIVERY",
+        paymentMethod: paymentMethod || null,
         notes: notes || null,
         totalAmount,
         status: "NOVO",

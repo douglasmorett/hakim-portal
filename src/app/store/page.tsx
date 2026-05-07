@@ -2,27 +2,47 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import ProductGrid from "@/components/ProductGrid";
-import { getNextDeliveryInfo } from "@/lib/deliveryDates";
+import StoreDashboard from "@/components/customer/StoreDashboard";
 
 export default async function StorePage() {
   const session = await getServerSession(authOptions);
-
   if (!session) redirect("/");
   const role = (session.user as any)?.role;
-  if (role !== "FRANCHISEE" && role !== "ADMIN") {
-    redirect("/");
-  }
+  if (role !== "FRANCHISEE" && role !== "ADMIN") redirect("/");
 
-  const city = (session.user as any)?.city || null;
-  const deliveryInfo = await getNextDeliveryInfo(city);
-  
-  const products = await prisma.product.findMany({
-    where: { active: true },
-    orderBy: { name: 'asc' }
+  const user = await prisma.user.findUnique({
+    where: { email: session.user?.email || "" },
+    select: { id: true, paymentFees: true }
+  });
+  if (!user) redirect("/");
+
+  // Busca últimos 90 dias de pedidos para relatórios
+  const since = new Date();
+  since.setDate(since.getDate() - 90);
+
+  const orders = await prisma.customerOrder.findMany({
+    where: { franchiseeId: user.id, createdAt: { gte: since } },
+    include: { items: { include: { menuProduct: { select: { name: true, cost: true } } } } },
+    orderBy: { createdAt: 'desc' }
   });
 
-  return (
-    <ProductGrid products={products} deliveryInfo={deliveryInfo} />
-  );
+  const serialized = orders.map(o => ({
+    id: o.id,
+    totalAmount: o.totalAmount,
+    status: o.status,
+    deliveryType: o.deliveryType,
+    paymentMethod: o.paymentMethod || undefined,
+    customerName: o.customerName,
+    customerPhone: o.customerPhone,
+    createdAt: o.createdAt.toISOString(),
+    items: o.items.map(i => ({
+      id: i.id,
+      quantity: i.quantity,
+      price: i.price,
+      cost: i.menuProduct.cost || null,
+      menuProduct: { name: i.menuProduct.name }
+    }))
+  }));
+
+  return <StoreDashboard orders={serialized} paymentFees={(user.paymentFees as any) || {}} />;
 }

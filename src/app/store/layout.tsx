@@ -2,9 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { CartProvider } from "@/components/CartProvider";
-import Link from "next/link";
-import { LogOut, ShoppingBag } from "lucide-react";
-import StoreNavbar from "@/components/StoreNavbar";
+import StoreTopNav from "@/components/customer/StoreTopNav";
 
 import { prisma } from "@/lib/prisma";
 import { checkAsaasOverdue } from "@/lib/asaas";
@@ -18,27 +16,36 @@ export default async function StoreLayout({ children }: { children: React.ReactN
     redirect("/");
   }
 
+  const user = await prisma.user.findUnique({
+    where: { email: session.user?.email || "" },
+    select: { name: true, city: true, slug: true, role: true, cpfCnpj: true }
+  });
+
   // Verifica inadimplência
   let isBlocked = false;
-  if (role === "FRANCHISEE" && session.user?.email) {
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (user?.cpfCnpj) {
-      isBlocked = await checkAsaasOverdue(user.cpfCnpj);
-    }
+  if (role === "FRANCHISEE" && user?.cpfCnpj) {
+    isBlocked = await checkAsaasOverdue(user.cpfCnpj);
   }
+
+  const isFranqueado = user?.role === "FRANCHISEE";
 
   return (
     <CartProvider>
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <StoreNavbar userName={session.user?.name || ""} userCity={(session.user as any)?.city || ""} />
-        
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#F5F5F5" }}>
+        <StoreTopNav
+          userName={session.user?.name || user?.name || ""}
+          userCity={(session.user as any)?.city || user?.city || ""}
+          userSlug={user?.slug}
+          isFranqueado={isFranqueado}
+        />
+
         {isBlocked && (
           <div style={{ backgroundColor: "#ef4444", color: "white", padding: "1rem", textAlign: "center", fontWeight: "bold" }}>
-            ⚠️ Sua conta está bloqueada para pedidos. Por favor acerte a compra anterior que está pendente no seu banco ou Asaas.
+            ⚠️ Sua conta está bloqueada para pedidos. Por favor acerte a compra anterior que está pendente.
           </div>
         )}
 
-        <main style={{ flex: 1, padding: "2rem 0", opacity: isBlocked ? 0.5 : 1, pointerEvents: isBlocked ? "none" : "auto" }}>
+        <main style={{ flex: 1, opacity: isBlocked ? 0.5 : 1, pointerEvents: isBlocked ? "none" : "auto" }}>
           {children}
         </main>
       </div>

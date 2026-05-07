@@ -23,11 +23,16 @@ model User {
   storeLogo       String?
   storeHours      Json?
   storeDeliveryOnly Boolean   @default(true)
+  paymentFees     Json?
+  deliveryZoneType String?
+  deliveryZones   Json?
+  storeLatLng     Json?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   permissions     String          @default("")
   orders          Order[]
   customerOrders  CustomerOrder[]
+  storeReviews    StoreReview[]
 }
 
 model Product {
@@ -126,6 +131,7 @@ model MenuProduct {
   name            String
   description     String
   price           Float
+  cost            Float?
   imageUrl        String?
   category        String              @default("Lanches")
   active          Boolean             @default(true)
@@ -159,17 +165,24 @@ model ComboGroupItem {
 model CustomerOrder {
   id              String              @id @default(cuid())
   franchiseeId    String
+  customerId      String?
   customerName    String
   customerPhone   String
   customerAddress String?
   deliveryType    String              @default("DELIVERY")
+  paymentMethod   String?
   totalAmount     Float
+  deliveryFee     Float           @default(0)
   status          String              @default("NOVO")
   notes           String?
+  rating          Int?
+  ratingComment   String?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   franchisee      User                @relation(fields: [franchiseeId], references: [id])
+  customer        StoreCustomer?      @relation(fields: [customerId], references: [id])
   items           CustomerOrderItem[]
+  review          StoreReview?
 }
 
 model CustomerOrderItem {
@@ -181,4 +194,29 @@ model CustomerOrderItem {
   comboSelections Json?
   order           CustomerOrder @relation(fields: [orderId], references: [id])
   menuProduct     MenuProduct   @relation(fields: [menuProductId], references: [id])
+}
+
+model StoreCustomer {
+  id        String          @id @default(cuid())
+  name      String
+  phone     String          @unique
+  password  String
+  address   String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  orders    CustomerOrder[]
+  reviews   StoreReview[]
+}
+
+model StoreReview {
+  id           String         @id @default(cuid())
+  franchiseeId String
+  customerId   String
+  orderId      String         @unique
+  rating       Int
+  comment      String?
+  createdAt    DateTime       @default(now())
+  franchisee   User           @relation(fields: [franchiseeId], references: [id])
+  customer     StoreCustomer  @relation(fields: [customerId], references: [id])
+  order        CustomerOrder  @relation(fields: [orderId], references: [id])
 }

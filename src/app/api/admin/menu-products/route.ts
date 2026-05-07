@@ -5,12 +5,14 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any)?.role !== "ADMIN") return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const role = (session?.user as any)?.role;
+  if (!session || (role !== "ADMIN" && role !== "FRANCHISEE")) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const product = await prisma.menuProduct.create({
     data: {
       name: body.name, description: body.description, price: body.price,
+      cost: body.cost || null,
       category: body.category || "Lanches", imageUrl: body.imageUrl || null,
       active: body.active ?? true, isCombo: body.isCombo ?? false
     }
@@ -34,7 +36,8 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any)?.role !== "ADMIN") return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const role = (session?.user as any)?.role;
+  if (!session || (role !== "ADMIN" && role !== "FRANCHISEE")) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const data: any = {};
@@ -43,6 +46,7 @@ export async function PUT(req: Request) {
   if (body.price !== undefined) data.price = body.price;
   if (body.category !== undefined) data.category = body.category;
   if (body.imageUrl !== undefined) data.imageUrl = body.imageUrl;
+  if (body.cost !== undefined) data.cost = body.cost;
   if (body.active !== undefined) data.active = body.active;
   if (body.isCombo !== undefined) data.isCombo = body.isCombo;
 
@@ -70,7 +74,8 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any)?.role !== "ADMIN") return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const role = (session?.user as any)?.role;
+  if (!session || (role !== "ADMIN" && role !== "FRANCHISEE")) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   // Delete combo groups first (cascade)

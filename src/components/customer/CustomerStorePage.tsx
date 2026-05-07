@@ -1,12 +1,13 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { ShoppingCart, Plus, Minus, X, MapPin, Search, Clock, Store, Truck } from "lucide-react";
+import { ShoppingCart, Plus, Minus, X, MapPin, Search, Clock, Store, Truck, User, Lock, LogIn, History, Star, ChevronRight } from "lucide-react";
 import ComboModal from "./ComboModal";
 import "./store.css";
 
 type MenuProduct = { id: string; name: string; description: string; price: number; imageUrl: string | null; category: string; isCombo?: boolean; comboConfig?: any; comboGroups?: any[] };
 type CartItem = MenuProduct & { quantity: number; comboSelections?: any };
-type Franchisee = { id: string; name: string; storeName: string | null; storePhone: string | null; storeAddress: string | null; storeBanner: string | null; storeLogo?: string | null; storeHours?: any; storeDeliveryOnly?: boolean; city: string | null; slug: string | null };
+type Franchisee = { id: string; name: string; storeName: string | null; storePhone: string | null; storeAddress: string | null; storeBanner: string | null; storeLogo?: string | null; storeHours?: any; storeDeliveryOnly?: boolean; paymentFees?: any; deliveryZoneType?: string | null; deliveryZones?: any; city: string | null; slug: string | null };
+type StoreRating = { average: number; count: number };
 
 function isStoreOpen(hours: any[]): { open: boolean; text: string } {
   if (!hours || !Array.isArray(hours)) return { open: true, text: "Horário não definido" };
@@ -22,7 +23,7 @@ function isStoreOpen(hours: any[]): { open: boolean; text: string } {
   return { open: false, text: "Fechado · Abre amanhã" };
 }
 
-export default function CustomerStorePage({ franchisee, menuProducts }: { franchisee: Franchisee; menuProducts: MenuProduct[] }) {
+export default function CustomerStorePage({ franchisee, menuProducts, storeRating }: { franchisee: Franchisee; menuProducts: MenuProduct[]; storeRating?: StoreRating }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCheckout, setIsCheckout] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
@@ -35,10 +36,32 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [deliveryType, setDeliveryType] = useState("DELIVERY");
+  const [paymentMethod, setPaymentMethod] = useState("PIX");
   const [notes, setNotes] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState<{ code: string; discount: number } | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Customer login
+  const [customer, setCustomer] = useState<any>(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authPhone, setAuthPhone] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  // Delivery fee
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [deliveryAvailable, setDeliveryAvailable] = useState(true);
+  const [customerNeighborhood, setCustomerNeighborhood] = useState("");
+  // Meus Pedidos
+  const [showMyOrders, setShowMyOrders] = useState(false);
+  // Rating
+  const [showRating, setShowRating] = useState(false);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
 
   const storeName = franchisee.storeName || franchisee.name;
   const storeStatus = isStoreOpen(franchisee.storeHours as any);
@@ -54,7 +77,7 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
 
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = couponApplied ? couponApplied.discount : 0;
-  const finalTotal = Math.max(0, cartTotal - discount);
+  const finalTotal = Math.max(0, cartTotal - discount + (deliveryType === "DELIVERY" ? deliveryFee : 0));
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   const addToCart = (product: MenuProduct, cs?: any) => {
@@ -86,6 +109,92 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
     } catch { setCouponApplied({ code: couponCode, discount: 5 }); }
   };
 
+  // Customer auth
+  const handleAuth = async () => {
+    setAuthError(""); setAuthLoading(true);
+    try {
+      const res = await fetch("/api/store-customer", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: authMode, phone: authPhone, password: authPassword, name: authName })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCustomer(data);
+        setCustomerName(data.name);
+        setCustomerPhone(data.phone);
+        if (data.address) setCustomerAddress(data.address);
+        setShowAuth(false);
+        localStorage.setItem("storeCustomer", JSON.stringify({ id: data.id, phone: data.phone }));
+      } else { setAuthError(data.error || "Erro"); }
+    } catch { setAuthError("Erro de conexão."); }
+    finally { setAuthLoading(false); }
+  };
+
+  const handleLogout = () => {
+    setCustomer(null);
+    localStorage.removeItem("storeCustomer");
+  };
+
+  // Auto-login from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("storeCustomer");
+    if (saved) {
+      try {
+        const { phone } = JSON.parse(saved);
+        if (phone) { setAuthPhone(phone); }
+      } catch {}
+    }
+  }, []);
+
+  // Build dynamic payment options
+  const paymentOptions = (() => {
+    const base = [
+      { k: "PIX", l: "💰 Pix" },
+      { k: "DINHEIRO", l: "💵 Dinheiro" },
+      { k: "DEBITO", l: "💳 Débito" },
+      { k: "CREDITO", l: "💳 Crédito" },
+    ];
+    const fees = franchisee.paymentFees as any;
+    if (fees?.VOUCHER?.active && fees.VOUCHER.brands) {
+      const activeBrands = fees.VOUCHER.brands.filter((b: any) => b.active);
+      if (activeBrands.length > 0) {
+        activeBrands.forEach((b: any) => {
+          base.push({ k: `VOUCHER_${b.name}`, l: `🎫 ${b.name}` });
+        });
+      } else {
+        base.push({ k: "VOUCHER", l: "🎫 Voucher" });
+      }
+    } else {
+      base.push({ k: "VOUCHER", l: "🎫 Voucher" });
+    }
+    return base;
+  })();
+
+  // Calculate delivery fee when neighborhood changes
+  const calcDeliveryFee = (neighborhood: string) => {
+    setCustomerNeighborhood(neighborhood);
+    const zones = franchisee.deliveryZones as any[];
+    if (!zones || !franchisee.deliveryZoneType || franchisee.deliveryZoneType !== "NEIGHBORHOOD") {
+      setDeliveryFee(0); setDeliveryAvailable(true); return;
+    }
+    const found = zones.find((z: any) => z.name.toLowerCase() === neighborhood.toLowerCase());
+    if (found) { setDeliveryFee(found.fee || 0); setDeliveryAvailable(true); }
+    else { setDeliveryFee(0); setDeliveryAvailable(false); }
+  };
+
+  // Submit review
+  const submitReview = async () => {
+    if (!ratingOrderId || !customer) return;
+    try {
+      const res = await fetch("/api/store-reviews", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: ratingOrderId, customerId: customer.id, rating: ratingValue, comment: ratingComment })
+      });
+      if (res.ok) { alert("Avaliação enviada! Obrigado! ⭐"); setShowRating(false); setRatingOrderId(null); setRatingComment(""); }
+      else { const d = await res.json(); alert(d.error || "Erro"); }
+    } catch { alert("Erro de conexão"); }
+  };
+
   const handleCheckout = async () => {
     if (!customerName || !customerPhone) { alert("Preencha nome e telefone."); return; }
     if (deliveryType === "DELIVERY" && !customerAddress) { alert("Preencha o endereço."); return; }
@@ -93,32 +202,102 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
     try {
       const res = await fetch("/api/customer-order", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ franchiseeSlug: franchisee.slug, customerName, customerPhone, customerAddress: deliveryType === "DELIVERY" ? customerAddress : null, deliveryType, notes, couponCode: couponApplied?.code || null, items: cart.map(i => ({ menuProductId: i.id.split('_')[0], quantity: i.quantity, comboSelections: i.comboSelections || null })) })
+        body: JSON.stringify({ franchiseeSlug: franchisee.slug, customerName, customerPhone, customerAddress: deliveryType === "DELIVERY" ? customerAddress : null, deliveryType, paymentMethod, notes, couponCode: couponApplied?.code || null, items: cart.map(i => ({ menuProductId: i.id.split('_')[0], quantity: i.quantity, comboSelections: i.comboSelections || null })) })
       });
       if (res.ok) { const d = await res.json(); setOrderSuccess(d.orderId); setCart([]); setIsCheckout(false); setMobileCartOpen(false); }
       else { const d = await res.json(); alert(d.error || "Erro."); }
     } catch { alert("Erro ao conectar."); } finally { setLoading(false); }
   };
 
-  // ===== ORDER SUCCESS SCREEN =====
-  if (orderSuccess) return (
-    <div className="order-success-bg">
-      <div className="order-success-card">
-        <div className="order-success-icon">✅</div>
-        <h1 className="order-success-title">Pedido Enviado!</h1>
-        <p className="order-success-sub">Pedido recebido por <strong>{storeName}</strong>.</p>
-        <div className="order-code-box">
-          <p className="order-code-label">Código do Pedido</p>
-          <p className="order-code">#{orderSuccess.slice(-6).toUpperCase()}</p>
+  // ===== ORDER TRACKING =====
+  const [trackingStatus, setTrackingStatus] = useState("NOVO");
+  const STATUSES = [
+    { key: "NOVO", label: "Pedido Enviado", icon: "📩", desc: "Aguardando confirmação da loja" },
+    { key: "ACEITO", label: "Aceito", icon: "✅", desc: "A loja confirmou seu pedido" },
+    { key: "PREPARANDO", label: "Preparando", icon: "👨‍🍳", desc: "Seu pedido está sendo preparado" },
+    { key: "SAIU_ENTREGA", label: "Saiu para Entrega", icon: "🛵", desc: "O entregador está a caminho" },
+    { key: "ENTREGUE", label: "Entregue", icon: "🎉", desc: "Pedido finalizado. Bom apetite!" },
+    { key: "CANCELADO", label: "Cancelado", icon: "❌", desc: "Pedido cancelado pela loja" },
+  ];
+
+  useEffect(() => {
+    if (!orderSuccess) return;
+    const poll = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/customer-order/status?id=${orderSuccess}`);
+        if (r.ok) { const d = await r.json(); setTrackingStatus(d.status); }
+      } catch {}
+    }, 5000);
+    return () => clearInterval(poll);
+  }, [orderSuccess]);
+
+  if (orderSuccess) {
+    const currentIdx = STATUSES.findIndex(s => s.key === trackingStatus);
+    const isCancelled = trackingStatus === "CANCELADO";
+    const isDelivered = trackingStatus === "ENTREGUE";
+
+    return (
+      <div className="order-success-bg">
+        <div className="order-success-card" style={{ maxWidth: "420px" }}>
+          <div className="order-success-icon">{isCancelled ? "❌" : isDelivered ? "🎉" : "📦"}</div>
+          <h1 className="order-success-title">{isCancelled ? "Pedido Cancelado" : isDelivered ? "Pedido Entregue!" : "Acompanhe seu Pedido"}</h1>
+          <p className="order-success-sub">Pedido recebido por <strong>{storeName}</strong></p>
+          <div className="order-code-box">
+            <p className="order-code-label">Código do Pedido</p>
+            <p className="order-code">#{orderSuccess.slice(-6).toUpperCase()}</p>
+          </div>
+
+          {/* TRACKER STEPS */}
+          {!isCancelled && (
+            <div style={{ margin: "1.25rem 0", textAlign: "left" }}>
+              {STATUSES.filter(s => s.key !== "CANCELADO").map((s, i) => {
+                const done = i <= currentIdx;
+                const active = i === currentIdx;
+                return (
+                  <div key={s.key} style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: i < 4 ? "0" : "0" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: "32px" }}>
+                      <div style={{
+                        width: "32px", height: "32px", borderRadius: "50%",
+                        background: done ? "linear-gradient(135deg, #16A34A, #22C55E)" : "#E2E8F0",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "0.9rem", color: done ? "white" : "#94A3B8",
+                        boxShadow: active ? "0 0 0 4px rgba(22,163,74,0.2)" : "none",
+                        transition: "all 0.3s ease",
+                        animation: active ? "pulse 2s infinite" : "none"
+                      }}>{done ? "✓" : (i + 1)}</div>
+                      {i < 4 && <div style={{ width: "2px", height: "28px", background: done && i < currentIdx ? "#22C55E" : "#E2E8F0", transition: "all 0.3s" }} />}
+                    </div>
+                    <div style={{ paddingTop: "4px", paddingBottom: i < 4 ? "12px" : "0" }}>
+                      <p style={{ fontWeight: active ? 800 : 600, fontSize: "0.85rem", color: done ? "#111" : "#94A3B8" }}>
+                        {s.icon} {s.label}
+                      </p>
+                      {active && <p style={{ fontSize: "0.72rem", color: "#666", marginTop: "2px" }}>{s.desc}</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {isCancelled && (
+            <p style={{ color: "#EF4444", fontWeight: 600, fontSize: "0.85rem", margin: "1rem 0" }}>
+              A loja cancelou este pedido. Entre em contato para mais informações.
+            </p>
+          )}
+
+          {!isDelivered && !isCancelled && (
+            <p style={{ fontSize: "0.72rem", color: "#999", textAlign: "center" }}>🔄 Atualizando automaticamente...</p>
+          )}
+
+          {franchisee.storePhone && <a href={`https://wa.me/55${franchisee.storePhone.replace(/\D/g, "")}`} target="_blank" className="order-whatsapp">💬 Falar no WhatsApp</a>}
+          <button onClick={() => { setOrderSuccess(null); setTrackingStatus("NOVO"); }} className="order-new-btn">Fazer Novo Pedido</button>
         </div>
-        {franchisee.storePhone && <a href={`https://wa.me/55${franchisee.storePhone.replace(/\D/g, "")}`} target="_blank" className="order-whatsapp">💬 Acompanhar no WhatsApp</a>}
-        <button onClick={() => setOrderSuccess(null)} className="order-new-btn">Fazer Novo Pedido</button>
       </div>
-    </div>
-  );
+    );
+  }
 
   // ===== CART SIDEBAR CONTENT =====
-  const CartContent = () => (
+  const cartContentJSX = (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div className="cart-header">
         <h3>{isCheckout ? "Finalizar Pedido" : `Sua Sacola (${cartCount})`}</h3>
@@ -167,11 +346,41 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
                 <button onClick={() => setDeliveryType("PICKUP")} className={`checkout-type-btn ${deliveryType === "PICKUP" ? "active" : ""}`}>🏪 Retirada</button>
               </div>
             </div>
-            {deliveryType === "DELIVERY" && <div><label className="checkout-label">Endereço de Entrega *</label><input className="checkout-input" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} /></div>}
+            {deliveryType === "DELIVERY" && (
+              <div>
+                <label className="checkout-label">Endereço de Entrega *</label>
+                <input className="checkout-input" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />
+                {franchisee.deliveryZoneType === "NEIGHBORHOOD" && franchisee.deliveryZones && (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <label className="checkout-label">Bairro *</label>
+                    <select className="checkout-input" value={customerNeighborhood} onChange={e => calcDeliveryFee(e.target.value)} style={{ cursor: "pointer" }}>
+                      <option value="">Selecione seu bairro</option>
+                      {(franchisee.deliveryZones as any[]).map((z: any, i: number) => (
+                        <option key={i} value={z.name}>{z.name} — R$ {(z.fee || 0).toFixed(2)}</option>
+                      ))}
+                    </select>
+                    {!deliveryAvailable && customerNeighborhood && <p style={{ color: "#EF4444", fontSize: "0.78rem", fontWeight: 600, marginTop: "4px" }}>❌ Bairro fora da área de entrega</p>}
+                    {deliveryAvailable && deliveryFee > 0 && <p style={{ color: "#16A34A", fontSize: "0.78rem", fontWeight: 600, marginTop: "4px" }}>🛵 Taxa de entrega: R$ {deliveryFee.toFixed(2)}</p>}
+                  </div>
+                )}
+                {franchisee.deliveryZoneType === "RADIUS" && deliveryFee > 0 && (
+                  <p style={{ color: "#16A34A", fontSize: "0.78rem", fontWeight: 600, marginTop: "4px" }}>🛵 Taxa de entrega: R$ {deliveryFee.toFixed(2)}</p>
+                )}
+              </div>
+            )}
+            <div>
+              <label className="checkout-label">Forma de Pagamento</label>
+              <div className="checkout-type-row" style={{ flexWrap: "wrap" }}>
+                {paymentOptions.map(pm => (
+                  <button key={pm.k} onClick={() => setPaymentMethod(pm.k)} className={`checkout-type-btn ${paymentMethod === pm.k ? "active" : ""}`} style={{ flex: "1 1 30%", fontSize: "0.78rem" }}>{pm.l}</button>
+                ))}
+              </div>
+            </div>
             <div><label className="checkout-label">Observações</label><textarea rows={2} className="checkout-input" style={{ resize: "vertical" }} value={notes} onChange={e => setNotes(e.target.value)} /></div>
             <div className="checkout-summary">
               {cart.map(i => <div key={i.id} className="checkout-summary-item"><span>{i.quantity}x {i.name}</span><span>R$ {(i.price * i.quantity).toFixed(2)}</span></div>)}
               {couponApplied && <div className="checkout-summary-item" style={{ color: "#16A34A" }}><span>Cupom ({couponApplied.code})</span><span>-R$ {couponApplied.discount.toFixed(2)}</span></div>}
+              {deliveryType === "DELIVERY" && deliveryFee > 0 && <div className="checkout-summary-item" style={{ color: "#E67E22" }}><span>🛵 Taxa de Entrega</span><span>R$ {deliveryFee.toFixed(2)}</span></div>}
             </div>
           </div>
         )}
@@ -220,14 +429,30 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
               <span className={`store-status ${storeStatus.open ? "open" : "closed"}`}>
                 <Clock size={12} /> {storeStatus.text}
               </span>
+              {storeRating && storeRating.count > 0 && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "0.78rem", fontWeight: 700, color: "#F59E0B" }}>
+                  <Star size={13} fill="#F59E0B" /> {storeRating.average.toFixed(1)} <span style={{ fontWeight: 400, color: "#94A3B8" }}>({storeRating.count})</span>
+                </span>
+              )}
               {franchisee.storeDeliveryOnly && (
                 <span className="store-delivery-tag">• Somente Delivery</span>
               )}
             </div>
           </div>
-          <button className="header-cart-btn" onClick={() => setMobileCartOpen(true)}>
-            <ShoppingCart size={18} />{cartCount > 0 && <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{cartCount}</span>}
-          </button>
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            {customer ? (
+              <button onClick={() => setShowHistory(!showHistory)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "10px", padding: "6px 12px", cursor: "pointer", color: "white", fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                <User size={14} /> {customer.name.split(" ")[0]}
+              </button>
+            ) : (
+              <button onClick={() => setShowAuth(true)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "10px", padding: "6px 12px", cursor: "pointer", color: "white", fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                <LogIn size={14} /> Entrar
+              </button>
+            )}
+            <button className="header-cart-btn" onClick={() => setMobileCartOpen(true)}>
+              <ShoppingCart size={18} />{cartCount > 0 && <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{cartCount}</span>}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -290,7 +515,7 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
         </div>
 
         {/* DESKTOP CART SIDEBAR */}
-        <div className="desk-cart"><CartContent /></div>
+        <div className="desk-cart">{cartContentJSX}</div>
       </div>
 
       {/* MOBILE BOTTOM BAR */}
@@ -307,7 +532,7 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
       {mobileCartOpen && (
         <div className="mob-cart-overlay" onClick={() => setMobileCartOpen(false)}>
           <div className="mob-cart-sheet" onClick={e => e.stopPropagation()}>
-            <CartContent />
+            {cartContentJSX}
           </div>
         </div>
       )}
@@ -315,6 +540,118 @@ export default function CustomerStorePage({ franchisee, menuProducts }: { franch
       {/* COMBO MODAL */}
       {comboProduct && comboProduct.isCombo && (comboProduct.comboGroups?.length || comboProduct.comboConfig) && (
         <ComboModal product={{ id: comboProduct.id, name: comboProduct.name, price: comboProduct.price, imageUrl: comboProduct.imageUrl, comboGroups: comboProduct.comboGroups || [] }} onClose={() => setComboProduct(null)} onConfirm={s => { addToCart(comboProduct, s); setComboProduct(null); }} />
+      )}
+      {/* AUTH MODAL */}
+      {showAuth && (
+        <div className="mob-cart-overlay" onClick={() => setShowAuth(false)} style={{ zIndex: 9999 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "white", borderRadius: "16px", padding: "1.5rem", maxWidth: "380px", width: "90%", margin: "auto", position: "relative", top: "50%", transform: "translateY(-50%)" }}>
+            <button onClick={() => setShowAuth(false)} style={{ position: "absolute", top: "12px", right: "12px", background: "none", border: "none", cursor: "pointer" }}><X size={20} /></button>
+            <h2 style={{ fontWeight: 800, fontSize: "1.2rem", marginBottom: "0.5rem" }}>{authMode === "login" ? "🔐 Entrar" : "📝 Criar Conta"}</h2>
+            <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: "1rem" }}>
+              {authMode === "login" ? "Entre com seu telefone e senha" : "Crie sua conta para salvar seus dados"}
+            </p>
+            {authError && <p style={{ color: "#EF4444", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>❌ {authError}</p>}
+            {authMode === "register" && (
+              <div style={{ marginBottom: "0.75rem" }}>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "4px" }}>Seu Nome</label>
+                <input value={authName} onChange={e => setAuthName(e.target.value)} placeholder="João Silva" style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", boxSizing: "border-box" }} />
+              </div>
+            )}
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "4px" }}>WhatsApp / Telefone</label>
+              <input value={authPhone} onChange={e => setAuthPhone(e.target.value)} placeholder="(21) 99999-9999" style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "4px" }}>Senha</label>
+              <input type="password" value={authPassword} onChange={e => setAuthPassword(e.target.value)} placeholder="••••••" style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", boxSizing: "border-box" }} />
+            </div>
+            <button onClick={handleAuth} disabled={authLoading} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg, #E63946, #FF6B35)", color: "white", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer" }}>
+              {authLoading ? "Aguarde..." : (authMode === "login" ? "Entrar" : "Criar Conta")}
+            </button>
+            <p style={{ textAlign: "center", fontSize: "0.78rem", marginTop: "0.75rem", color: "#666" }}>
+              {authMode === "login" ? "Não tem conta? " : "Já tem conta? "}
+              <button onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }} style={{ background: "none", border: "none", color: "#E63946", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
+                {authMode === "login" ? "Criar conta" : "Fazer login"}
+              </button>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOMER HISTORY DROPDOWN */}
+      {showHistory && customer && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 9998 }} onClick={() => setShowHistory(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: "80px", right: "16px", background: "white", borderRadius: "16px", padding: "1.25rem", maxWidth: "360px", width: "90%", maxHeight: "70vh", overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3 style={{ fontWeight: 800, fontSize: "1rem" }}>👋 Olá, {customer.name.split(" ")[0]}!</h3>
+              <button onClick={() => setShowHistory(false)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
+            </div>
+            <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: "0.5rem" }}>📱 {customer.phone}</p>
+            {customer.address && <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: "0.75rem" }}>📍 {customer.address}</p>}
+            <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "0.75rem", marginBottom: "0.75rem" }}>
+              <h4 style={{ fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.5rem" }}><History size={14} style={{ marginRight: "4px" }} /> Meus Pedidos</h4>
+              {customer.orders?.length > 0 ? customer.orders.slice(0, 8).map((o: any) => {
+                const statusColors: Record<string, string> = { NOVO: "#3B82F6", ACEITO: "#16A34A", PREPARANDO: "#F59E0B", SAIU_ENTREGA: "#8B5CF6", ENTREGUE: "#22C55E", CANCELADO: "#EF4444" };
+                const statusLabels: Record<string, string> = { NOVO: "Enviado", ACEITO: "Aceito", PREPARANDO: "Preparando", SAIU_ENTREGA: "A caminho", ENTREGUE: "Entregue", CANCELADO: "Cancelado" };
+                return (
+                  <div key={o.id} style={{ padding: "0.6rem", background: "#F7F7F7", borderRadius: "10px", marginBottom: "6px", fontSize: "0.78rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 600 }}>#{o.id.slice(-6).toUpperCase()}</span>
+                      <span style={{ padding: "2px 8px", borderRadius: "6px", fontWeight: 700, fontSize: "0.68rem", color: "white", background: statusColors[o.status] || "#94A3B8" }}>
+                        {statusLabels[o.status] || o.status}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
+                      <span style={{ color: "#999", fontSize: "0.7rem" }}>{new Date(o.createdAt).toLocaleDateString("pt-BR")}</span>
+                      <span style={{ fontWeight: 700, color: "#E63946" }}>R$ {o.totalAmount.toFixed(2)}</span>
+                    </div>
+                    <p style={{ color: "#999", fontSize: "0.68rem", marginTop: "2px" }}>{o.items?.map((i: any) => i.menuProduct?.name).join(", ")}</p>
+                    <div style={{ display: "flex", gap: "4px", marginTop: "6px" }}>
+                      {o.status !== "ENTREGUE" && o.status !== "CANCELADO" && (
+                        <button onClick={() => { setOrderSuccess(o.id); setTrackingStatus(o.status); setShowHistory(false); }} style={{ flex: 1, padding: "4px 8px", borderRadius: "6px", border: "1px solid #3B82F6", background: "none", color: "#3B82F6", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
+                          📦 Acompanhar
+                        </button>
+                      )}
+                      {o.status === "ENTREGUE" && !o.rating && (
+                        <button onClick={() => { setRatingOrderId(o.id); setShowRating(true); setShowHistory(false); }} style={{ flex: 1, padding: "4px 8px", borderRadius: "6px", border: "1px solid #F59E0B", background: "none", color: "#F59E0B", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
+                          ⭐ Avaliar
+                        </button>
+                      )}
+                      {o.rating && (
+                        <span style={{ fontSize: "0.7rem", color: "#F59E0B", fontWeight: 600 }}>{"⭐".repeat(o.rating)}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }) : <p style={{ fontSize: "0.78rem", color: "#999" }}>Nenhum pedido ainda.</p>}
+            </div>
+            <button onClick={handleLogout} style={{ width: "100%", padding: "8px", borderRadius: "10px", border: "1.5px solid #EF4444", background: "none", color: "#EF4444", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer" }}>
+              Sair da Conta
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* RATING MODAL */}
+      {showRating && (
+        <div className="mob-cart-overlay" onClick={() => setShowRating(false)} style={{ zIndex: 9999 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "white", borderRadius: "16px", padding: "1.5rem", maxWidth: "380px", width: "90%", margin: "auto", position: "relative", top: "50%", transform: "translateY(-50%)", textAlign: "center" }}>
+            <h2 style={{ fontWeight: 800, fontSize: "1.2rem", marginBottom: "0.5rem" }}>⭐ Avaliar Pedido</h2>
+            <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: "1rem" }}>Como foi sua experiência?</p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginBottom: "1rem" }}>
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} onClick={() => setRatingValue(n)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "2rem", opacity: n <= ratingValue ? 1 : 0.3, transition: "all 0.15s", transform: n <= ratingValue ? "scale(1.1)" : "scale(0.9)" }}>⭐</button>
+              ))}
+            </div>
+            <p style={{ fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.75rem" }}>
+              {ratingValue === 1 ? "😞 Ruim" : ratingValue === 2 ? "😐 Regular" : ratingValue === 3 ? "🙂 Bom" : ratingValue === 4 ? "😄 Ótimo" : "🤩 Excelente!"}
+            </p>
+            <textarea value={ratingComment} onChange={e => setRatingComment(e.target.value)} placeholder="Deixe um comentário (opcional)..." rows={3} style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid #E2E8F0", fontSize: "0.85rem", boxSizing: "border-box", resize: "vertical", marginBottom: "1rem" }} />
+            <button onClick={submitReview} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg, #F59E0B, #EF4444)", color: "white", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer" }}>
+              Enviar Avaliação
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

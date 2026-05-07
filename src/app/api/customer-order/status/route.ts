@@ -1,7 +1,36 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+
+// GET: Public status check (no auth required)
+export async function GET(req: NextRequest) {
+  const orderId = req.nextUrl.searchParams.get("id");
+  if (!orderId) return NextResponse.json({ error: "ID obrigatório" }, { status: 400 });
+
+  const order = await prisma.customerOrder.findUnique({
+    where: { id: orderId },
+    select: {
+      id: true,
+      status: true,
+      totalAmount: true,
+      deliveryType: true,
+      paymentMethod: true,
+      createdAt: true,
+      updatedAt: true,
+      items: {
+        select: {
+          quantity: true,
+          price: true,
+          menuProduct: { select: { name: true } }
+        }
+      }
+    }
+  });
+
+  if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+  return NextResponse.json(order);
+}
 
 export async function PUT(req: Request) {
   const session = await getServerSession(authOptions);
