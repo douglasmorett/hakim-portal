@@ -25,78 +25,6 @@ function isStoreOpen(hours: any[]): { open: boolean; text: string } {
   return { open: false, text: "Fechado" };
 }
 
-// ===== SWIPE BUTTON =====
-function SwipeAcceptButton({ onAccept, isLoading }: { onAccept: () => void; isLoading: boolean }) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [dragX, setDragX] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const startX = useRef(0);
-  const trackWidth = useRef(0);
-
-  const handleStart = (clientX: number) => {
-    if (isLoading) return;
-    setDragging(true);
-    startX.current = clientX;
-    if (trackRef.current) trackWidth.current = trackRef.current.offsetWidth - 48;
-  };
-
-  const handleMove = (clientX: number) => {
-    if (!dragging) return;
-    const diff = clientX - startX.current;
-    setDragX(Math.max(0, Math.min(diff, trackWidth.current)));
-  };
-
-  const handleEnd = () => {
-    if (!dragging) return;
-    setDragging(false);
-    if (dragX > trackWidth.current * 0.7) {
-      onAccept();
-      setDragX(trackWidth.current);
-      setTimeout(() => setDragX(0), 300);
-    } else {
-      setDragX(0);
-    }
-  };
-
-  const progress = trackWidth.current > 0 ? dragX / trackWidth.current : 0;
-
-  return (
-    <div
-      ref={trackRef}
-      style={{
-        position: "relative", width: "100%", height: "44px", borderRadius: "12px",
-        background: `linear-gradient(90deg, #10B981 ${progress * 100}%, #E2E8F0 ${progress * 100}%)`,
-        overflow: "hidden", cursor: isLoading ? "not-allowed" : "grab", touchAction: "none",
-        transition: dragging ? "none" : "background 0.3s"
-      }}
-      onMouseDown={e => handleStart(e.clientX)}
-      onMouseMove={e => handleMove(e.clientX)}
-      onMouseUp={handleEnd}
-      onMouseLeave={handleEnd}
-      onTouchStart={e => handleStart(e.touches[0].clientX)}
-      onTouchMove={e => handleMove(e.touches[0].clientX)}
-      onTouchEnd={handleEnd}
-    >
-      {/* Track label */}
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: progress > 0.5 ? "white" : "#94A3B8", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.5px", pointerEvents: "none", transition: "color 0.2s" }}>
-        {isLoading ? "Aceitando..." : progress > 0.7 ? "✅ Soltar para aceitar!" : "Arraste → para aceitar"}
-      </div>
-      {/* Draggable thumb */}
-      <div
-        style={{
-          position: "absolute", left: `${dragX}px`, top: "3px", width: "38px", height: "38px",
-          borderRadius: "10px", background: progress > 0.7 ? "#059669" : "#10B981",
-          display: "flex", alignItems: "center", justifyContent: "center", color: "white",
-          fontWeight: 800, fontSize: "1.1rem", boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-          transition: dragging ? "none" : "left 0.3s ease",
-          pointerEvents: "none"
-        }}
-      >
-        ✅
-      </div>
-    </div>
-  );
-}
 
 export default function StoreOrdersDashboard({ user, orders: initialOrders, isFranqueado }: { user: any; orders: any[]; isFranqueado: boolean }) {
   const router = useRouter();
@@ -191,8 +119,8 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
     return o.customerName?.toLowerCase().includes(s) || o.customerPhone?.includes(s) || o.customerAddress?.toLowerCase().includes(s) || o.id.includes(s);
   });
 
-  const novos = filteredOrders.filter(o => o.status === "NOVO" || o.status === "ACEITO");
-  const preparo = filteredOrders.filter(o => o.status === "PREPARANDO");
+  const novos = filteredOrders.filter(o => o.status === "NOVO");
+  const preparo = filteredOrders.filter(o => o.status === "ACEITO" || o.status === "PREPARANDO");
   const transporte = filteredOrders.filter(o => o.status === "SAIU_ENTREGA" || o.status === "ENTREGUE");
 
   const OrderCard = ({ order }: { order: any }) => {
@@ -239,11 +167,8 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
             {order.status !== "ENTREGUE" && order.status !== "CANCELADO" && (
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                 {order.status === "NOVO" && <>
-                  <div style={{ flex: 1 }}>
-                    <SwipeAcceptButton onAccept={() => updateStatus(order.id, "ACEITO")} isLoading={isLoading} />
-                  </div>
-                  <button disabled={isLoading} onClick={() => updateStatus(order.id, "ACEITO")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "none", background: "#10B981", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>✅ Aceitar</button>
-                  <button disabled={isLoading} onClick={() => updateStatus(order.id, "CANCELADO")} style={{ padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1px solid #FCA5A5", background: "#fff", color: "#EF4444", fontWeight: 600, cursor: "pointer", fontSize: "0.82rem" }}>❌</button>
+                  <button disabled={isLoading} onClick={() => updateStatus(order.id, "ACEITO")} style={{ flex: 1, padding: "0.6rem 1rem", borderRadius: "8px", border: "none", background: "#10B981", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>✅ Aceitar Pedido</button>
+                  <button disabled={isLoading} onClick={() => updateStatus(order.id, "CANCELADO")} style={{ padding: "0.6rem 0.75rem", borderRadius: "8px", border: "1px solid #FCA5A5", background: "#fff", color: "#EF4444", fontWeight: 600, cursor: "pointer", fontSize: "0.82rem" }}>❌</button>
                 </>}
                 {order.status === "ACEITO" && <button disabled={isLoading} onClick={() => updateStatus(order.id, "PREPARANDO")} style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: "none", background: "#F59E0B", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>👨‍🍳 Preparar</button>}
                 {order.status === "PREPARANDO" && <button disabled={isLoading} onClick={() => updateStatus(order.id, "SAIU_ENTREGA")} style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: "none", background: "#8B5CF6", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>🛵 Saiu Entrega</button>}
