@@ -1,0 +1,60 @@
+{
+  "users": [
+    {
+      "id": "cmo3fnu2b0000emekf687codx",
+      "name": "Administrador Hakim",
+      "email": "admin@hakim.com.br",
+      "password": "$2b$10$0kaQMuCh1PoohIBHCeiwAeZGS7aqrotLhYyZkyPL.ZTtF2RkFLMKy",
+      "role": "ADMIN",
+      "city": null,
+      "cpfCnpj": "48524651261",
+      "createdAt": "2026-04-17T21:41:30.996Z",
+      "updatedAt": "2026-04-18T00:36:12.187Z"
+    },
+    {
+      "id": "cmo3fnu5r0001emekp3cbzobh",
+      "name": "Franquia Rio das Ostras",
+      "email": "franqueado@hakim.com.br",
+      "password": "$2b$10$8vEGP9s.Zc/8fWyH1z6SBeS1FCiNCraepWQ0VTEprHKxa.9d64s8S",
+      "role": "FRANCHISEE",
+      "city": "Rio das Ostras",
+      "cpfCnpj": "84815346330",
+      "createdAt": "2026-04-17T21:41:31.119Z",
+      "updatedAt": "2026-04-18T00:36:12.233Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "cmo3jwqdq0000em6w13g4uvsb",
+      "name": "Caixa embalagem P (100und)",
+      "description": "pacote de embalagem P com 100 unidades",
+      "price": 160,
+      "imageUrl": "",
+      "active": true,
+      "createdAt": "2026-04-17T23:40:24.573Z",
+      "updatedAt": "2026-04-17T23:40:24.573Z"
+    }
+  ],
+  "routes": [
+    {
+      "id": "cmo3lnrua0000emekh5gnbezv",
+      "cityName": "Rio das Ostras",
+      "deliveryDay": 5
+    },
+    {
+      "id": "cmo3lnrui0001emekx75rpqe5",
+      "cityName": "Rio das Ostras",
+      "deliveryDay": 2
+    },
+    {
+      "id": "cmo3lnrus0002emekgl3l3xo2",
+      "cityName": "Unamar",
+      "deliveryDay": 5
+    },
+    {
+      "id": "cmo3lnrwf0003emektxl0wh6k",
+      "cityName": "Macaé",
+      "deliveryDay": 2
+    }
+  ]
+}

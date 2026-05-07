@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String          @id @default(cuid())
+  name            String
+  email           String          @unique
+  password        String
+  role            String          @default("FRANCHISEE")
+  city            String?
+  cpfCnpj         String?
+  slug            String?         @unique
+  storeName       String?
+  storePhone      String?
+  storeAddress    String?
+  storeBanner     String?
+  storeLogo       String?
+  storeHours      Json?
+  storeDeliveryOnly Boolean   @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  permissions     String          @default("")
+  orders          Order[]
+  customerOrders  CustomerOrder[]
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  imageUrl    String?
+  category    String?
+  labelData   Json?
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id             String         @id @default(cuid())
+  userId         String
+  totalAmount    Float
+  status         String         @default("PENDING_PAYMENT")
+  boletoUrl      String?
+  asaasPaymentId String?
+  deliveryDate   DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  cancelReason   String?
+  isEmergency    Boolean        @default(false)
+  emergencyStatus String?
+  rejectionReason String?
+  user           User           @relation(fields: [userId], references: [id])
+  history        OrderHistory[]
+  items          OrderItem[]
+}
+
+model OrderHistory {
+  id          String   @id @default(cuid())
+  orderId     String
+  statusFrom  String
+  statusTo    String
+  actionBy    String
+  actionEmail String
+  notes       String?
+  createdAt   DateTime @default(now())
+  order       Order    @relation(fields: [orderId], references: [id])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model RouteSchedule {
+  id          String @id @default(cuid())
+  cityName    String
+  deliveryDay Int
+}
+
+model Payable {
+  id           String    @id @default(cuid())
+  supplierName String
+  barcode      String?
+  receivedDate DateTime
+  dueDate      DateTime
+  value        Float
+  status       String    @default("PENDING")
+  paidDate     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model PurchaseInvoice {
+  id              String   @id @default(cuid())
+  description     String
+  imageUrl        String
+  aiValue         Float?
+  aiCategory      String?
+  aiRawText       String?  @db.Text
+  invoiceDate     DateTime?
+  status          String   @default("PENDING")
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  uploadedBy      String
+}
+
+// ========== SISTEMA DE PEDIDOS DO CLIENTE FINAL ==========
+
+model MenuProduct {
+  id              String              @id @default(cuid())
+  name            String
+  description     String
+  price           Float
+  imageUrl        String?
+  category        String              @default("Lanches")
+  active          Boolean             @default(true)
+  isCombo         Boolean             @default(false)
+  comboConfig     Json?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  orderItems      CustomerOrderItem[]
+  comboGroups     ComboGroup[]
+  comboGroupItems ComboGroupItem[]
+}
+
+model ComboGroup {
+  id            String           @id @default(cuid())
+  menuProductId String
+  title         String
+  maxQty        Int
+  sortOrder     Int              @default(0)
+  menuProduct   MenuProduct      @relation(fields: [menuProductId], references: [id], onDelete: Cascade)
+  items         ComboGroupItem[]
+}
+
+model ComboGroupItem {
+  id             String      @id @default(cuid())
+  comboGroupId   String
+  menuProductId  String
+  comboGroup     ComboGroup  @relation(fields: [comboGroupId], references: [id], onDelete: Cascade)
+  menuProduct    MenuProduct @relation(fields: [menuProductId], references: [id])
+}
+
+model CustomerOrder {
+  id              String              @id @default(cuid())
+  franchiseeId    String
+  customerName    String
+  customerPhone   String
+  customerAddress String?
+  deliveryType    String              @default("DELIVERY")
+  totalAmount     Float
+  status          String              @default("NOVO")
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  franchisee      User                @relation(fields: [franchiseeId], references: [id])
+  items           CustomerOrderItem[]
+}
+
+model CustomerOrderItem {
+  id              String        @id @default(cuid())
+  orderId         String
+  menuProductId   String
+  quantity        Int
+  price           Float
+  comboSelections Json?
+  order           CustomerOrder @relation(fields: [orderId], references: [id])
+  menuProduct     MenuProduct   @relation(fields: [menuProductId], references: [id])
+}

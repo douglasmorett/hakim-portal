@@ -1,0 +1,63 @@
+import { prisma } from "@/lib/prisma";
+import { notFound } from "next/navigation";
+import CustomerStorePage from "@/components/customer/CustomerStorePage";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const franchisee = await prisma.user.findUnique({
+    where: { slug },
+    select: { storeName: true, name: true, city: true }
+  });
+  
+  if (!franchisee) return { title: "Loja não encontrada" };
+  
+  const name = franchisee.storeName || franchisee.name;
+  return {
+    title: `${name} | Cardápio Online`,
+    description: `Faça seu pedido online em ${name}. Peça agora pelo cardápio digital!`,
+  };
+}
+
+export default async function PublicStorePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  
+  const franchisee = await prisma.user.findUnique({
+    where: { slug },
+    select: { 
+      id: true, 
+      name: true, 
+      storeName: true, 
+      storePhone: true, 
+      storeAddress: true, 
+      storeBanner: true,
+      storeLogo: true,
+      storeHours: true,
+      storeDeliveryOnly: true,
+      city: true,
+      slug: true
+    }
+  });
+
+  if (!franchisee) notFound();
+
+  const menuProducts = await prisma.menuProduct.findMany({
+    where: { active: true },
+    orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    include: {
+      comboGroups: {
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          items: {
+            include: {
+              menuProduct: { select: { id: true, name: true, active: true, imageUrl: true } }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return (
+    <CustomerStorePage franchisee={franchisee} menuProducts={menuProducts} />
+  );
+}
