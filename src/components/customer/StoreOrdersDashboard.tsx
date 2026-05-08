@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, MapPin, Phone, User, ChevronDown, ChevronUp, Search, ShoppingBag, ExternalLink, Settings, Store, Package, Bell, ToggleLeft, ToggleRight, GripVertical } from "lucide-react";
@@ -10,6 +10,7 @@ const STATUS_CONFIG: Record<string, { label: string; emoji: string; color: strin
   SAIU_ENTREGA: { label: "Em Transporte/Finalizados", emoji: "🛵", color: "#8B5CF6", bg: "#F5F3FF" },
   ENTREGUE: { label: "Entregue", emoji: "📦", color: "#10B981", bg: "#ECFDF5" },
   CANCELADO: { label: "Cancelado", emoji: "❌", color: "#EF4444", bg: "#FEF2F2" },
+  ENCERRADO: { label: "Encerrado", emoji: "🔒", color: "#6B7280", bg: "#F3F4F6" },
 };
 
 // Mapping columns to statuses for drag-and-drop
@@ -50,6 +51,10 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
   const [draggedOrderId, setDraggedOrderId] = useState<string | null>(null);
   const [weather, setWeather] = useState<any>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [dateFrom, setDateFrom] = useState(todayStr + "T00:00");
+  const [dateTo, setDateTo] = useState(todayStr + "T23:59");
+  const [showResumo, setShowResumo] = useState(false);
 
   const storeName = user.storeName || user.name;
   const storeStatus = isStoreOpen(user.storeHours as any);
@@ -302,7 +307,13 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
     };
   }, [handleTouchMove, handleTouchEnd]);
 
+  const fromDate = new Date(dateFrom);
+  const toDate = new Date(dateTo);
+
   const filteredOrders = orders.filter(o => {
+    if (o.status === "ENCERRADO") return false;
+    const created = new Date(o.createdAt);
+    if (created < fromDate || created > toDate) return false;
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
     return o.customerName?.toLowerCase().includes(s) || o.customerPhone?.includes(s) || o.customerAddress?.toLowerCase().includes(s) || o.id.includes(s);
@@ -311,6 +322,19 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
   const novos = filteredOrders.filter(o => o.status === "NOVO");
   const preparo = filteredOrders.filter(o => o.status === "ACEITO" || o.status === "PREPARANDO");
   const transporte = filteredOrders.filter(o => o.status === "SAIU_ENTREGA" || o.status === "ENTREGUE");
+
+  // Resumo de vendas
+  const allInRange = orders.filter(o => { const d = new Date(o.createdAt); return d >= fromDate && d <= toDate; });
+  const resumo = {
+    pendentes: allInRange.filter(o => o.status === "NOVO"),
+    preparo: allInRange.filter(o => o.status === "ACEITO" || o.status === "PREPARANDO"),
+    transporte: allInRange.filter(o => o.status === "SAIU_ENTREGA"),
+    entregues: allInRange.filter(o => o.status === "ENTREGUE" || o.status === "ENCERRADO"),
+    cancelados: allInRange.filter(o => o.status === "CANCELADO"),
+    total: allInRange.filter(o => o.status !== "CANCELADO"),
+  };
+  const sumVal = (arr: any[]) => arr.reduce((s, o) => s + o.totalAmount, 0);
+  const fmtR = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   const OrderCard = ({ order }: { order: any }) => {
     const expanded = expandedId === order.id;
@@ -371,17 +395,21 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
                   <span>{item.quantity}x {item.menuProduct?.name}</span>
                   <span style={{ fontWeight: 600 }}>R$ {(item.price * item.quantity).toFixed(2)}</span>
                 </div>
-              ))}
-            </div>
-            {order.status !== "ENTREGUE" && order.status !== "CANCELADO" && (
+             {order.status !== "ENTREGUE" && order.status !== "CANCELADO" && order.status !== "ENCERRADO" && (
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                 {order.status === "NOVO" && <>
                   <button disabled={isLoading} onClick={() => updateStatus(order.id, "ACEITO")} style={{ flex: 1, padding: "0.6rem 1rem", borderRadius: "8px", border: "none", background: "#10B981", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>✅ Aceitar Pedido</button>
                   <button disabled={isLoading} onClick={() => updateStatus(order.id, "CANCELADO")} style={{ padding: "0.6rem 0.75rem", borderRadius: "8px", border: "1px solid #FCA5A5", background: "#fff", color: "#EF4444", fontWeight: 600, cursor: "pointer", fontSize: "0.82rem" }}>❌</button>
-                </>}
+                </> }
                 {order.status === "ACEITO" && <button disabled={isLoading} onClick={() => updateStatus(order.id, "PREPARANDO")} style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: "none", background: "#F59E0B", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>👨‍🍳 Preparar</button>}
                 {order.status === "PREPARANDO" && <button disabled={isLoading} onClick={() => updateStatus(order.id, "SAIU_ENTREGA")} style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: "none", background: "#8B5CF6", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>🛵 Saiu Entrega</button>}
                 {order.status === "SAIU_ENTREGA" && <button disabled={isLoading} onClick={() => updateStatus(order.id, "ENTREGUE")} style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: "none", background: "#10B981", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>📦 Entregue</button>}
+              </div>
+            )}
+            {(order.status === "ENTREGUE" || order.status === "CANCELADO") && (
+              <button disabled={isLoading} onClick={() => { if(confirm("Encerrar pedido? Ele sairá da lista.")) updateStatus(order.id, "ENCERRADO"); }} style={{ width: "100%", marginTop: "4px", padding: "0.4rem", borderRadius: "8px", border: "1px solid #D1D5DB", background: "#F9FAFB", color: "#6B7280", fontWeight: 600, cursor: "pointer", fontSize: "0.8rem", fontFamily: "inherit" }}>🔒 Encerrar pedido</button>
+            )}
+          </div>
               </div>
             )}
           </div>
@@ -435,6 +463,35 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* MODAL RESUMO DE VENDAS */}
+      {showResumo && (
+        <div onClick={() => setShowResumo(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "16px", padding: "28px", minWidth: "340px", maxWidth: "95vw", boxShadow: "0 25px 60px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 style={{ fontWeight: 800, fontSize: "1.1rem" }}>Resumo das vendas</h3>
+              <button onClick={() => setShowResumo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem" }}>x</button>
+            </div>
+            {[
+              { label: `PAGAMENTOS PENDENTES (${resumo.pendentes.length})`, val: sumVal(resumo.pendentes), bold: false, red: false },
+              { label: `NOVOS PEDIDOS (${resumo.pendentes.length})`, val: sumVal(resumo.pendentes), bold: false, red: false },
+              { label: `EM PREPARO (${resumo.preparo.length})`, val: sumVal(resumo.preparo), bold: false, red: false },
+              { label: `EM TRANSPORTE (${resumo.transporte.length})`, val: sumVal(resumo.transporte), bold: false, red: false },
+              { label: `ENTREGUES (${resumo.entregues.length})`, val: sumVal(resumo.entregues), bold: false, red: false },
+              { label: `TOTAL ATE O MOMENTO (${resumo.total.length})`, val: sumVal(resumo.total), bold: true, red: false },
+              { label: `CANCELADOS (${resumo.cancelados.length})`, val: sumVal(resumo.cancelados), bold: true, red: true },
+            ].map((row, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F1F5F9" }}>
+                <span style={{ fontWeight: row.bold ? 700 : 400, color: row.red ? "#EF4444" : "#1a1a2e" }}>{row.label}</span>
+                <span style={{ fontWeight: row.bold ? 700 : 400, color: row.red ? "#EF4444" : "#1a1a2e" }}>{fmtR(row.val)}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: "16px", padding: "10px", background: "#F8FAFC", borderRadius: "8px", fontSize: "0.78rem", color: "#64748B" }}>
+              <div>• O periodo e de {new Date(dateFrom).toLocaleString("pt-BR")} ate {new Date(dateTo).toLocaleString("pt-BR")}.</div>
+            </div>
+            <button onClick={() => setShowResumo(false)} style={{ marginTop: "16px", width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #E2E8F0", background: "#F8FAFC", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Fechar</button>
+          </div>
+        </div>
+      )}
       {/* FILTER BAR */}
       <div style={{ background: "#fff", borderBottom: "1px solid #E2E8F0", padding: "0.5rem 1.5rem" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto", display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
@@ -445,6 +502,13 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
               value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
               style={{ width: "100%", padding: "0.5rem 0.5rem 0.5rem 36px", borderRadius: "10px", border: "1.5px solid #E2E8F0", fontSize: "0.85rem", outline: "none" }}
             />
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.78rem", color: "#64748B", fontWeight: 600 }}>De</span>
+            <input type="datetime-local" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: "5px 8px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+            <span style={{ fontSize: "0.78rem", color: "#64748B", fontWeight: 600 }}>Ate</span>
+            <input type="datetime-local" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: "5px 8px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+            <button onClick={() => setShowResumo(true)} style={{ padding: "6px 14px", background: "#1E293B", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", fontFamily: "inherit" }}>💰 Resumo das vendas</button>
+          </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginLeft: "auto" }}>
             {/* Weather Widget */}

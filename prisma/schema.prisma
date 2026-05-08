@@ -178,6 +178,7 @@ model CustomerOrder {
   totalAmount     Float
   deliveryFee     Float           @default(0)
   status          String              @default("NOVO")
+  source          String              @default("ONLINE")
   notes           String?
   rating          Int?
   ratingComment   String?

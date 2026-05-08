@@ -7,6 +7,7 @@ import { Home, ClipboardList, Store, Users, ShoppingBag, ExternalLink, LogOut } 
 const NAV_ITEMS = [
   { href: "/store", label: "Início", icon: Home },
   { href: "/store/pedidos-clientes", label: "Pedidos", icon: ClipboardList, highlight: true },
+  { href: "/store/venda-presencial", label: "Venda", icon: ShoppingBag },
   { href: "/store/minha-loja", label: "Minha Loja", icon: Store },
   { href: "/store/profile", label: "Perfil", icon: Users },
 ];
