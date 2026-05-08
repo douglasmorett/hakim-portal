@@ -39,6 +39,11 @@ export async function POST(req: Request) {
       };
     });
 
+    // VALIDAÇÃO PEDIDO MÍNIMO R$300
+    if (calculatedTotal < 300) {
+      return NextResponse.json({ error: `Pedido mínimo é R$ 300,00. Seu total é R$ ${calculatedTotal.toFixed(2)}.` }, { status: 400 });
+    }
+
     // VERIFICAÇÃO DE INADIMPLÊNCIA
     const { checkAsaasOverdue } = await import("@/lib/asaas");
     if (user.cpfCnpj) {

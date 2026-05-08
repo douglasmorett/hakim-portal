@@ -147,16 +147,32 @@ export default function CartPage() {
               <span className="font-extrabold gradient-text">R$ {total.toFixed(2)}</span>
             </div>
 
+            {/* PEDIDO MÍNIMO R$300 */}
+            {total < 300 && (
+              <div style={{ marginBottom: "1rem", padding: "1rem", borderRadius: "12px", background: "#FFF7ED", border: "1.5px solid #FBBF24" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                  <span style={{ fontSize: "1.2rem" }}>⚠️</span>
+                  <span style={{ fontWeight: 700, color: "#B45309", fontSize: "0.9rem" }}>Pedido mínimo: R$ 300,00</span>
+                </div>
+                <div style={{ width: "100%", height: "8px", background: "#FDE68A", borderRadius: "4px", overflow: "hidden", marginBottom: "0.5rem" }}>
+                  <div style={{ width: `${Math.min((total / 300) * 100, 100)}%`, height: "100%", background: "linear-gradient(90deg, #F59E0B, #EF4444)", borderRadius: "4px", transition: "width 0.3s" }} />
+                </div>
+                <p style={{ fontSize: "0.82rem", color: "#92400E", margin: 0 }}>
+                  Faltam <strong>R$ {(300 - total).toFixed(2)}</strong> para atingir o pedido mínimo. Adicione mais itens ao carrinho.
+                </p>
+              </div>
+            )}
+
             <button 
               className="btn btn-primary" 
-              style={{ width: "100%", padding: "1rem", fontSize: "1.1rem" }}
-              onClick={handleCheckout}
-              disabled={loading}
+              style={{ width: "100%", padding: "1rem", fontSize: "1.1rem", opacity: total < 300 ? 0.5 : 1 }}
+              onClick={total < 300 ? undefined : handleCheckout}
+              disabled={loading || total < 300}
             >
-              {loading ? "Processando..." : "Finalizar e Gerar Boleto"}
+              {loading ? "Processando..." : total < 300 ? `Faltam R$ ${(300 - total).toFixed(2)} para o mínimo` : "Finalizar e Gerar Boleto"}
             </button>
             <p className="text-muted text-center mt-4 mb-4" style={{ fontSize: "0.85rem" }}>
-              O boleto será gerado via banco Asaas com vencimento em 10 dias.
+              {total < 300 ? "Volte à loja e adicione mais produtos para finalizar seu pedido." : "O boleto será gerado via banco Asaas com vencimento em 10 dias."}
             </p>
 
             {/* BOTÃO RETIRADA DE EMERGÊNCIA */}
