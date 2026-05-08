@@ -53,7 +53,7 @@ export default function ProductGrid({ products, deliveryInfo }: { products: any[
       <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontWeight: 700, fontSize: "1.05rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
           <ShoppingCart size={18} /> Carrinho
-          {itemCount > 0 && <span style={{ background: "#C62828", color: "#fff", borderRadius: "20px", padding: "1px 8px", fontSize: "0.75rem" }}>{itemCount}</span>}
+          {itemCount > 0 && <span style={{ background: "#1565C0", color: "#fff", borderRadius: "20px", padding: "1px 8px", fontSize: "0.75rem" }}>{itemCount}</span>}
         </h3>
       </div>
 
@@ -80,11 +80,11 @@ export default function ProductGrid({ products, deliveryInfo }: { products: any[
                       <Minus size={13} />
                     </button>
                     <span style={{ fontWeight: 700, fontSize: "0.9rem", minWidth: "24px", textAlign: "center" }}>{item.quantity}</span>
-                    <button onClick={() => addToCart({ id: item.id, name: item.name, price: item.price }, 1)} style={{ width: "28px", height: "28px", borderRadius: "8px", border: "1.5px solid #C62828", background: "#C6282810", color: "#C62828", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <button onClick={() => addToCart({ id: item.id, name: item.name, price: item.price }, 1)} style={{ width: "28px", height: "28px", borderRadius: "8px", border: "1.5px solid #1565C0", background: "#1565C010", color: "#1565C0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Plus size={13} />
                     </button>
                   </div>
-                  <span style={{ fontWeight: 700, color: "#C62828", fontSize: "0.9rem" }}>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                  <span style={{ fontWeight: 700, color: "#1565C0", fontSize: "0.9rem" }}>R$ {(item.price * item.quantity).toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -96,9 +96,9 @@ export default function ProductGrid({ products, deliveryInfo }: { products: any[
         <div style={{ borderTop: "2px solid #E2E8F0", padding: "1rem 1.25rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
             <span style={{ fontWeight: 600, color: "#64748B" }}>Total</span>
-            <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "#C62828" }}>R$ {total.toFixed(2)}</span>
+            <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "#1565C0" }}>R$ {total.toFixed(2)}</span>
           </div>
-          <Link href="/store/cart" style={{ display: "block", width: "100%", padding: "0.7rem", borderRadius: "10px", background: "linear-gradient(135deg, #C62828, #E53935)", color: "#fff", fontWeight: 700, fontSize: "0.92rem", textAlign: "center", textDecoration: "none", boxShadow: "0 4px 12px rgba(198,40,40,0.3)" }}>
+          <Link href="/store/cart" style={{ display: "block", width: "100%", padding: "0.7rem", borderRadius: "10px", background: "linear-gradient(135deg, #1565C0, #1976D2)", color: "#fff", fontWeight: 700, fontSize: "0.92rem", textAlign: "center", textDecoration: "none", boxShadow: "0 4px 12px rgba(21,101,192,0.3)" }}>
             Finalizar Pedido
           </Link>
         </div>
@@ -214,8 +214,8 @@ export default function ProductGrid({ products, deliveryInfo }: { products: any[
       {itemCount > 0 && (
         <button onClick={() => setShowMobileCart(true)} className="cart-mobile-btn" style={{
           position: "fixed", bottom: "1.25rem", right: "1.25rem", width: "60px", height: "60px",
-          borderRadius: "50%", background: "linear-gradient(135deg, #C62828, #E53935)", color: "#fff",
-          border: "none", cursor: "pointer", boxShadow: "0 6px 20px rgba(198,40,40,0.4)",
+          borderRadius: "50%", background: "linear-gradient(135deg, #1565C0, #1976D2)", color: "#fff",
+          border: "none", cursor: "pointer", boxShadow: "0 6px 20px rgba(21,101,192,0.4)",
           display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100
         }}>
           <ShoppingCart size={24} />

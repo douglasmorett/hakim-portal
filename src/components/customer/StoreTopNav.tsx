@@ -11,21 +11,45 @@ const NAV_ITEMS = [
   { href: "/store/profile", label: "Perfil", icon: Users },
 ];
 
+// Icebox brand colors
+const ICEBOX_BLUE = "#1565C0";
+const ICEBOX_BLUE_DARK = "#0D47A1";
+const ICEBOX_BLUE_LIGHT = "#1976D2";
+
 export default function StoreTopNav({ userName, userCity, userSlug, isFranqueado }: { userName: string; userCity: string; userSlug?: string | null; isFranqueado: boolean }) {
   const pathname = usePathname();
+  const isCompras = pathname?.startsWith("/store/compras");
   const storeUrl = userSlug ? `https://hakim-portal.vercel.app/loja/${userSlug}` : null;
 
   return (
     <>
-      <div style={{ background: "linear-gradient(135deg, #C62828 0%, #B71C1C 100%)", padding: "0.5rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+      <div style={{ background: isCompras ? `linear-gradient(135deg, ${ICEBOX_BLUE_DARK} 0%, ${ICEBOX_BLUE} 100%)` : "linear-gradient(135deg, #C62828 0%, #B71C1C 100%)", padding: "0.5rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <img src="/logo.png" alt="Hakim" style={{ height: "36px", borderRadius: "6px" }} />
-          <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "-0.5px" }}>Hakim Portal</span>
+          {isCompras ? (
+            <>
+              <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+              </div>
+              <div>
+                <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.15rem", letterSpacing: "-0.5px" }}>Icebox</span>
+                <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500, fontSize: "0.75rem", marginLeft: "6px" }}>Congelados</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <img src="/logo.png" alt="Hakim" style={{ height: "36px", borderRadius: "6px" }} />
+              <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "-0.5px" }}>Hakim Portal</span>
+            </>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           {isFranqueado && (
-            <a href="/store/compras" target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "0.4rem 1rem", borderRadius: "8px", background: "#FF8A00", color: "#fff", fontWeight: 700, fontSize: "0.82rem", textDecoration: "none", boxShadow: "0 2px 8px rgba(255,138,0,0.4)" }}>
-              <ShoppingBag size={15} /> Fazer Compras
+            <a href="/store/compras" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "0.4rem 1rem", borderRadius: "8px", background: isCompras ? "rgba(255,255,255,0.2)" : "#FF8A00", color: "#fff", fontWeight: 700, fontSize: "0.82rem", textDecoration: "none", boxShadow: isCompras ? "none" : "0 2px 8px rgba(255,138,0,0.4)" }}>
+              <ShoppingBag size={15} /> {isCompras ? "Comprando..." : "Fazer Compras"}
             </a>
           )}
           {storeUrl && (
@@ -39,15 +63,16 @@ export default function StoreTopNav({ userName, userCity, userSlug, isFranqueado
           </a>
         </div>
       </div>
-      <nav style={{ background: "#fff", borderBottom: "2px solid #E2E8F0", padding: "0 1.5rem", position: "sticky", top: 0, zIndex: 50, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+      <nav style={{ background: "#fff", borderBottom: `2px solid ${isCompras ? "#E3F2FD" : "#E2E8F0"}`, padding: "0 1.5rem", position: "sticky", top: 0, zIndex: 50, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto", display: "flex", alignItems: "stretch", gap: "0", overflowX: "auto", scrollbarWidth: "none" }}>
           {NAV_ITEMS.map(item => {
             const Icon = item.icon;
             const active = item.href === "/store" ? pathname === "/store" : pathname?.startsWith(item.href);
+            const activeColor = isCompras ? ICEBOX_BLUE : "#C62828";
             return (
-              <Link key={item.href} href={item.href} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0.75rem 1.1rem", fontSize: "0.85rem", fontWeight: active ? 700 : 500, color: active ? "#C62828" : "#475569", textDecoration: "none", borderBottom: active ? "3px solid #C62828" : "3px solid transparent", whiteSpace: "nowrap" }}>
+              <Link key={item.href} href={item.href} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0.75rem 1.1rem", fontSize: "0.85rem", fontWeight: active ? 700 : 500, color: active ? activeColor : "#475569", textDecoration: "none", borderBottom: active ? `3px solid ${activeColor}` : "3px solid transparent", whiteSpace: "nowrap" }}>
                 <Icon size={16} /> {item.label}
-                {item.highlight && <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#C62828", display: "inline-block" }} />}
+                {item.highlight && <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: activeColor, display: "inline-block" }} />}
               </Link>
             );
           })}
