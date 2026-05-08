@@ -165,7 +165,7 @@ export default function FireHubLanding() {
           <div className="fh-hero-grid">
             <div>
               <div className="fh-hero-tag">Sistema para Delivery e Restaurante</div>
-              <h1>O sistema de gestão mais <em>completo</em> para seu restaurante</h1>
+              <h1>O sistema de <em>pedidos</em> com tudo que o seu restaurante precisa</h1>
               <p>
                 Cardápio digital, gestão de pedidos, chatbot WhatsApp, controle financeiro 
                 e auditoria com IA — tudo num só lugar. Pare de perder vendas e comece a crescer.
@@ -282,7 +282,7 @@ export default function FireHubLanding() {
                   <h3>{p.name}</h3>
                 </div>
                 <p>{p.desc}</p>
-                <a href="#demo" className="fh-plan-btn">Fale com um consultor</a>
+                <a href="https://wa.me/5522981118514?text=Ol%C3%A1!%20Tenho%20interesse%20no%20FireHub%20-%20Plano%20" className="fh-plan-btn">Fale com um consultor</a>
               </div>
             ))}
           </div>
@@ -315,7 +315,7 @@ export default function FireHubLanding() {
           <div className="fh-cta-box">
             <h2>Pronto para vender mais?</h2>
             <p>Agende uma demonstração gratuita e descubra como o FireHub pode transformar seu restaurante.</p>
-            <a href="#demo" className="fh-cta-btn">🔥 AGENDAR DEMONSTRAÇÃO GRATUITA</a>
+            <a href="https://wa.me/5522981118514?text=Ol%C3%A1!%20Quero%20agendar%20uma%20demonstra%C3%A7%C3%A3o%20do%20FireHub" className="fh-cta-btn">🔥 AGENDAR DEMONSTRAÇÃO GRATUITA</a>
           </div>
         </div>
       </section>
