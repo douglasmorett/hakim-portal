@@ -177,7 +177,7 @@ export default function FireHubLanding() {
                 <span className="fh-badge">🤖 IA</span>
                 <span className="fh-badge">💬 WhatsApp</span>
               </div>
-              <img src="/firehub-mockup.png" alt="FireHub Sistema" className="fh-mockup-img" style={{ marginTop: "20px" }} />
+              <img src="/firehub-mockup.png" alt="FireHub Sistema" style={{ marginTop: "20px", width: "100%", maxWidth: "600px", mixBlendMode: "multiply" }} />
             </div>
 
             {/* FORM */}
