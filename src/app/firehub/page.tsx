@@ -21,9 +21,9 @@ const STEPS = [
 ];
 
 const PLANS = [
-  { name: "Delivery", popular: false, desc: "Ideal para quem trabalha com delivery e quer automatizar pedidos.", features: ["Cardápio digital delivery","Chatbot WhatsApp","Gestão de pedidos","Controle de caixa","Relatórios básicos","Suporte 7 dias"] },
-  { name: "Premium", popular: true, desc: "Para quem quer delivery + presencial com todas as ferramentas.", features: ["Tudo do Delivery +","Cardápio mesa e balcão","Gestão de estoque","Disparo WhatsApp","Módulos FireCheck","Suporte prioritário"] },
-  { name: "Enterprise", popular: false, desc: "Para redes e franquias que precisam de controle centralizado.", features: ["Tudo do Premium +","Multi-lojas","Gestão de franquias","API personalizada","Gerente de conta","Treinamento dedicado"] },
+  { name: "Delivery", icon: "🛵", popular: false, desc: "Esse plano é ideal para empresas que buscam trabalhar com delivery e querem automatizar seu atendimento com cardápios digitais e autoatendimento, além de aumentar suas vendas com ferramentas de automação e marketing muito completas." },
+  { name: "Premium", icon: "🔥", popular: true, desc: "Esse plano foi feito para empresas que buscam automatizar tanto seu atendimento presencial quanto de delivery, tudo isso usando cardápios digitais, ChatBots e ferramentas de gestão que centralizam toda sua operação em único lugar." },
+  { name: "Mesas", icon: "🍽️", popular: false, desc: "Esse plano foi feito para empresas que trabalham com um ambiente presencial e buscam automatizar seu atendimento de mesas e comandas, tudo isso através de cardápios digitais e módulos de gestão, para você controlar o que acontece no seu salão." },
 ];
 
 const FAQ = [
@@ -84,7 +84,7 @@ export default function FireHubLanding() {
         .fh-submit:hover { background: #B91C1C; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(220,38,38,0.4); }
         .fh-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .fh-section { padding: 80px 0; }
-        .fh-section-alt { background: #F8FAFC; }
+        .fh-section-alt { background: #FFF5F5; }
         .fh-section-red { background: linear-gradient(135deg, #B91C1C, #DC2626); color: #fff; }
         .fh-section-title { text-align: center; margin-bottom: 60px; }
         .fh-section-title h2 { font-size: 2.2rem; font-weight: 800; margin-bottom: 12px; }
@@ -100,18 +100,18 @@ export default function FireHubLanding() {
         .fh-step-num { font-size: 3rem; font-weight: 900; color: #FEE2E2; margin-bottom: 12px; }
         .fh-step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
         .fh-step p { font-size: 0.8rem; color: #64748B; line-height: 1.5; }
-        .fh-plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        .fh-plan { background: #fff; border: 2px solid #E2E8F0; border-radius: 16px; padding: 32px; position: relative; transition: all 0.3s; }
-        .fh-plan.popular { border-color: #DC2626; box-shadow: 0 12px 40px rgba(220,38,38,0.15); transform: scale(1.05); }
-        .fh-plan-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: #DC2626; color: #fff; padding: 4px 16px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-        .fh-plan h3 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
-        .fh-plan p { font-size: 0.85rem; color: #64748B; margin-bottom: 20px; line-height: 1.5; }
-        .fh-plan ul { list-style: none; margin-bottom: 24px; }
-        .fh-plan ul li { padding: 8px 0; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #F1F5F9; }
-        .fh-plan ul li::before { content: '✓'; color: #DC2626; font-weight: 700; }
-        .fh-plan-btn { display: block; width: 100%; text-align: center; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; text-decoration: none; transition: all 0.3s; border: 2px solid #DC2626; color: #DC2626; background: transparent; cursor: pointer; font-family: inherit; }
-        .fh-plan.popular .fh-plan-btn { background: #DC2626; color: #fff; }
-        .fh-plan-btn:hover { background: #DC2626; color: #fff; transform: translateY(-2px); }
+        .fh-plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: center; }
+        .fh-plan { background: #FEE2E2; border: none; border-radius: 20px; padding: 36px 28px; position: relative; transition: all 0.3s; color: #1a1a2e; }
+        .fh-plan.popular { background: linear-gradient(135deg, #7F1D1D, #991B1B); color: #fff; transform: scale(1.07); box-shadow: 0 20px 50px rgba(127,29,29,0.3); z-index: 2; }
+        .fh-plan-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.2); color: #fff; padding: 6px 20px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(4px); }
+        .fh-plan-icon { font-size: 2rem; display: inline-block; margin-right: 10px; vertical-align: middle; background: rgba(220,38,38,0.15); padding: 8px; border-radius: 10px; }
+        .fh-plan.popular .fh-plan-icon { background: rgba(255,255,255,0.15); }
+        .fh-plan h3 { font-size: 1.6rem; font-weight: 800; margin-bottom: 16px; display: inline-block; vertical-align: middle; }
+        .fh-plan p { font-size: 0.9rem; color: #64748B; margin-bottom: 28px; line-height: 1.6; }
+        .fh-plan.popular p { color: rgba(255,255,255,0.8); }
+        .fh-plan-btn { display: inline-block; text-align: center; padding: 12px 28px; border-radius: 25px; font-weight: 700; font-size: 0.85rem; text-decoration: none; transition: all 0.3s; background: #DC2626; color: #fff; border: none; cursor: pointer; font-family: inherit; box-shadow: 0 4px 15px rgba(220,38,38,0.3); }
+        .fh-plan.popular .fh-plan-btn { background: #EF4444; }
+        .fh-plan-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(220,38,38,0.4); }
         .fh-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; text-align: center; padding: 60px 0; }
         .fh-stat h3 { font-size: 2.5rem; font-weight: 900; color: #fff; }
         .fh-stat p { font-size: 0.85rem; color: rgba(255,255,255,0.8); }
@@ -275,10 +275,12 @@ export default function FireHubLanding() {
             {PLANS.map((p, i) => (
               <div key={i} className={`fh-plan ${p.popular ? "popular" : ""}`}>
                 {p.popular && <div className="fh-plan-badge">+ Popular</div>}
-                <h3>{p.name}</h3>
+                <div style={{ marginBottom: "16px" }}>
+                  <span className="fh-plan-icon">{p.icon}</span>
+                  <h3>{p.name}</h3>
+                </div>
                 <p>{p.desc}</p>
-                <ul>{p.features.map((f, j) => <li key={j}>{f}</li>)}</ul>
-                <a href="#demo" className="fh-plan-btn">Agendar demonstração</a>
+                <a href="#demo" className="fh-plan-btn">Fale com um consultor</a>
               </div>
             ))}
           </div>
