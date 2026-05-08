@@ -88,7 +88,11 @@ export default function IceboxCatalog({ products, deliveryInfo, isLoggedIn, canO
               <p style={{ fontSize: "1rem", opacity: 0.9, maxWidth: "500px", lineHeight: 1.6 }}>
                 Produtos de qualidade para seu negócio. Entrega na região com os melhores preços do mercado.
               </p>
-              <div style={{ display: "flex", gap: "1.5rem", marginTop: "1.25rem" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginTop: "1rem", padding: "0.5rem 1.2rem", borderRadius: "30px", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.3)" }}>
+                <Truck size={18} />
+                <span style={{ fontWeight: 800, fontSize: "0.95rem" }}>🚚 Frete Grátis nos dias de rota!</span>
+              </div>
+              <div style={{ display: "flex", gap: "1.5rem", marginTop: "1rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.85rem" }}>
                   <Truck size={16} /> Entrega própria
                 </div>
