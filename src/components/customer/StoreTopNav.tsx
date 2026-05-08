@@ -42,8 +42,20 @@ export default function StoreTopNav({ userName, userCity, userSlug, isFranqueado
             </>
           ) : (
             <>
-              <img src="/logo.png" alt="Hakim" style={{ height: "36px", borderRadius: "6px" }} />
-              <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "-0.5px" }}>Hakim Portal</span>
+              <Link href="/firehub" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+                <div style={{ width: "34px", height: "34px", borderRadius: "8px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C12 2 7 7.5 7 12.5C7 15.5 9.2 18 12 18C14.8 18 17 15.5 17 12.5C17 10.5 15.5 8.5 15.5 8.5C15.5 8.5 15 11 13 11C13 11 14 8 12 2Z" fill="#FF6B35"/>
+                    <path d="M12 18C12 18 9 16 9 13C9 13 10.5 14.5 12 14.5C13.5 14.5 15 13 15 13C15 16 12 18 12 18Z" fill="#fff" opacity="0.8"/>
+                  </svg>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+                  <span style={{ color: "#fff", fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-0.5px", fontFamily: "'Inter', sans-serif" }}>
+                    Fire<span style={{ color: "#FF6B35" }}>Hub</span>
+                  </span>
+                  <span style={{ color: "rgba(255,255,255,0.65)", fontWeight: 500, fontSize: "0.62rem", letterSpacing: "0.5px", textTransform: "uppercase" }}>Sistema de Pedidos</span>
+                </div>
+              </Link>
             </>
           )}
         </div>
