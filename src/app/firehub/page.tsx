@@ -142,11 +142,7 @@ export default function FireHubLanding() {
       {/* NAV */}
       <nav className="fh-nav">
         <div className="fh-logo">
-          <span style={{ fontSize: "1.8rem" }}>🔥</span>
-          <div>
-            <span className="fh-logo-text">FIRE<span>HUB</span></span>
-            <span className="fh-logo-sub">Sistema Centralizado de Pedidos & Estoque</span>
-          </div>
+          <img src="/firehub-logo.png" alt="FireHub" style={{ height: "42px", objectFit: "contain" }} />
         </div>
         <div className="fh-nav-links">
           <a href="#funcionalidades">Funcionalidades</a>
@@ -321,7 +317,7 @@ export default function FireHubLanding() {
       {/* FOOTER */}
       <footer className="fh-footer">
         <div className="fh-container">
-          <p style={{ marginBottom: "8px" }}>🔥 <strong>FireHub</strong> — Sistema Centralizado de Pedidos & Estoque</p>
+          <img src="/firehub-logo.png" alt="FireHub" style={{ height: "32px", objectFit: "contain", marginBottom: "8px", filter: "brightness(10)" }} />
           <p>© {new Date().getFullYear()} FireHub. Todos os direitos reservados.</p>
         </div>
       </footer>
