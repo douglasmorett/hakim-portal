@@ -155,7 +155,7 @@ export default function FireHubLanding() {
           <a href="#como-funciona">Como funciona</a>
           <a href="#planos">Planos</a>
           <a href="#faq">FAQ</a>
-          <a href="/login" className="fh-nav-btn">Entrar</a>
+          <a href="https://wa.me/5522981118514?text=Ol%C3%A1!%20Sou%20cliente%20FireHub%20e%20preciso%20de%20suporte" className="fh-nav-btn">Área do Cliente</a>
         </div>
       </nav>
 
