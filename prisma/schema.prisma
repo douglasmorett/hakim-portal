@@ -224,3 +224,59 @@ model StoreReview {
   customer     StoreCustomer  @relation(fields: [customerId], references: [id])
   order        CustomerOrder  @relation(fields: [orderId], references: [id])
 }
+
+// ========== MÓDULO DE GESTÃO FINANCEIRA AVANÇADA ==========
+
+// Taxa cobrada por plataforma (iFood, Rappi, etc)
+model PlatformFee {
+  id         String   @id @default(cuid())
+  platform   String   // "IFOOD" | "RAPPI" | "AIQFOME" | "OWN"
+  label      String   // "iFood" | "Rappi" | "Loja Própria"
+  feePercent Float    @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Folha de pagamento: funcionários e freelancers
+model PayrollEntry {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   @default("EMPLOYEE") // "EMPLOYEE" | "FREELANCER"
+  role        String?  // cargo / função
+  amount      Float
+  description String?
+  payDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Abertura e fechamento de caixa
+model CashRegister {
+  id              String              @id @default(cuid())
+  openedAt        DateTime            @default(now())
+  closedAt        DateTime?
+  openingAmount   Float               // dinheiro inicial informado
+  status          String              @default("OPEN") // "OPEN" | "CLOSED"
+  expectedTotal   Float?              // total calculado pelo sistema com base nos pedidos
+  actualTotal     Float?              // total informado pelo operador
+  discrepancy     Float?              // diferença (actualTotal - expectedTotal)
+  justification   String?             // obrigatório se houver discrepância
+  openedBy        String              // email do usuário
+  closedBy        String?
+  entries         CashRegisterEntry[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+// Entradas por forma de pagamento no fechamento
+model CashRegisterEntry {
+  id             String       @id @default(cuid())
+  registerId     String
+  method         String       // "CASH" | "CARD_CREDIT" | "CARD_DEBIT" | "PIX" | "VOUCHER" | "OTHER"
+  methodLabel    String       // "Dinheiro" | "Cartão Crédito" | "Cartão Débito" | "PIX" | "Vale" | "Outro"
+  expectedAmount Float        // sistema calculou
+  actualAmount   Float        // operador informou
+  register       CashRegister @relation(fields: [registerId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+}
