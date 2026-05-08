@@ -266,6 +266,60 @@ export default function FireHubLanding() {
         </div>
       </section>
 
+      {/* TABELA COMPARATIVA */}
+      <section className="fh-section" style={{ background: "#0f172a" }}>
+        <div className="fh-container">
+          <div className="fh-section-title">
+            <h2 style={{ color: "#fff" }}>Por que escolher o <span style={{ color: "#EF4444" }}>FireHub</span>?</h2>
+            <p style={{ color: "#94a3b8" }}>Compare e veja por que somos a melhor opção para o seu restaurante</p>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem", minWidth: "600px" }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: "14px 20px", textAlign: "left", color: "#94a3b8", fontWeight: 600, borderBottom: "1px solid #1e293b" }}>Funcionalidade</th>
+                  <th style={{ padding: "14px 20px", textAlign: "center", background: "rgba(239,68,68,0.15)", color: "#EF4444", fontWeight: 700, borderBottom: "1px solid #1e293b", borderRadius: "8px 8px 0 0" }}>🔥 FireHub</th>
+                  <th style={{ padding: "14px 20px", textAlign: "center", color: "#64748b", fontWeight: 600, borderBottom: "1px solid #1e293b" }}>Saipos</th>
+                  <th style={{ padding: "14px 20px", textAlign: "center", color: "#64748b", fontWeight: 600, borderBottom: "1px solid #1e293b" }}>Sem sistema</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["Cardápio digital sem taxa adicional", "✅", "✅", "❌"],
+                  ["Pedidos: Delivery, Balcão e Mesas", "✅", "✅", "❌"],
+                  ["IA integrada ao WhatsApp", "✅", "✅", "❌"],
+                  ["Auditoria operacional com IA 🏆", "✅", "❌", "❌"],
+                  ["Controle financeiro pessoal + empresarial 🏆", "✅", "❌", "❌"],
+                  ["Módulo FireCheck de auditoria incluso 🏆", "✅", "❌", "❌"],
+                  ["Notas de compras lidas por IA", "✅", "❌", "❌"],
+                  ["Controle de estoque automático", "Em breve", "✅", "❌"],
+                  ["CMV automático", "Em breve", "✅", "❌"],
+                  ["Integração iFood / Rappi", "Em breve", "✅", "❌"],
+                  ["App para garçom", "Em breve", "✅", "❌"],
+                  ["Roteirização de entregas", "Em breve", "✅", "❌"],
+                ].map(([feat, fh, saipos, sem], i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid #1e293b" }}>
+                    <td style={{ padding: "13px 20px", color: feat.includes("🏆") ? "#fbbf24" : "#e2e8f0", fontWeight: feat.includes("🏆") ? 600 : 400 }}>{feat}</td>
+                    <td style={{ padding: "13px 20px", textAlign: "center", background: "rgba(239,68,68,0.05)", fontSize: "1.1rem" }}>
+                      {fh === "✅" ? <span style={{ color: "#22c55e" }}>✅</span> : fh === "❌" ? <span style={{ color: "#ef4444" }}>❌</span> : <span style={{ color: "#f59e0b", fontSize: "0.8rem", fontWeight: 600 }}>EM BREVE</span>}
+                    </td>
+                    <td style={{ padding: "13px 20px", textAlign: "center", fontSize: "1.1rem" }}>
+                      {saipos === "✅" ? <span style={{ color: "#22c55e" }}>✅</span> : <span style={{ color: "#ef4444" }}>❌</span>}
+                    </td>
+                    <td style={{ padding: "13px 20px", textAlign: "center", fontSize: "1.1rem" }}>
+                      {sem === "✅" ? <span style={{ color: "#22c55e" }}>✅</span> : <span style={{ color: "#ef4444" }}>❌</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{ textAlign: "center", color: "#64748b", fontSize: "0.85rem", marginTop: "16px" }}>
+            🏆 Funcionalidades exclusivas do FireHub que nenhum concorrente oferece
+          </p>
+        </div>
+      </section>
+
       {/* PLANS */}
       <section className="fh-section" id="planos">
         <div className="fh-container">
