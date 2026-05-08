@@ -30,6 +30,7 @@ model User {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   permissions     String          @default("")
+  isFranqueadoHakim Boolean      @default(false)
   orders          Order[]
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]
@@ -44,6 +45,7 @@ model Product {
   category    String?
   labelData   Json?
   active      Boolean     @default(true)
+  franchiseOnly Boolean   @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   orderItems  OrderItem[]

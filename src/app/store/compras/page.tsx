@@ -13,9 +13,19 @@ export default async function ComprasPage() {
 
   const city = (session.user as any)?.city || null;
   const deliveryInfo = await getNextDeliveryInfo(city);
+
+  // Check if user is Franqueado Hakim
+  const user = await prisma.user.findUnique({
+    where: { email: session.user?.email || "" },
+    select: { isFranqueadoHakim: true }
+  });
+  const isFranqueadoHakim = user?.isFranqueadoHakim || false;
   
   const products = await prisma.product.findMany({
-    where: { active: true },
+    where: {
+      active: true,
+      ...(isFranqueadoHakim ? {} : { franchiseOnly: false })
+    },
     orderBy: { name: 'asc' }
   });
 

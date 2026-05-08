@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import FranchiseeForm, { DeleteFranchiseeButton, EditFranchiseeCity, ImpersonateButton } from "@/components/FranchiseeForm";
+import ToggleFranqueadoHakim from "@/components/ToggleFranqueadoHakim";
 
 export default async function AdminFranchiseesPage() {
   const session = await getServerSession(authOptions);
@@ -20,35 +21,40 @@ export default async function AdminFranchiseesPage() {
 
   return (
     <div>
-      <h1 className="font-bold mb-6" style={{ fontSize: "2rem" }}>Gestão de Franqueados</h1>
+      <h1 className="font-bold mb-6" style={{ fontSize: "2rem" }}>Gestão de Clientes</h1>
       
       {availableCities.length === 0 ? (
         <div className="card mb-8">
           <p className="text-warning font-bold">Atenção: Nenhuma Rota/Cidade cadastrada.</p>
-          <p className="text-muted text-sm">Vá até o menu "Logística / Rotas" e cadastre as rotas antes de criar franqueados.</p>
+          <p className="text-muted text-sm">Vá até o menu "Logística / Rotas" e cadastre as rotas antes de criar clientes.</p>
         </div>
       ) : (
         <FranchiseeForm availableCities={availableCities} />
       )}
 
-      <h2 className="font-bold text-xl mb-4">Franqueados Cadastrados</h2>
+      <h2 className="font-bold text-xl mb-4">Clientes Cadastrados</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {franchisees.length === 0 ? (
-          <p className="text-muted">Nenhum franqueado cadastrado ainda.</p>
+          <p className="text-muted">Nenhum cliente cadastrado ainda.</p>
         ) : (
           franchisees.map(user => (
-            <div key={user.id} className="card flex justify-between items-center" style={{ padding: "1.5rem" }}>
-              <div>
-                <h3 className="font-bold text-lg">{user.name}</h3>
-                <p className="text-muted" style={{ fontSize: "0.9rem" }}>E-mail/Login: <strong>{user.email}</strong></p>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.5rem" }}>
-                  <span className="text-muted" style={{ fontSize: "0.85rem", fontWeight: "bold" }}>Rota:</span>
-                  <EditFranchiseeCity id={user.id} currentCity={user.city || ""} availableCities={availableCities} />
+            <div key={user.id} className="card" style={{ padding: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                  <h3 className="font-bold text-lg">{user.name}</h3>
+                  <p className="text-muted" style={{ fontSize: "0.9rem" }}>E-mail/Login: <strong>{user.email}</strong></p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.5rem" }}>
+                    <span className="text-muted" style={{ fontSize: "0.85rem", fontWeight: "bold" }}>Rota:</span>
+                    <EditFranchiseeCity id={user.id} currentCity={user.city || ""} availableCities={availableCities} />
+                  </div>
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <ToggleFranqueadoHakim userId={user.id} initialValue={(user as any).isFranqueadoHakim || false} />
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <ImpersonateButton id={user.id} />
-                <DeleteFranchiseeButton id={user.id} />
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <ImpersonateButton id={user.id} />
+                  <DeleteFranchiseeButton id={user.id} />
+                </div>
               </div>
             </div>
           ))

@@ -19,8 +19,22 @@ export default async function IceboxPage() {
   const role = (session?.user as any)?.role;
   const isFranqueado = role === "FRANCHISEE" || role === "ADMIN";
 
+  // Check if this user has the Franqueado Hakim flag
+  let isFranqueadoHakim = false;
+  if (isLoggedIn && session?.user?.email) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { isFranqueadoHakim: true }
+    });
+    isFranqueadoHakim = user?.isFranqueadoHakim || false;
+  }
+
+  // If user is Franqueado Hakim, show all products. Otherwise, hide franchise-only products
   const products = await prisma.product.findMany({
-    where: { active: true },
+    where: {
+      active: true,
+      ...(isFranqueadoHakim ? {} : { franchiseOnly: false })
+    },
     orderBy: { name: 'asc' }
   });
 

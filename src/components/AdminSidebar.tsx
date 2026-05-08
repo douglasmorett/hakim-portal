@@ -89,7 +89,7 @@ export default async function AdminSidebar() {
           )}
           {can("franchisees") && (
             <Link href="/admin/franchisees" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
-              <Users size={18} style={{ marginRight: "10px" }} /> Franqueados
+              <Users size={18} style={{ marginRight: "10px" }} /> Clientes
             </Link>
           )}
           {can("routes") && (
