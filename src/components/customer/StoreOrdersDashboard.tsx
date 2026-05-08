@@ -48,6 +48,7 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
 
   // Drag state
   const [draggedOrderId, setDraggedOrderId] = useState<string | null>(null);
+  const [weather, setWeather] = useState<any>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   const storeName = user.storeName || user.name;
@@ -58,6 +59,20 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Weather fetch
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const city = user.city || user.storeAddress?.split(",").pop()?.trim() || "São Paulo";
+        const res = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+        if (res.ok) setWeather(await res.json());
+      } catch {}
+    };
+    fetchWeather();
+    const wt = setInterval(fetchWeather, 10 * 60 * 1000);
+    return () => clearInterval(wt);
+  }, [user.city, user.storeAddress]);
 
   // FAST POLLING — 1s via lightweight API
   useEffect(() => {
@@ -431,14 +446,51 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
               style={{ width: "100%", padding: "0.5rem 0.5rem 0.5rem 36px", borderRadius: "10px", border: "1.5px solid #E2E8F0", fontSize: "0.85rem", outline: "none" }}
             />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginLeft: "auto" }}>
-            <span style={{ fontSize: "0.8rem", color: "#64748B" }}>{user.city || ""}</span>
-            <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>
-              {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </span>
-            <span style={{ fontSize: "0.75rem", color: "#94A3B8" }}>
-              {now.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-            </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginLeft: "auto" }}>
+            {/* Weather Widget */}
+            {weather && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "#F0F9FF", padding: "0.35rem 0.75rem", borderRadius: "10px", border: "1px solid #BAE6FD" }}>
+                <span style={{ fontSize: "1.3rem" }}>{weather.current.icon}</span>
+                <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+                  <span style={{ fontWeight: 800, fontSize: "1rem", color: "#0F172A" }}>{weather.current.temp}°</span>
+                  <span style={{ fontSize: "0.6rem", color: "#64748B" }}>{weather.current.text}</span>
+                </div>
+                <div style={{ width: "1px", height: "24px", background: "#CBD5E1" }} />
+                <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+                  <span style={{ fontSize: "0.6rem", color: "#64748B" }}>💧 {weather.current.humidity}%</span>
+                  <span style={{ fontSize: "0.6rem", color: "#64748B" }}>💨 {weather.current.wind} km/h</span>
+                </div>
+                {weather.forecast?.length > 0 && (
+                  <>
+                    <div style={{ width: "1px", height: "24px", background: "#CBD5E1" }} />
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      {weather.forecast.map((f: any, i: number) => (
+                        <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.2 }}>
+                          <span style={{ fontSize: "0.6rem", color: "#94A3B8" }}>
+                            {new Date(f.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
+                          </span>
+                          <span style={{ fontSize: "0.85rem" }}>{f.icon}</span>
+                          <span style={{ fontSize: "0.6rem", color: "#0F172A", fontWeight: 600 }}>{f.tempMax}°/{f.tempMin}°</span>
+                          {f.rainChance > 20 && <span style={{ fontSize: "0.55rem", color: "#3B82F6" }}>🌧 {f.rainChance}%</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {/* Clock */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+              <span style={{ fontSize: "0.75rem", color: "#64748B" }}>{weather?.city || user.city || ""}{weather?.state ? `/${weather.state}` : ""}</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
+                <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>
+                  {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </span>
+                <span style={{ fontSize: "0.75rem", color: "#94A3B8" }}>
+                  {now.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
