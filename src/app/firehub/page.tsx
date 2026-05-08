@@ -142,19 +142,12 @@ export default function FireHubLanding() {
       {/* NAV */}
       <nav className="fh-nav">
         <div className="fh-logo">
-          <svg width="28" height="32" viewBox="0 0 24 28" fill="none">
-            <path d="M12 0C12 0 4 8 4 16C4 20.4 7.6 24 12 24C16.4 24 20 20.4 20 16C20 8 12 0 12 0ZM12 22C8.7 22 6 19.3 6 16C6 10.5 10 5.5 12 3.5C14 5.5 18 10.5 18 16C18 19.3 15.3 22 12 22Z" fill="url(#flame)"/>
-            <path d="M12 10C12 10 9 14 9 17C9 18.7 10.3 20 12 20C13.7 20 15 18.7 15 17C15 14 12 10 12 10Z" fill="url(#flame2)"/>
-            <defs>
-              <linearGradient id="flame" x1="12" y1="0" x2="12" y2="24"><stop stopColor="#C0C0C0"/><stop offset="1" stopColor="#808080"/></linearGradient>
-              <linearGradient id="flame2" x1="12" y1="10" x2="12" y2="20"><stop stopColor="#D4D4D4"/><stop offset="1" stopColor="#A0A0A0"/></linearGradient>
-            </defs>
-          </svg>
+          <img src="/firehub-flame.png" alt="" style={{ height: "36px", width: "36px", objectFit: "contain", borderRadius: "8px" }} />
           <div>
             <div style={{ fontSize: "1.4rem", fontWeight: 800, letterSpacing: "-0.5px", lineHeight: 1 }}>
               <span style={{ color: "#FF4500" }}>FIRE</span><span style={{ color: "#C0C0C0" }}>HUB</span>
             </div>
-            <div style={{ fontSize: "0.45rem", color: "rgba(255,255,255,0.6)", letterSpacing: "1.5px", textTransform: "uppercase", marginTop: "1px" }}>Sistema Centralizado de Pedidos & Estoque</div>
+            <div style={{ fontSize: "0.45rem", color: "rgba(255,255,255,0.6)", letterSpacing: "1.5px", textTransform: "uppercase" as const, marginTop: "1px" }}>Sistema Centralizado de Pedidos & Estoque</div>
           </div>
         </div>
         <div className="fh-nav-links">
