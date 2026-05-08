@@ -106,6 +106,7 @@ model Payable {
   dueDate      DateTime
   value        Float
   status       String    @default("PENDING")
+  category     String    @default("BUSINESS")
   paidDate     DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

@@ -7,7 +7,7 @@ import { Camera, ScanLine, Loader2, FileText, PenLine, ChevronDown, ChevronUp } 
 
 type InputMode = "manual" | "ai" | null;
 
-export default function FinanceForm() {
+export default function FinanceForm({ category = "BUSINESS" }: { category?: string }) {
   const [loading, setLoading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>(null);
@@ -109,7 +109,8 @@ export default function FinanceForm() {
     try {
       const result = await createPayable({
         ...formData,
-        value: numValue
+        value: numValue,
+        category
       });
 
       if (result && 'error' in result) {

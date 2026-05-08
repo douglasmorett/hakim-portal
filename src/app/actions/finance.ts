@@ -11,6 +11,7 @@ export async function createPayable(data: {
   receivedDate: string;
   dueDate: string;
   value: number;
+  category?: string;
 }) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -65,7 +66,8 @@ export async function createPayable(data: {
         receivedDate,
         dueDate,
         value: data.value,
-        status: "PENDING"
+        status: "PENDING",
+        category: data.category || "BUSINESS"
       }
     });
 
