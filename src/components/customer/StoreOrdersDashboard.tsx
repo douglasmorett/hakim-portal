@@ -69,15 +69,16 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const city = user.city || user.storeAddress?.split(",").pop()?.trim() || "São Paulo";
-        const res = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+        const latLng = user.storeLatLng as any;
+        const weatherUrl = latLng?.lat ? `/api/weather?lat=${latLng.lat}&lng=${latLng.lng}` : `/api/weather?city=${encodeURIComponent(user.city || user.storeAddress?.split(",").pop()?.trim() || "Sa\u0303o Paulo")}`;
+        const res = await fetch(weatherUrl);
         if (res.ok) setWeather(await res.json());
       } catch {}
     };
     fetchWeather();
     const wt = setInterval(fetchWeather, 10 * 60 * 1000);
     return () => clearInterval(wt);
-  }, [user.city, user.storeAddress]);
+  }, [user.city, user.storeAddress, (user.storeLatLng as any)?.lat]);
 
   // FAST POLLING — 1s via lightweight API
   useEffect(() => {

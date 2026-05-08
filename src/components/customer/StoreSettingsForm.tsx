@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+import DeliveryZoneMap from "@/components/customer/DeliveryZoneMap";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Copy, ExternalLink, Upload, Trash2, Plus, Tag, CreditCard, Banknote, Smartphone, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Ticket } from "lucide-react";
@@ -389,58 +390,28 @@ export default function StoreSettingsForm({ user }: { user: any }) {
         <p style={{ fontSize: "0.72rem", color: "#94A3B8", marginTop: "0.75rem" }}>💡 Ative/desative cada forma e bandeira. A taxa % será usada para calcular seu lucro líquido real.</p>
       </div>
 
-      {/* ===== DELIVERY ZONES ===== */}
-      <div className="card" style={{ marginTop: "1.5rem" }}>
-        <h2 className="font-bold mb-4" style={{ fontSize: "1.1rem" }}>🗺️ Zonas de Entrega</h2>
-        <p style={{ fontSize: "0.8rem", color: "#64748B", marginBottom: "1rem" }}>Defina onde você entrega e a taxa cobrada.</p>
-
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-          {[
-            { key: "", label: "Sem restrição" },
-            { key: "NEIGHBORHOOD", label: "📍 Por Bairro" },
-            { key: "RADIUS", label: "📏 Por Raio (KM)" },
-          ].map(opt => (
-            <button key={opt.key} onClick={() => { setDeliveryZoneType(opt.key); if (opt.key !== deliveryZoneType) setDeliveryZones(opt.key === "RADIUS" ? [{ km: 1, fee: 3 }, { km: 2, fee: 5 }, { km: 3, fee: 7 }] : []); }} style={{ flex: 1, padding: "0.6rem", borderRadius: "10px", border: deliveryZoneType === opt.key ? "2px solid var(--primary)" : "1.5px solid #E2E8F0", background: deliveryZoneType === opt.key ? "#FFF4E5" : "#fff", fontWeight: deliveryZoneType === opt.key ? 700 : 500, fontSize: "0.82rem", cursor: "pointer" }}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        {deliveryZoneType === "NEIGHBORHOOD" && (
-          <div>
-            <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.75rem" }}>
-              <input value={newNeighborhood} onChange={e => setNewNeighborhood(e.target.value)} placeholder="Nome do bairro" style={{ flex: 2, padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.85rem" }} />
-              <input type="number" value={newNeighborhoodFee} onChange={e => setNewNeighborhoodFee(e.target.value)} placeholder="Taxa R$" step="0.5" style={{ width: "90px", padding: "0.5rem", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.85rem" }} />
-              <button onClick={() => { if (newNeighborhood.trim()) { setDeliveryZones(prev => [...prev, { name: newNeighborhood.trim(), fee: parseFloat(newNeighborhoodFee) || 0 }]); setNewNeighborhood(""); setNewNeighborhoodFee(""); } }} style={{ padding: "0.5rem 0.75rem", borderRadius: "8px", background: "var(--primary)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "0.8rem" }}><Plus size={14} /></button>
-            </div>
-            {deliveryZones.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {deliveryZones.map((z, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.75rem", background: "#F8FAFC", borderRadius: "8px", fontSize: "0.85rem" }}>
-                    <span style={{ fontWeight: 600 }}>📍 {z.name}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <span style={{ fontWeight: 700, color: "var(--primary)" }}>R$ {(z.fee || 0).toFixed(2)}</span>
-                      <button onClick={() => setDeliveryZones(prev => prev.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444" }}><Trash2 size={14} /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : <p style={{ fontSize: "0.78rem", color: "#94A3B8" }}>Nenhum bairro cadastrado.</p>}
-          </div>
-        )}
-
-        {deliveryZoneType === "RADIUS" && (
-          <div>
-            <p style={{ fontSize: "0.78rem", color: "#64748B", marginBottom: "0.75rem" }}>Configure o valor da taxa por faixa de distância:</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              {deliveryZones.map((z, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", background: "#F8FAFC", borderRadius: "8px" }}>
-                  <span style={{ fontSize: "0.85rem", fontWeight: 600, minWidth: "80px" }}>Até {z.km} km</span>
-                  <span style={{ fontSize: "0.78rem", color: "#64748B" }}>→</span>
-                  <input type="number" step="0.5" value={z.fee} onChange={e => setDeliveryZones(prev => prev.map((zz, idx) => idx === i ? { ...zz, fee: parseFloat(e.target.value) || 0 } : zz))} style={{ width: "80px", padding: "0.4rem", borderRadius: "6px", border: "1.5px solid #E2E8F0", fontSize: "0.85rem", fontWeight: 700 }} />
-                  <span style={{ fontSize: "0.78rem", color: "#64748B" }}>R$</span>
-                  <button onClick={() => setDeliveryZones(prev => prev.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", marginLeft: "auto" }}><Trash2 size={14} /></button>
-                </div>
+      {/* ===== DELIVERY ZONES - MAP ===== */}
+      <div style={{ marginTop: "1.5rem" }}>
+        <DeliveryZoneMap
+          initialAddress={storeAddress}
+          initialLatLng={(user.storeLatLng as any) || null}
+          initialZones={(user.deliveryZones as any) || []}
+          zoneType={user.deliveryZoneType || "KM"}
+          onSave={async (data) => {
+            await fetch("/api/store-settings", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                storeLatLng: data.storeLatLng,
+                deliveryZones: data.deliveryZones,
+                deliveryZoneType: data.deliveryZoneType,
+                storeAddress: data.storeAddress,
+              }),
+            });
+            router.refresh();
+          }}
+        />
+      </div>
               ))}
             </div>
             <button onClick={() => { const last = deliveryZones.length > 0 ? deliveryZones[deliveryZones.length - 1].km : 0; setDeliveryZones(prev => [...prev, { km: last + 1, fee: (last + 1) * 2 }]); }} style={{ marginTop: "0.5rem", padding: "0.5rem 1rem", borderRadius: "8px", border: "1.5px dashed #E2E8F0", background: "#fff", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}><Plus size={14} /> Adicionar Faixa de KM</button>

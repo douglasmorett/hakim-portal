@@ -10,7 +10,7 @@ export default async function FranchiseeCustomerOrdersPage() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user?.email || "" },
-    select: { id: true, name: true, storeName: true, storeAddress: true, storePhone: true, slug: true, city: true, role: true, storeHours: true, storeDeliveryOnly: true, storeLogo: true }
+    select: { id: true, name: true, storeName: true, storeAddress: true, storePhone: true, slug: true, city: true, role: true, storeHours: true, storeDeliveryOnly: true, storeLogo: true, storeLatLng: true }
   });
   if (!user) redirect("/");
 

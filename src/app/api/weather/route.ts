@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 
 // Geocoding + Weather via Open-Meteo (100% gratuito, sem API key)
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
@@ -24,21 +24,37 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const city = searchParams.get("city") || "São Paulo";
+    const latParam = searchParams.get("lat");
+    const lngParam = searchParams.get("lng");
+
+    const cacheKey = latParam ? `${latParam},${lngParam}` : city;
 
     // Check cache
-    if (cache && cache.key === city && Date.now() - cache.ts < 5 * 60 * 1000) {
+    if (cache && cache.key === cacheKey && Date.now() - cache.ts < 5 * 60 * 1000) {
       return NextResponse.json(cache.data);
     }
 
-    // 1) Geocode city
-    const geoRes = await fetch(`${GEOCODING_URL}?name=${encodeURIComponent(city)}&count=1&language=pt&format=json`);
-    const geoData = await geoRes.json();
+    let latitude: number, longitude: number, timezone = "America/Sao_Paulo", name = city, admin1 = "";
 
-    if (!geoData.results || geoData.results.length === 0) {
-      return NextResponse.json({ error: "Cidade não encontrada" }, { status: 404 });
+    if (latParam && lngParam) {
+      // Use coordinates directly - reverse geocode for city name
+      latitude = parseFloat(latParam);
+      longitude = parseFloat(lngParam);
+      try {
+        const revRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=pt-BR`);
+        const revData = await revRes.json();
+        name = revData.address?.city || revData.address?.town || revData.address?.village || city;
+        admin1 = revData.address?.state || "";
+      } catch {}
+    } else {
+      // Geocode city name
+      const geoRes = await fetch(`${GEOCODING_URL}?name=${encodeURIComponent(city)}&count=1&language=pt&format=json`);
+      const geoData = await geoRes.json();
+      if (!geoData.results || geoData.results.length === 0) {
+        return NextResponse.json({ error: "Cidade não encontrada" }, { status: 404 });
+      }
+      ({ latitude, longitude, timezone, name, admin1 } = geoData.results[0]);
     }
-
-    const { latitude, longitude, timezone, name, admin1 } = geoData.results[0];
 
     // 2) Get weather
     const weatherRes = await fetch(
@@ -68,7 +84,7 @@ export async function GET(req: Request) {
       })),
     };
 
-    cache = { key: city, data: result, ts: Date.now() };
+    cache = { key: cacheKey, data: result, ts: Date.now() };
     return NextResponse.json(result);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
