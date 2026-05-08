@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const { imageUrl, description } = await req.json();
+  const { imageUrl, description, category } = await req.json();
 
   if (!imageUrl || !description) {
     return NextResponse.json({ error: "Imagem e descrição são obrigatórias" }, { status: 400 });
@@ -147,6 +147,7 @@ NÃO RETORNE NENHUM TEXTO ALÉM DO JSON.`;
         aiRawText: aiText,
         invoiceDate: aiData.dataHoraNota ? new Date(aiData.dataHoraNota) : null,
         status: "APPROVED",
+        category: category || "BUSINESS",
         uploadedBy: session.user?.email || "unknown",
       }
     });
@@ -170,15 +171,18 @@ export async function GET(req: NextRequest) {
 
   const isAdminOrManager = role === "ADMIN" || (role === "STAFF" && perms.includes("invoices"));
 
+  const category = req.nextUrl.searchParams.get("category") || "BUSINESS";
+
   let invoices;
   
   if (isAdminOrManager) {
     invoices = await prisma.purchaseInvoice.findMany({
+      where: { category },
       orderBy: { createdAt: "desc" }
     });
   } else if (role === "STAFF" && userEmail) {
     invoices = await prisma.purchaseInvoice.findMany({
-      where: { uploadedBy: userEmail },
+      where: { uploadedBy: userEmail, category },
       orderBy: { createdAt: "desc" }
     });
   } else {

@@ -121,6 +121,7 @@ model PurchaseInvoice {
   aiRawText       String?  @db.Text
   invoiceDate     DateTime?
   status          String   @default("PENDING")
+  category        String   @default("BUSINESS")
   rejectionReason String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

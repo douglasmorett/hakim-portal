@@ -3,17 +3,18 @@
 import { useState, useRef, useEffect } from "react";
 import { Camera, Upload, Receipt, CheckCircle, AlertCircle, Loader2, Trash2, Calendar } from "lucide-react";
 
-export default function InvoicesClient({ role }: { role: string }) {
+export default function InvoicesClient({ role, canSeePersonal = false }: { role: string; canSeePersonal?: boolean }) {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<"BUSINESS" | "PERSONAL">("BUSINESS");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchInvoices = async () => {
     try {
-      const res = await fetch("/api/invoices");
+      const res = await fetch(`/api/invoices?category=${category}`);
       if (res.ok) {
         const data = await res.json();
         setInvoices(data);
@@ -26,8 +27,9 @@ export default function InvoicesClient({ role }: { role: string }) {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchInvoices();
-  }, []);
+  }, [category]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -62,7 +64,7 @@ export default function InvoicesClient({ role }: { role: string }) {
       const aiRes = await fetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, description }),
+        body: JSON.stringify({ imageUrl, description, category }),
       });
 
       const aiData = await aiRes.json();
@@ -98,7 +100,68 @@ export default function InvoicesClient({ role }: { role: string }) {
 
   return (
     <div>
-      <h1 className="font-bold" style={{ fontSize: "1.75rem", marginBottom: "1.5rem" }}>Notas de Compras</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
+        <h1 className="font-bold" style={{ fontSize: "1.75rem" }}>Notas de Compras</h1>
+
+        {canSeePersonal && (
+          <div style={{
+            display: "flex",
+            background: "var(--card-bg, #f1f5f9)",
+            borderRadius: "10px",
+            padding: "4px",
+            border: "1px solid var(--border-color, #e2e8f0)"
+          }}>
+            <button
+              onClick={() => setCategory("BUSINESS")}
+              style={{
+                padding: "8px 18px",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                transition: "all 0.2s",
+                background: category === "BUSINESS" ? "#DC2626" : "transparent",
+                color: category === "BUSINESS" ? "#fff" : "var(--text-muted, #64748b)",
+                fontFamily: "inherit"
+              }}
+            >
+              🏢 Empresarial
+            </button>
+            <button
+              onClick={() => setCategory("PERSONAL")}
+              style={{
+                padding: "8px 18px",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                transition: "all 0.2s",
+                background: category === "PERSONAL" ? "#7C3AED" : "transparent",
+                color: category === "PERSONAL" ? "#fff" : "var(--text-muted, #64748b)",
+                fontFamily: "inherit"
+              }}
+            >
+              👤 Pessoal
+            </button>
+          </div>
+        )}
+      </div>
+
+      {category === "PERSONAL" && (
+        <div style={{
+          background: "linear-gradient(135deg, #7C3AED22, #A855F722)",
+          border: "1px solid #7C3AED44",
+          borderRadius: "10px",
+          padding: "12px 16px",
+          marginBottom: "1.5rem",
+          fontSize: "0.85rem",
+          color: "#7C3AED"
+        }}>
+          👤 <strong>Modo Pessoal</strong> — Essas notas são privadas e visíveis apenas para você e Elis.
+        </div>
+      )}
 
       {error && (
         <div style={{ backgroundColor: "#fee2e2", color: "#b91c1c", padding: "1rem", borderRadius: "8px", marginBottom: "1.5rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>

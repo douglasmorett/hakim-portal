@@ -3,23 +3,16 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import FinanceClient from "./FinanceClient";
 
-// Emails autorizados para módulo pessoal
-const PERSONAL_ALLOWED_EMAILS = [
-  "administrador@hakimgroup.com.br",
-  "admin@hakimgroup.com.br",
-  "financeiro@hakimgroup.com.br",
-  // Adicione o email da Elis aqui
-];
+// Emails autorizados para módulo pessoal (além de ADMINs)
+const PERSONAL_ALLOWED_EMAILS = ["elis@hakim.com.br"];
 
 export default async function AdminFinancePage() {
   const session = await getServerSession(authOptions);
-  const userEmail = session?.user?.email || "";
+  const userEmail = (session?.user?.email || "").toLowerCase();
   const userRole = (session?.user as any)?.role || "";
 
-  // Verifica se o usuário pode ver o módulo pessoal
-  const canSeePersonal = userRole === "ADMIN" && PERSONAL_ALLOWED_EMAILS.some(e => 
-    userEmail.toLowerCase().includes(e.toLowerCase().split("@")[0])
-  );
+  // Só ADMINs e a Elis podem ver o módulo pessoal
+  const canSeePersonal = userRole === "ADMIN" || PERSONAL_ALLOWED_EMAILS.includes(userEmail);
 
   // Buscar contas empresariais
   const businessPayables = await prisma.payable.findMany({

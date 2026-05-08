@@ -6,11 +6,14 @@ import InvoicesClient from "@/components/InvoicesClient";
 
 export const dynamic = "force-dynamic";
 
+const PERSONAL_ALLOWED_EMAILS = ["elis@hakim.com.br"];
+
 export default async function InvoicesPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
   const role = (session.user as any).role;
+  const userEmail = (session.user?.email || "").toLowerCase();
   let perms = (session.user as any).permissions || "";
 
   if (role === "STAFF" && session.user?.email) {
@@ -26,5 +29,7 @@ export default async function InvoicesPage() {
     redirect("/admin");
   }
 
-  return <InvoicesClient role={role} />;
+  const canSeePersonal = role === "ADMIN" || PERSONAL_ALLOWED_EMAILS.includes(userEmail);
+
+  return <InvoicesClient role={role} canSeePersonal={canSeePersonal} />;
 }
