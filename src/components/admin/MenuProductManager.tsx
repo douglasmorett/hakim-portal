@@ -1,7 +1,36 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit3, X, Image as ImageIcon, Pause, Play, Package } from "lucide-react";
+import { Plus, Trash2, Edit3, X, Image as ImageIcon, Pause, Play, Package, Monitor, Truck, Tablet, UtensilsCrossed } from "lucide-react";
+
+const CHANNELS = [
+  { key: "activePDV",      label: "PDV",      icon: "🖥️",  color: "#3B82F6", desc: "Atendimento no balcão/caixa" },
+  { key: "activeDelivery", label: "Delivery", icon: "🛵",  color: "#10B981", desc: "Pedidos online pelo site" },
+  { key: "activeTotem",    label: "Totem",    icon: "📲",  color: "#8B5CF6", desc: "Autoatendimento no totem" },
+  { key: "activeGarcom",   label: "Garçom",   icon: "🍽️", color: "#F59E0B", desc: "Cardápio do garçom/mesa" },
+];
+
+function ChannelBadges({ product, onToggle }: { product: any; onToggle: (key: string, val: boolean) => void }) {
+  return (
+    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "6px" }}>
+      {CHANNELS.map(ch => {
+        const active = product[ch.key] ?? false;
+        return (
+          <button key={ch.key} onClick={() => onToggle(ch.key, !active)} title={ch.desc}
+            style={{
+              padding: "2px 8px", borderRadius: "20px", fontSize: "0.68rem", fontWeight: 700,
+              border: `1.5px solid ${active ? ch.color : "#E2E8F0"}`,
+              background: active ? ch.color + "18" : "#F8FAFC",
+              color: active ? ch.color : "#94A3B8",
+              cursor: "pointer", transition: "all 0.15s",
+            }}>
+            {ch.icon} {ch.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MenuProductManager({ products, availableItems }: { products: any[]; availableItems: any[] }) {
   const router = useRouter();
@@ -10,7 +39,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"items" | "combos">("items");
 
-  // Form
+  // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -18,7 +47,10 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const [imageUrl, setImageUrl] = useState("");
   const [active, setActive] = useState(true);
   const [isCombo, setIsCombo] = useState(false);
-  // Combo builder
+  const [activePDV, setActivePDV] = useState(true);
+  const [activeDelivery, setActiveDelivery] = useState(true);
+  const [activeTotem, setActiveTotem] = useState(false);
+  const [activeGarcom, setActiveGarcom] = useState(false);
   const [comboGroups, setComboGroups] = useState<{ title: string; maxQty: number; itemIds: string[] }[]>([]);
 
   const categories = ["Promoção do Dia", "Combos", "Esfihas Salgadas", "Esfihas Doces", "Acompanhamentos", "Bebidas", "Outros"];
@@ -26,6 +58,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const resetForm = () => {
     setName(""); setDescription(""); setPrice(""); setCategory("Esfihas Salgadas");
     setImageUrl(""); setActive(true); setIsCombo(false); setComboGroups([]);
+    setActivePDV(true); setActiveDelivery(true); setActiveTotem(false); setActiveGarcom(false);
     setShowForm(false); setEditingId(null);
   };
 
@@ -33,6 +66,10 @@ export default function MenuProductManager({ products, availableItems }: { produ
     setName(p.name); setDescription(p.description); setPrice(String(p.price));
     setCategory(p.category); setImageUrl(p.imageUrl || ""); setActive(p.active);
     setIsCombo(p.isCombo);
+    setActivePDV(p.activePDV ?? true);
+    setActiveDelivery(p.activeDelivery ?? true);
+    setActiveTotem(p.activeTotem ?? false);
+    setActiveGarcom(p.activeGarcom ?? false);
     if (p.isCombo && p.comboGroups) {
       setComboGroups(p.comboGroups.map((g: any) => ({
         title: g.title, maxQty: g.maxQty,
@@ -52,6 +89,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
         body: JSON.stringify({
           id: editingId, name, description, price: parseFloat(price), category,
           imageUrl: imageUrl || null, active, isCombo,
+          activePDV, activeDelivery, activeTotem, activeGarcom,
           comboGroups: isCombo ? comboGroups : undefined
         })
       });
@@ -68,6 +106,15 @@ export default function MenuProductManager({ products, availableItems }: { produ
 
   const handleToggle = async (id: string, cur: boolean) => {
     await fetch("/api/admin/menu-products", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, active: !cur }) });
+    router.refresh();
+  };
+
+  // Toggle de canal diretamente na lista (sem abrir form)
+  const handleChannelToggle = async (id: string, channelKey: string, val: boolean) => {
+    await fetch("/api/admin/menu-products", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, [channelKey]: val })
+    });
     router.refresh();
   };
 
@@ -114,6 +161,32 @@ export default function MenuProductManager({ products, availableItems }: { produ
             <div className="input-group"><label>URL da Imagem</label><input className="input-field" value={imageUrl} onChange={e => setImageUrl(e.target.value)} /></div>
           </div>
 
+          {/* CANAIS DE VENDA */}
+          <div style={{ marginTop: "1rem", padding: "0.875rem 1rem", background: "#F8FAFC", borderRadius: "10px", border: "1.5px solid #E2E8F0" }}>
+            <p style={{ fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.6rem" }}>📡 Canais de Venda</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+              {CHANNELS.map(ch => {
+                const stateMap: Record<string, [boolean, (v: boolean) => void]> = {
+                  activePDV: [activePDV, setActivePDV],
+                  activeDelivery: [activeDelivery, setActiveDelivery],
+                  activeTotem: [activeTotem, setActiveTotem],
+                  activeGarcom: [activeGarcom, setActiveGarcom],
+                };
+                const [val, setter] = stateMap[ch.key];
+                return (
+                  <label key={ch.key} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "8px", border: `1.5px solid ${val ? ch.color : "#E2E8F0"}`, background: val ? ch.color + "10" : "#fff", cursor: "pointer" }}>
+                    <input type="checkbox" checked={val} onChange={e => setter(e.target.checked)} style={{ accentColor: ch.color }} />
+                    <span style={{ fontSize: "0.85rem" }}>{ch.icon}</span>
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: "0.82rem", color: val ? ch.color : "#64748B" }}>{ch.label}</p>
+                      <p style={{ fontSize: "0.68rem", color: "#94A3B8" }}>{ch.desc}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           {/* COMBO BUILDER */}
           {isCombo && (
             <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "var(--bg-color)", borderRadius: "var(--radius-md)", border: "2px dashed var(--primary)" }}>
@@ -155,16 +228,16 @@ export default function MenuProductManager({ products, availableItems }: { produ
       {/* PRODUCT LIST */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "0.75rem" }}>
         {(tab === "items" ? itemProducts : comboProducts).map(p => (
-          <div key={p.id} className="card" style={{ padding: "0.75rem", opacity: p.active ? 1 : 0.5, border: !p.active ? "2px dashed #EF4444" : undefined }}>
+          <div key={p.id} className="card" style={{ padding: "0.75rem", opacity: p.active ? 1 : 0.55, border: !p.active ? "2px dashed #EF4444" : undefined }}>
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "start" }}>
               {p.imageUrl ? (
-                <img src={p.imageUrl} alt={p.name} style={{ width: "70px", height: "70px", objectFit: "cover", borderRadius: "8px" }} />
+                <img src={p.imageUrl} alt={p.name} style={{ width: "70px", height: "70px", objectFit: "cover", borderRadius: "8px", flexShrink: 0 }} />
               ) : (
-                <div style={{ width: "70px", height: "70px", backgroundColor: "var(--bg-color)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: "70px", height: "70px", backgroundColor: "var(--bg-color)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <ImageIcon size={20} color="var(--text-muted)" />
                 </div>
               )}
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <div>
                     <h3 className="font-bold" style={{ fontSize: "0.9rem" }}>{p.name}</h3>
@@ -173,12 +246,11 @@ export default function MenuProductManager({ products, availableItems }: { produ
                   <span className="font-extrabold gradient-text">R$ {p.price.toFixed(2)}</span>
                 </div>
                 {!p.active && <span style={{ fontSize: "0.7rem", color: "#EF4444", fontWeight: 700 }}>⏸️ PAUSADO</span>}
-                {p.isCombo && p.comboGroups?.length > 0 && (
-                  <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                    {p.comboGroups.map((g: any) => `${g.title} (${g.items.length})`).join(" • ")}
-                  </p>
-                )}
-                <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.4rem" }}>
+
+                {/* Badges de canais inline — clicáveis */}
+                <ChannelBadges product={p} onToggle={(key, val) => handleChannelToggle(p.id, key, val)} />
+
+                <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.5rem" }}>
                   <button onClick={() => openEdit(p)} className="btn btn-outline" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }}><Edit3 size={10} /> Editar</button>
                   <button onClick={() => handleToggle(p.id, p.active)} className="btn btn-outline" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }}>
                     {p.active ? <><Pause size={10} /> Pausar</> : <><Play size={10} /> Ativar</>}

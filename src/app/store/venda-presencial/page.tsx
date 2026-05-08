@@ -30,15 +30,16 @@ export default function VendaPresencialPage() {
     fetch("/api/store-settings/payment").then(r => r.ok ? r.json() : null).then(d => d && setPaymentConfig(d.paymentFees));
   }, []);
 
-  // Categorias únicas
+  // Categorias únicas — apenas itens ativos no PDV
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(products.filter(p => p.active).map(p => p.isCombo ? "Combos" : (p.category || "Outros"))));
+    const cats = Array.from(new Set(products.filter(p => p.active && p.activePDV !== false).map(p => p.isCombo ? "Combos" : (p.category || "Outros"))));
     return ["Todos", ...cats.sort()];
   }, [products]);
 
-  // Filtro
+  // Filtro — somente itens ativos E habilitados no PDV
   const filtered = products.filter(p => {
     if (!p.active) return false;
+    if (p.activePDV === false) return false; // excluir se explicitamente desativado no PDV
     const cat = p.isCombo ? "Combos" : (p.category || "Outros");
     if (selectedCategory !== "Todos" && cat !== selectedCategory) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;

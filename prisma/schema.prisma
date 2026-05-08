@@ -145,6 +145,11 @@ model MenuProduct {
   active          Boolean             @default(true)
   isCombo         Boolean             @default(false)
   comboConfig     Json?
+  // Canais de venda
+  activePDV       Boolean             @default(true)   // Disponível no PDV (atendente)
+  activeDelivery  Boolean             @default(true)   // Disponível no Delivery online
+  activeTotem     Boolean             @default(false)  // Disponível no Totem de autoatendimento
+  activeGarcom    Boolean             @default(false)  // Disponível para o garçom (mesa)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   orderItems      CustomerOrderItem[]

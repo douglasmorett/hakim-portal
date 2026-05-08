@@ -14,7 +14,11 @@ export async function POST(req: Request) {
       name: body.name, description: body.description, price: body.price,
       cost: body.cost || null,
       category: body.category || "Lanches", imageUrl: body.imageUrl || null,
-      active: body.active ?? true, isCombo: body.isCombo ?? false
+      active: body.active ?? true, isCombo: body.isCombo ?? false,
+      activePDV: body.activePDV ?? true,
+      activeDelivery: body.activeDelivery ?? true,
+      activeTotem: body.activeTotem ?? false,
+      activeGarcom: body.activeGarcom ?? false,
     }
   });
 
@@ -49,6 +53,10 @@ export async function PUT(req: Request) {
   if (body.cost !== undefined) data.cost = body.cost;
   if (body.active !== undefined) data.active = body.active;
   if (body.isCombo !== undefined) data.isCombo = body.isCombo;
+  if (body.activePDV !== undefined) data.activePDV = body.activePDV;
+  if (body.activeDelivery !== undefined) data.activeDelivery = body.activeDelivery;
+  if (body.activeTotem !== undefined) data.activeTotem = body.activeTotem;
+  if (body.activeGarcom !== undefined) data.activeGarcom = body.activeGarcom;
 
   const product = await prisma.menuProduct.update({ where: { id: body.id }, data });
 
