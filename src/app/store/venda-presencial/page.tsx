@@ -1,59 +1,89 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { ShoppingCart, Plus, Minus, Trash2, Check, Bike, UtensilsCrossed, Users, Search, ChevronRight } from "lucide-react";
 
-const PAYMENT_METHODS = ["Dinheiro", "Cartão Crédito", "Cartão Débito", "PIX", "Vale/Voucher"];
-
+const PAYMENT_METHODS = ["Dinheiro", "PIX", "Cartão Débito", "Cartão Crédito", "Voucher/Vale"];
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
+
+type CartItem = { product: any; qty: number; notes?: string };
+type OrderType = "BALCAO" | "MESA" | "DELIVERY";
 
 export default function VendaPresencialPage() {
   const [products, setProducts] = useState<any[]>([]);
-  const [cart, setCart] = useState<{ product: any; qty: number }[]>([]);
-  const [orderType, setOrderType] = useState<"MESA" | "RETIRADA" | "DELIVERY">("MESA");
+  const [paymentConfig, setPaymentConfig] = useState<any>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orderType, setOrderType] = useState<OrderType>("BALCAO");
   const [tableNum, setTableNum] = useState("");
-  const [address, setAddress] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Dinheiro");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [change, setChange] = useState(""); // troco
 
   useEffect(() => {
     fetch("/api/admin/menu-products").then(r => r.json()).then(setProducts);
+    fetch("/api/store-settings/payment").then(r => r.ok ? r.json() : null).then(d => d && setPaymentConfig(d.paymentFees));
   }, []);
 
-  const filtered = products.filter(p =>
-    p.active && p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Categorias únicas
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(products.filter(p => p.active).map(p => p.isCombo ? "Combos" : (p.category || "Outros"))));
+    return ["Todos", ...cats.sort()];
+  }, [products]);
+
+  // Filtro
+  const filtered = products.filter(p => {
+    if (!p.active) return false;
+    const cat = p.isCombo ? "Combos" : (p.category || "Outros");
+    if (selectedCategory !== "Todos" && cat !== selectedCategory) return false;
+    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  // Voucher surcharge
+  const voucherRate = useMemo(() => {
+    if (!paymentConfig?.VOUCHER?.active) return 0;
+    const brands: any[] = paymentConfig.VOUCHER.brands || [];
+    if (brands.length === 0) return paymentConfig.VOUCHER.rate || 0;
+    const activeBrands = brands.filter((b: any) => b.active);
+    if (activeBrands.length === 0) return 0;
+    return activeBrands.reduce((s: number, b: any) => s + b.rate, 0) / activeBrands.length;
+  }, [paymentConfig]);
+
+  const isVoucher = paymentMethod === "Voucher/Vale";
+  const subtotal = cart.reduce((s, i) => s + i.product.price * i.qty, 0);
+  const voucherFee = isVoucher ? subtotal * (voucherRate / 100) : 0;
+  const total = subtotal + voucherFee;
 
   const addToCart = (product: any) => {
     setCart(prev => {
-      const existing = prev.find(i => i.product.id === product.id);
-      if (existing) return prev.map(i => i.product.id === product.id ? { ...i, qty: i.qty + 1 } : i);
+      const ex = prev.find(i => i.product.id === product.id);
+      if (ex) return prev.map(i => i.product.id === product.id ? { ...i, qty: i.qty + 1 } : i);
       return [...prev, { product, qty: 1 }];
     });
   };
 
-  const updateQty = (productId: string, qty: number) => {
-    if (qty <= 0) setCart(prev => prev.filter(i => i.product.id !== productId));
-    else setCart(prev => prev.map(i => i.product.id === productId ? { ...i, qty } : i));
+  const updateQty = (id: string, qty: number) => {
+    if (qty <= 0) setCart(prev => prev.filter(i => i.product.id !== id));
+    else setCart(prev => prev.map(i => i.product.id === id ? { ...i, qty } : i));
   };
-
-  const total = cart.reduce((s, i) => s + i.product.price * i.qty, 0);
 
   const handleSubmit = async () => {
     if (cart.length === 0) return setMsg("❌ Adicione pelo menos um produto.");
-    if (!paymentMethod) return setMsg("❌ Informe a forma de pagamento.");
     if (orderType === "MESA" && !tableNum) return setMsg("❌ Informe o número da mesa.");
-    if (orderType === "DELIVERY" && !address) return setMsg("❌ Informe o endereço.");
+    if (orderType === "DELIVERY" && !address) return setMsg("❌ Informe o endereço de entrega.");
 
-    setLoading(true);
+    setLoading(true); setMsg("");
     const body = {
-      customerName: customerName || (orderType === "MESA" ? `Mesa ${tableNum}` : "Balcão"),
+      customerName: customerName || (orderType === "MESA" ? `Mesa ${tableNum}` : orderType === "BALCAO" ? "Balcão" : "Cliente"),
       customerPhone: customerPhone || "00000000000",
-      customerAddress: orderType === "DELIVERY" ? address : orderType === "MESA" ? `Mesa ${tableNum}` : "Retirada no balcão",
-      deliveryType: orderType,
+      customerAddress: orderType === "DELIVERY" ? address : orderType === "MESA" ? `Mesa ${tableNum}` : "Balcão",
+      deliveryType: orderType === "BALCAO" ? "RETIRADA" : orderType,
       paymentMethod,
       notes,
       totalAmount: total,
@@ -62,125 +92,209 @@ export default function VendaPresencialPage() {
     };
 
     const res = await fetch("/api/store/orders/presencial", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-
     setLoading(false);
     if (res.ok) {
-      setMsg("✅ Pedido registrado com sucesso!");
-      setCart([]);
-      setCustomerName("");
-      setCustomerPhone("");
-      setAddress("");
-      setTableNum("");
-      setNotes("");
+      setMsg("✅ Pedido registrado!");
+      setCart([]); setCustomerName(""); setCustomerPhone(""); setAddress(""); setTableNum(""); setNotes(""); setChange("");
     } else {
       const err = await res.json();
       setMsg("❌ " + (err.error || "Erro ao registrar pedido."));
     }
   };
 
+  const cartQty = cart.reduce((s, i) => s + i.qty, 0);
+
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", maxWidth: "1200px", margin: "0 auto", padding: "1rem" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 800, marginBottom: "4px" }}>🛒 Venda Presencial</h1>
-      <p style={{ color: "#64748B", fontSize: "0.9rem", marginBottom: "1.5rem" }}>Registre pedidos de mesa, balcão ou delivery manualmente.</p>
+    <div style={{ fontFamily: "'Inter', sans-serif", display: "grid", gridTemplateColumns: "1fr 380px", height: "calc(100vh - 110px)", overflow: "hidden" }}>
 
-      {msg && (
-        <div style={{ padding: "10px 16px", borderRadius: "8px", marginBottom: "1rem", background: msg.startsWith("✅") ? "#f0fdf4" : "#fef2f2", color: msg.startsWith("✅") ? "#16a34a" : "#dc2626", border: `1px solid ${msg.startsWith("✅") ? "#bbf7d0" : "#fecaca"}` }}>
-          {msg} <button onClick={() => setMsg("")} style={{ float: "right", background: "none", border: "none", cursor: "pointer" }}>×</button>
-        </div>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "1.5rem", alignItems: "start" }}>
-        {/* PRODUTOS */}
-        <div>
-          <input
-            type="text" placeholder="🔍 Buscar produto..."
-            value={search} onChange={e => setSearch(e.target.value)}
-            style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", outline: "none", marginBottom: "1rem" }}
-          />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "10px" }}>
-            {filtered.map(p => (
-              <div key={p.id} onClick={() => addToCart(p)}
-                style={{ background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: "12px", padding: "12px", cursor: "pointer", transition: "all 0.2s", userSelect: "none" }}
-                onMouseOver={e => (e.currentTarget.style.borderColor = "#DC2626")}
-                onMouseOut={e => (e.currentTarget.style.borderColor = "#E2E8F0")}
-              >
-                {p.imageUrl && <img src={p.imageUrl} alt={p.name} style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "8px", marginBottom: "8px" }} />}
-                <div style={{ fontWeight: 700, fontSize: "0.85rem", marginBottom: "2px" }}>{p.name}</div>
-                <div style={{ fontSize: "0.8rem", color: "#64748B", marginBottom: "4px" }}>{p.isCombo ? "🍱 Combo" : p.category}</div>
-                <div style={{ color: "#DC2626", fontWeight: 800 }}>{fmt(p.price)}</div>
-              </div>
+      {/* ===== LEFT: CARDÁPIO ===== */}
+      <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid #E2E8F0" }}>
+        {/* Header */}
+        <div style={{ padding: "12px 16px", background: "#fff", borderBottom: "1px solid #E2E8F0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <Search size={15} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94A3B8" }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar produto..."
+                style={{ width: "100%", padding: "8px 12px 8px 32px", borderRadius: 10, border: "1.5px solid #E2E8F0", fontSize: "0.88rem", outline: "none" }} />
+            </div>
+            <div style={{ background: "#C62828", color: "#fff", borderRadius: 10, padding: "8px 14px", fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 6 }}>
+              <ShoppingCart size={15} /> {cartQty} {cartQty === 1 ? "item" : "itens"}
+            </div>
+          </div>
+          {/* Categorias */}
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+            {categories.map(cat => (
+              <button key={cat} onClick={() => setSelectedCategory(cat)}
+                style={{ padding: "5px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontWeight: 600, fontSize: "0.78rem", whiteSpace: "nowrap", fontFamily: "inherit",
+                  background: selectedCategory === cat ? "#C62828" : "#F1F5F9",
+                  color: selectedCategory === cat ? "#fff" : "#64748B" }}>
+                {cat}
+              </button>
             ))}
           </div>
         </div>
 
-        {/* PEDIDO */}
-        <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: "16px", padding: "20px", position: "sticky", top: "80px" }}>
-          <h2 style={{ fontWeight: 800, marginBottom: "1rem", fontSize: "1.05rem" }}>📋 Pedido</h2>
+        {/* Grid de produtos */}
+        <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+            {filtered.map(p => {
+              const inCart = cart.find(i => i.product.id === p.id);
+              return (
+                <div key={p.id} onClick={() => addToCart(p)}
+                  style={{ background: "#fff", border: `2px solid ${inCart ? "#C62828" : "#E2E8F0"}`, borderRadius: 14, padding: 10, cursor: "pointer", transition: "all 0.15s", position: "relative", userSelect: "none" }}
+                  onMouseEnter={e => { if (!inCart) e.currentTarget.style.borderColor = "#FCA5A5"; }}
+                  onMouseLeave={e => { if (!inCart) e.currentTarget.style.borderColor = "#E2E8F0"; }}>
+                  {inCart && (
+                    <div style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, background: "#C62828", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ color: "#fff", fontSize: "0.65rem", fontWeight: 900 }}>{inCart.qty}</span>
+                    </div>
+                  )}
+                  {p.imageUrl
+                    ? <img src={p.imageUrl} alt={p.name} style={{ width: "100%", height: 75, objectFit: "cover", borderRadius: 8, marginBottom: 6 }} />
+                    : <div style={{ width: "100%", height: 75, background: "#F1F5F9", borderRadius: 8, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+                        {p.isCombo ? "🍱" : "🍔"}
+                      </div>
+                  }
+                  <div style={{ fontWeight: 700, fontSize: "0.8rem", marginBottom: 2, lineHeight: 1.2 }}>{p.name}</div>
+                  <div style={{ fontSize: "0.7rem", color: "#94A3B8", marginBottom: 4 }}>{p.isCombo ? "Combo" : p.category}</div>
+                  <div style={{ color: "#C62828", fontWeight: 800, fontSize: "0.88rem" }}>{fmt(p.price)}</div>
+                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "2rem", color: "#94A3B8" }}>Nenhum produto encontrado.</div>
+            )}
+          </div>
+        </div>
+      </div>
 
-          {/* Tipo */}
-          <div style={{ display: "flex", gap: "6px", marginBottom: "1rem" }}>
-            {(["MESA", "RETIRADA", "DELIVERY"] as const).map(t => (
-              <button key={t} onClick={() => setOrderType(t)}
-                style={{ flex: 1, padding: "8px 4px", borderRadius: "8px", border: "none", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer", fontFamily: "inherit",
-                  background: orderType === t ? "#DC2626" : "#F1F5F9", color: orderType === t ? "#fff" : "#64748B" }}>
-                {t === "MESA" ? "🍽️ Mesa" : t === "RETIRADA" ? "🏠 Retirada" : "🛵 Delivery"}
+      {/* ===== RIGHT: PEDIDO ===== */}
+      <div style={{ display: "flex", flexDirection: "column", background: "#fff", overflow: "hidden" }}>
+        {/* Tipo de pedido */}
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid #E2E8F0" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 12 }}>
+            {([
+              { value: "BALCAO", label: "Balcão", icon: "🏠", color: "#3B82F6" },
+              { value: "MESA", label: "Mesa", icon: "🍽️", color: "#8B5CF6" },
+              { value: "DELIVERY", label: "Delivery", icon: "🛵", color: "#C62828" },
+            ] as const).map(t => (
+              <button key={t.value} onClick={() => setOrderType(t.value)}
+                style={{ padding: "10px 4px", borderRadius: 10, border: `2px solid ${orderType === t.value ? t.color : "#E2E8F0"}`,
+                  background: orderType === t.value ? t.color : "#F8FAFC",
+                  color: orderType === t.value ? "#fff" : "#64748B",
+                  fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", fontFamily: "inherit", textAlign: "center" }}>
+                <div style={{ fontSize: 18, marginBottom: 2 }}>{t.icon}</div>
+                {t.label}
               </button>
             ))}
           </div>
 
+          {/* Campos por tipo */}
           {orderType === "MESA" && (
-            <input className="input" placeholder="Número da mesa" value={tableNum} onChange={e => setTableNum(e.target.value)}
-              style={{ width: "100%", marginBottom: "8px", padding: "8px 12px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", outline: "none" }} />
+            <input placeholder="Número da mesa *" value={tableNum} onChange={e => setTableNum(e.target.value)}
+              style={{ width: "100%", marginBottom: 6, padding: "8px 12px", borderRadius: 8, border: "1.5px solid #8B5CF6", fontSize: "0.9rem", outline: "none", fontFamily: "inherit" }} />
           )}
           {orderType === "DELIVERY" && (
-            <input placeholder="Endereço completo do cliente" value={address} onChange={e => setAddress(e.target.value)}
-              style={{ width: "100%", marginBottom: "8px", padding: "8px 12px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", outline: "none" }} />
+            <input placeholder="Endereço de entrega *" value={address} onChange={e => setAddress(e.target.value)}
+              style={{ width: "100%", marginBottom: 6, padding: "8px 12px", borderRadius: 8, border: "1.5px solid #C62828", fontSize: "0.9rem", outline: "none", fontFamily: "inherit" }} />
           )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            <input placeholder={orderType === "BALCAO" ? "Nome (opcional)" : "Nome do cliente"} value={customerName} onChange={e => setCustomerName(e.target.value)}
+              style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #E2E8F0", fontSize: "0.85rem", outline: "none", fontFamily: "inherit" }} />
+            <input placeholder="Telefone" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
+              style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #E2E8F0", fontSize: "0.85rem", outline: "none", fontFamily: "inherit" }} />
+          </div>
+        </div>
 
-          <input placeholder="Nome do cliente (opcional)" value={customerName} onChange={e => setCustomerName(e.target.value)}
-            style={{ width: "100%", marginBottom: "8px", padding: "8px 12px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", outline: "none" }} />
-          <input placeholder="Telefone (opcional)" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
-            style={{ width: "100%", marginBottom: "8px", padding: "8px 12px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", outline: "none" }} />
-
-          <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: "4px" }}>Forma de Pagamento</label>
-          <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
-            style={{ width: "100%", marginBottom: "8px", padding: "8px 12px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", outline: "none", background: "#fff" }}>
-            {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-
-          <textarea placeholder="Observações (opcional)" value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-            style={{ width: "100%", marginBottom: "12px", padding: "8px 12px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.9rem", outline: "none", resize: "none" }} />
-
-          {/* ITENS DO CARRINHO */}
-          <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: "10px", marginBottom: "10px" }}>
-            {cart.length === 0 ? (
-              <p style={{ color: "#94A3B8", fontSize: "0.85rem", textAlign: "center", padding: "10px 0" }}>Nenhum item adicionado</p>
-            ) : cart.map(i => (
-              <div key={i.product.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0", fontSize: "0.85rem" }}>
-                <span style={{ flex: 1, fontWeight: 600 }}>{i.product.name}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <button onClick={() => updateQty(i.product.id, i.qty - 1)} style={{ width: "24px", height: "24px", borderRadius: "50%", border: "1px solid #E2E8F0", background: "#F8FAFC", cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>-</button>
-                  <span style={{ width: "20px", textAlign: "center", fontWeight: 700 }}>{i.qty}</span>
-                  <button onClick={() => updateQty(i.product.id, i.qty + 1)} style={{ width: "24px", height: "24px", borderRadius: "50%", border: "1px solid #E2E8F0", background: "#F8FAFC", cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                  <span style={{ marginLeft: "6px", color: "#DC2626", fontWeight: 700, minWidth: "60px", textAlign: "right" }}>{fmt(i.product.price * i.qty)}</span>
-                </div>
+        {/* Carrinho */}
+        <div style={{ flex: 1, overflow: "auto", padding: "10px 16px" }}>
+          {cart.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "2rem 1rem", color: "#CBD5E1" }}>
+              <ShoppingCart size={40} style={{ margin: "0 auto 10px" }} />
+              <p style={{ fontSize: "0.85rem" }}>Clique nos produtos para adicionar</p>
+            </div>
+          ) : cart.map(item => (
+            <div key={item.product.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid #F1F5F9" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>{item.product.name}</div>
+                <div style={{ fontSize: "0.78rem", color: "#C62828", fontWeight: 700 }}>{fmt(item.product.price * item.qty)}</div>
               </div>
-            ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button onClick={() => updateQty(item.product.id, item.qty - 1)}
+                  style={{ width: 26, height: 26, borderRadius: "50%", border: "1.5px solid #E2E8F0", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                  {item.qty === 1 ? <Trash2 size={12} color="#EF4444" /> : <Minus size={12} />}
+                </button>
+                <span style={{ width: 22, textAlign: "center", fontWeight: 800, fontSize: "0.9rem" }}>{item.qty}</span>
+                <button onClick={() => updateQty(item.product.id, item.qty + 1)}
+                  style={{ width: 26, height: 26, borderRadius: "50%", border: "1.5px solid #C62828", background: "#C62828", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Plus size={12} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer: pagamento + total */}
+        <div style={{ padding: "12px 16px", borderTop: "1px solid #E2E8F0", background: "#FAFAFA" }}>
+          {/* Forma de pagamento */}
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.4px", display: "block", marginBottom: 4 }}>Pagamento</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {PAYMENT_METHODS.map(m => (
+                <button key={m} onClick={() => setPaymentMethod(m)}
+                  style={{ padding: "5px 10px", borderRadius: 8, border: `1.5px solid ${paymentMethod === m ? "#C62828" : "#E2E8F0"}`,
+                    background: paymentMethod === m ? "#C62828" : "#fff",
+                    color: paymentMethod === m ? "#fff" : "#475569",
+                    fontWeight: 600, fontSize: "0.75rem", cursor: "pointer", fontFamily: "inherit" }}>
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {cart.length > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: "1rem", padding: "8px 0", borderTop: "2px solid #1E293B", marginBottom: "12px" }}>
-              <span>TOTAL</span><span style={{ color: "#DC2626" }}>{fmt(total)}</span>
+          {/* Acréscimo voucher */}
+          {isVoucher && voucherRate > 0 && (
+            <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 8, padding: "6px 10px", marginBottom: 8, fontSize: "0.78rem", color: "#C2410C" }}>
+              ⚠️ <strong>Acréscimo voucher: {voucherRate.toFixed(1)}%</strong> = +{fmt(voucherFee)} (taxa da maquineta)
             </div>
           )}
 
+          {/* Troco (só Dinheiro) */}
+          {paymentMethod === "Dinheiro" && (
+            <input type="number" placeholder="Troco para... (opcional)" value={change} onChange={e => setChange(e.target.value)}
+              style={{ width: "100%", marginBottom: 8, padding: "7px 10px", borderRadius: 8, border: "1.5px solid #E2E8F0", fontSize: "0.85rem", outline: "none", fontFamily: "inherit" }} />
+          )}
+          {paymentMethod === "Dinheiro" && change && Number(change) > 0 && (
+            <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "6px 10px", marginBottom: 8, fontSize: "0.78rem", color: "#16A34A", fontWeight: 700 }}>
+              💵 Troco: {fmt(Math.max(0, Number(change) - total))}
+            </div>
+          )}
+
+          {/* Obs */}
+          <textarea placeholder="Observações..." value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+            style={{ width: "100%", marginBottom: 8, padding: "7px 10px", borderRadius: 8, border: "1.5px solid #E2E8F0", fontSize: "0.82rem", outline: "none", resize: "none", fontFamily: "inherit" }} />
+
+          {/* Total */}
+          {cart.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              {isVoucher && voucherRate > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#64748B", marginBottom: 3 }}>
+                  <span>Subtotal</span><span>{fmt(subtotal)}</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: "1.1rem" }}>
+                <span>TOTAL</span><span style={{ color: "#C62828" }}>{fmt(total)}</span>
+              </div>
+            </div>
+          )}
+
+          {msg && <div style={{ padding: "7px 10px", borderRadius: 8, marginBottom: 8, background: msg.startsWith("✅") ? "#f0fdf4" : "#fef2f2", color: msg.startsWith("✅") ? "#16a34a" : "#dc2626", fontSize: "0.82rem", fontWeight: 600 }}>{msg}</div>}
+
           <button onClick={handleSubmit} disabled={loading || cart.length === 0}
-            style={{ width: "100%", padding: "12px", background: cart.length === 0 ? "#E2E8F0" : "#DC2626", color: cart.length === 0 ? "#94A3B8" : "#fff", border: "none", borderRadius: "10px", fontWeight: 800, fontSize: "1rem", cursor: cart.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
-            {loading ? "Registrando..." : "✅ Registrar Pedido"}
+            style={{ width: "100%", padding: "12px", background: cart.length === 0 ? "#E2E8F0" : "#C62828", color: cart.length === 0 ? "#94A3B8" : "#fff", border: "none", borderRadius: 12, fontWeight: 900, fontSize: "1rem", cursor: cart.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {loading ? "Registrando..." : <><Check size={18} /> Finalizar Pedido</>}
           </button>
         </div>
       </div>

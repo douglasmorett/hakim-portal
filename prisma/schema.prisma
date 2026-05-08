@@ -31,9 +31,13 @@ model User {
   updatedAt       DateTime        @updatedAt
   permissions     String          @default("")
   isFranqueadoHakim Boolean      @default(false)
+  deliveryConfig  Json?           // Config: freeShipping, freeShippingMinValue
+  storeOpen       Boolean         @default(true)   // Toggle manual abertura/fechamento da loja
+  cashOpen        Boolean         @default(false)  // Toggle abertura/fechamento de caixa
   orders          Order[]
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]
+  motoboys        Motoboy[]
 }
 
 model Product {
@@ -167,27 +171,31 @@ model ComboGroupItem {
 }
 
 model CustomerOrder {
-  id              String              @id @default(cuid())
-  franchiseeId    String
-  customerId      String?
-  customerName    String
-  customerPhone   String
-  customerAddress String?
-  deliveryType    String              @default("DELIVERY")
-  paymentMethod   String?
-  totalAmount     Float
-  deliveryFee     Float           @default(0)
-  status          String              @default("NOVO")
-  source          String              @default("ONLINE")
-  notes           String?
-  rating          Int?
-  ratingComment   String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  franchisee      User                @relation(fields: [franchiseeId], references: [id])
-  customer        StoreCustomer?      @relation(fields: [customerId], references: [id])
-  items           CustomerOrderItem[]
-  review          StoreReview?
+  id               String              @id @default(cuid())
+  franchiseeId     String
+  customerId       String?
+  customerName     String
+  customerPhone    String
+  customerAddress  String?
+  deliveryType     String              @default("DELIVERY")
+  paymentMethod    String?
+  totalAmount      Float
+  deliveryFee      Float               @default(0)
+  motoboyFee       Float?              // Valor real de custo para o motoboy (mesmo se frete for grátis)
+  deliveryDistance Float?              // Distância real percorrida em KM
+  motoboyId        String?
+  status           String              @default("NOVO")
+  source           String              @default("ONLINE")
+  notes            String?
+  rating           Int?
+  ratingComment    String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  franchisee       User                @relation(fields: [franchiseeId], references: [id])
+  customer         StoreCustomer?      @relation(fields: [customerId], references: [id])
+  motoboy          Motoboy?            @relation(fields: [motoboyId], references: [id])
+  items            CustomerOrderItem[]
+  review           StoreReview?
 }
 
 model CustomerOrderItem {
@@ -280,4 +288,24 @@ model CashRegisterEntry {
   actualAmount   Float        // operador informou
   register       CashRegister @relation(fields: [registerId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
+}
+
+// ========== MÓDULO DE MOTOBOYS ==========
+
+model Motoboy {
+  id               String          @id @default(cuid())
+  franchiseeId     String
+  name             String
+  phone            String?
+  active           Boolean         @default(true)
+  // Tipo: "PER_DELIVERY" | "DAILY_RATE" | "BOTH" | "PER_KM"
+  paymentType      String          @default("PER_DELIVERY")
+  dailyRate        Float?          // Diária fixa (R$/dia)
+  perDeliveryRate  Float?          // Valor fixo por entrega (R$)
+  perKmRate        Float?          // Valor por KM percorrido (R$)
+  notes            String?
+  franchisee       User            @relation(fields: [franchiseeId], references: [id])
+  orders           CustomerOrder[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 }

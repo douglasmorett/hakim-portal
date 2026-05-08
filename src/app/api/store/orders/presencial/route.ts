@@ -12,9 +12,12 @@ export async function POST(req: Request) {
 
   if (!items || items.length === 0) return NextResponse.json({ error: "Nenhum item informado" }, { status: 400 });
 
+  const dbUser = await prisma.user.findUnique({ where: { email: session.user.email! }, select: { id: true } });
+  if (!dbUser) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+
   const order = await prisma.customerOrder.create({
     data: {
-      franchiseeId: session.user.id,
+      franchiseeId: dbUser.id,
       customerName: customerName || "Balcão",
       customerPhone: customerPhone || "00000000000",
       customerAddress: customerAddress || "",

@@ -3,25 +3,20 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { CartProvider } from "@/components/CartProvider";
 import StoreTopNav from "@/components/customer/StoreTopNav";
-
 import { prisma } from "@/lib/prisma";
 import { checkAsaasOverdue } from "@/lib/asaas";
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
-
   if (!session) redirect("/");
   const role = (session.user as any)?.role;
-  if (role !== "FRANCHISEE" && role !== "ADMIN") {
-    redirect("/");
-  }
+  if (role !== "FRANCHISEE" && role !== "ADMIN") redirect("/");
 
   const user = await prisma.user.findUnique({
     where: { email: session.user?.email || "" },
-    select: { name: true, city: true, slug: true, role: true, cpfCnpj: true }
+    select: { name: true, city: true, slug: true, role: true, cpfCnpj: true, storeOpen: true, cashOpen: true },
   });
 
-  // Verifica inadimplência
   let isBlocked = false;
   if (role === "FRANCHISEE" && user?.cpfCnpj) {
     isBlocked = await checkAsaasOverdue(user.cpfCnpj);
@@ -37,6 +32,8 @@ export default async function StoreLayout({ children }: { children: React.ReactN
           userCity={(session.user as any)?.city || user?.city || ""}
           userSlug={user?.slug}
           isFranqueado={isFranqueado}
+          initialStoreOpen={user?.storeOpen ?? true}
+          initialCashOpen={user?.cashOpen ?? false}
         />
 
         {isBlocked && (

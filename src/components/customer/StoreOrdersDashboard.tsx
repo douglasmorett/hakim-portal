@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, MapPin, Phone, User, ChevronDown, ChevronUp, Search, ShoppingBag, ExternalLink, Settings, Store, Package, Bell, ToggleLeft, ToggleRight, GripVertical } from "lucide-react";
@@ -396,7 +396,9 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
                   <span>{item.quantity}x {item.menuProduct?.name}</span>
                   <span style={{ fontWeight: 600 }}>R$ {(item.price * item.quantity).toFixed(2)}</span>
                 </div>
-             {order.status !== "ENTREGUE" && order.status !== "CANCELADO" && order.status !== "ENCERRADO" && (
+              ))}
+            </div>
+            {order.status !== "ENTREGUE" && order.status !== "CANCELADO" && order.status !== "ENCERRADO" && (
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                 {order.status === "NOVO" && <>
                   <button disabled={isLoading} onClick={() => updateStatus(order.id, "ACEITO")} style={{ flex: 1, padding: "0.6rem 1rem", borderRadius: "8px", border: "none", background: "#10B981", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>✅ Aceitar Pedido</button>
@@ -409,9 +411,6 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
             )}
             {(order.status === "ENTREGUE" || order.status === "CANCELADO") && (
               <button disabled={isLoading} onClick={() => { if(confirm("Encerrar pedido? Ele sairá da lista.")) updateStatus(order.id, "ENCERRADO"); }} style={{ width: "100%", marginTop: "4px", padding: "0.4rem", borderRadius: "8px", border: "1px solid #D1D5DB", background: "#F9FAFB", color: "#6B7280", fontWeight: 600, cursor: "pointer", fontSize: "0.8rem", fontFamily: "inherit" }}>🔒 Encerrar pedido</button>
-            )}
-          </div>
-              </div>
             )}
           </div>
         )}

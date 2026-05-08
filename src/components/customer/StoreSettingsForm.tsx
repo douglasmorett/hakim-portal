@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import DeliveryZoneMap from "@/components/customer/DeliveryZoneMap";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,17 @@ const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domi
 const defaultHours = () => DAYS.map(d => ({ day: d, open: "10:00", close: "22:00", active: true }));
 
 type Coupon = { id?: string; code: string; discount: number; active: boolean };
+
+// Botão de salvar inline por seção
+function SectionSaveBtn({ dirty, saving, onSave, label = "Salvar alterações" }: { dirty: boolean; saving: boolean; onSave: () => void; label?: string }) {
+  if (!dirty) return null;
+  return (
+    <button onClick={onSave} disabled={saving}
+      style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, padding: "8px 16px", background: "#C62828", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", fontFamily: "inherit", animation: "fadeIn 0.2s" }}>
+      <Save size={14} />{saving ? "Salvando..." : label}
+    </button>
+  );
+}
 
 export default function StoreSettingsForm({ user }: { user: any }) {
   const router = useRouter();
@@ -19,6 +30,17 @@ export default function StoreSettingsForm({ user }: { user: any }) {
   const [storeDeliveryOnly, setStoreDeliveryOnly] = useState(user.storeDeliveryOnly || false);
   const [storeHours, setStoreHours] = useState<any[]>(user.storeHours || defaultHours());
   const [coupons, setCoupons] = useState<Coupon[]>(user.storeCoupons || []);
+  // Dirty states por seção
+  const [dirtyInfo, setDirtyInfo] = useState(false);
+  const [dirtyHours, setDirtyHours] = useState(false);
+  const [dirtyCoupons, setDirtyCoupons] = useState(false);
+  const [dirtyPayment, setDirtyPayment] = useState(false);
+  // Saving states por seção
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [savingHours, setSavingHours] = useState(false);
+  const [savingCoupons, setSavingCoupons] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
+
   const defaultPaymentConfig = {
     PIX: { rate: 0, active: true },
     DINHEIRO: { rate: 0, active: true },
@@ -32,7 +54,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
       { name: "Visa", rate: 3.0, active: true },
       { name: "Elo", rate: 3.5, active: true },
     ] },
-    VOUCHER: { rate: 0, active: true, brands: [
+    VOUCHER: { rate: 0, active: true, surcharge: 0, brands: [
       { name: "Ticket", rate: 5.0, active: true },
       { name: "VR", rate: 5.0, active: true },
       { name: "Sodexo", rate: 5.0, active: true },
@@ -60,8 +82,24 @@ export default function StoreSettingsForm({ user }: { user: any }) {
   const [newNeighborhood, setNewNeighborhood] = useState("");
   const [newNeighborhoodFee, setNewNeighborhoodFee] = useState("");
 
+  // Helper: salvar campos específicos
+  const saveFields = async (fields: Record<string, any>) => {
+    const res = await fetch("/api/store-settings", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fields),
+    });
+    if (res.ok) router.refresh();
+    else throw new Error("Erro ao salvar");
+  };
+
+  const saveInfo = async () => { setSavingInfo(true); try { await saveFields({ storeName, storePhone, storeAddress, storeDeliveryOnly }); setDirtyInfo(false); } finally { setSavingInfo(false); } };
+  const saveHours = async () => { setSavingHours(true); try { await saveFields({ storeHours }); setDirtyHours(false); } finally { setSavingHours(false); } };
+  const saveCoupons = async () => { setSavingCoupons(true); try { await saveFields({ storeCoupons: coupons }); setDirtyCoupons(false); } finally { setSavingCoupons(false); } };
+  const savePayment = async () => { setSavingPayment(true); try { await saveFields({ paymentFees: paymentConfig }); setDirtyPayment(false); } finally { setSavingPayment(false); } };
+
   const updateHour = (idx: number, key: string, val: any) => {
     setStoreHours(prev => prev.map((h, i) => i === idx ? { ...h, [key]: val } : h));
+    setDirtyHours(true);
   };
 
   const handleUpload = async (file: File, type: "logo" | "banner") => {
@@ -86,9 +124,9 @@ export default function StoreSettingsForm({ user }: { user: any }) {
     } catch { alert("Erro no upload."); } finally { setUploading(false); }
   };
 
-  const addCoupon = () => setCoupons(prev => [...prev, { code: "", discount: 5, active: true }]);
-  const updateCoupon = (idx: number, key: string, val: any) => setCoupons(prev => prev.map((c, i) => i === idx ? { ...c, [key]: val } : c));
-  const removeCoupon = (idx: number) => setCoupons(prev => prev.filter((_, i) => i !== idx));
+  const addCoupon = () => { setCoupons(prev => [...prev, { code: "", discount: 5, active: true }]); setDirtyCoupons(true); };
+  const updateCoupon = (idx: number, key: string, val: any) => { setCoupons(prev => prev.map((c, i) => i === idx ? { ...c, [key]: val } : c)); setDirtyCoupons(true); };
+  const removeCoupon = (idx: number) => { setCoupons(prev => prev.filter((_, i) => i !== idx)); setDirtyCoupons(true); };
 
   const handleSave = async () => {
     setLoading(true);
@@ -124,7 +162,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
           <input type="file" accept="image/*" hidden onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0], type)} />
         </label>
       )}
-      <input className="input-field" placeholder="Ou cole a URL da imagem..." value={value} onChange={e => type === "logo" ? setStoreLogo(e.target.value) : setStoreBanner(e.target.value)} style={{ marginTop: "6px", fontSize: "0.8rem" }} />
+      <input className="input-field" placeholder="Ou cole a URL da imagem..." value={value} onChange={e => { type === "logo" ? setStoreLogo(e.target.value) : setStoreBanner(e.target.value); setDirtyInfo(true); }} style={{ marginTop: "6px", fontSize: "0.8rem" }} />
     </div>
   );
 
@@ -153,14 +191,15 @@ export default function StoreSettingsForm({ user }: { user: any }) {
       <div className="card mb-4">
         <h3 className="font-bold mb-4">📋 Informações da Loja</h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-          <div className="input-group"><label>Nome da Loja</label><input className="input-field" value={storeName} onChange={e => setStoreName(e.target.value)} /></div>
-          <div className="input-group"><label>Telefone / WhatsApp</label><input className="input-field" value={storePhone} onChange={e => setStorePhone(e.target.value)} /></div>
-          <div className="input-group" style={{ gridColumn: "span 2" }}><label>Endereço</label><input className="input-field" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} /></div>
+          <div className="input-group"><label>Nome da Loja</label><input className="input-field" value={storeName} onChange={e => { setStoreName(e.target.value); setDirtyInfo(true); }} /></div>
+          <div className="input-group"><label>Telefone / WhatsApp</label><input className="input-field" value={storePhone} onChange={e => { setStorePhone(e.target.value); setDirtyInfo(true); }} /></div>
+          <div className="input-group" style={{ gridColumn: "span 2" }}><label>Endereço</label><input className="input-field" value={storeAddress} onChange={e => { setStoreAddress(e.target.value); setDirtyInfo(true); }} /></div>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "0.75rem", cursor: "pointer" }}>
-          <input type="checkbox" checked={storeDeliveryOnly} onChange={e => setStoreDeliveryOnly(e.target.checked)} />
+          <input type="checkbox" checked={storeDeliveryOnly} onChange={e => { setStoreDeliveryOnly(e.target.checked); setDirtyInfo(true); }} />
           <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>🛵 Somente Delivery</span>
         </label>
+        <SectionSaveBtn dirty={dirtyInfo} saving={savingInfo} onSave={saveInfo} label="Salvar Informações" />
       </div>
 
       {/* HORÁRIOS */}
@@ -176,6 +215,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
                     const updated = [...storeHours];
                     updated[idx] = { ...h, active: e.target.checked, shifts: h.shifts?.length ? h.shifts : [{ open: "10:00", close: "22:00" }] };
                     setStoreHours(updated);
+                    setDirtyHours(true);
                   }} />
                   <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{h.day}</span>
                 </label>
@@ -187,6 +227,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
                     shifts.push({ open: "18:00", close: "23:00" });
                     updated[idx] = { ...h, shifts };
                     setStoreHours(updated);
+                    setDirtyHours(true);
                   }} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: "6px", border: "1px solid #BBF7D0", background: "#fff", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600, color: "#16A34A" }}>
                     + Turno
                   </button>
@@ -201,6 +242,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
                     shifts[sIdx] = { ...shifts[sIdx], open: e.target.value };
                     updated[idx] = { ...h, shifts, open: shifts[0]?.open, close: shifts[shifts.length - 1]?.close };
                     setStoreHours(updated);
+                    setDirtyHours(true);
                   }} style={{ padding: "0.3rem", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.85rem" }} />
                   <span style={{ fontSize: "0.8rem" }}>às</span>
                   <input type="time" value={shift.close} onChange={e => {
@@ -209,6 +251,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
                     shifts[sIdx] = { ...shifts[sIdx], close: e.target.value };
                     updated[idx] = { ...h, shifts, open: shifts[0]?.open, close: shifts[shifts.length - 1]?.close };
                     setStoreHours(updated);
+                    setDirtyHours(true);
                   }} style={{ padding: "0.3rem", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.85rem" }} />
                   {(h.shifts?.length || 1) > 1 && (
                     <button onClick={() => {
@@ -216,6 +259,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
                       const shifts = [...(h.shifts || [])].filter((_, i) => i !== sIdx);
                       updated[idx] = { ...h, shifts };
                       setStoreHours(updated);
+                      setDirtyHours(true);
                     }} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: "#EF4444" }}>
                       <Trash2 size={13} />
                     </button>
@@ -225,6 +269,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
             </div>
           ))}
         </div>
+        <SectionSaveBtn dirty={dirtyHours} saving={savingHours} onSave={saveHours} label="Salvar Horários" />
       </div>
 
       {/* CUPONS */}
@@ -254,6 +299,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
             ))}
           </div>
         )}
+        <SectionSaveBtn dirty={dirtyCoupons} saving={savingCoupons} onSave={saveCoupons} label="Salvar Cupons" />
       </div>
 
       {/* TAXAS DE PAGAMENTO */}
@@ -388,6 +434,19 @@ export default function StoreSettingsForm({ user }: { user: any }) {
           })}
         </div>
         <p style={{ fontSize: "0.72rem", color: "#94A3B8", marginTop: "0.75rem" }}>💡 Ative/desative cada forma e bandeira. A taxa % será usada para calcular seu lucro líquido real.</p>
+        {paymentConfig?.VOUCHER?.active && (
+          <div style={{ marginTop: 12, padding: "10px 14px", background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 10 }}>
+            <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#C2410C", marginBottom: 6 }}>💳 Acréscimo automático para Voucher/Vale</p>
+            <p style={{ fontSize: "0.75rem", color: "#92400E", marginBottom: 8 }}>Quando o cliente pagar com voucher, este % será cobrado a mais no total do pedido (aparece no PDV e nos pedidos online).</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="number" step="0.1" min="0" max="20" value={paymentConfig.VOUCHER?.surcharge ?? 0}
+                onChange={e => { setPaymentConfig((p: any) => ({ ...p, VOUCHER: { ...p.VOUCHER, surcharge: Number(e.target.value) } })); setDirtyPayment(true); }}
+                style={{ width: 80, padding: "6px 10px", borderRadius: 8, border: "1.5px solid #FED7AA", fontSize: "0.9rem", textAlign: "center" }} />
+              <span style={{ fontWeight: 700, color: "#C2410C" }}>% de acréscimo</span>
+            </div>
+          </div>
+        )}
+        <SectionSaveBtn dirty={dirtyPayment} saving={savingPayment} onSave={savePayment} label="Salvar Formas de Pagamento" />
       </div>
 
       {/* ===== DELIVERY ZONES - MAP ===== */}
@@ -411,12 +470,6 @@ export default function StoreSettingsForm({ user }: { user: any }) {
             router.refresh();
           }}
         />
-      </div>
-              ))}
-            </div>
-            <button onClick={() => { const last = deliveryZones.length > 0 ? deliveryZones[deliveryZones.length - 1].km : 0; setDeliveryZones(prev => [...prev, { km: last + 1, fee: (last + 1) * 2 }]); }} style={{ marginTop: "0.5rem", padding: "0.5rem 1rem", borderRadius: "8px", border: "1.5px dashed #E2E8F0", background: "#fff", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}><Plus size={14} /> Adicionar Faixa de KM</button>
-          </div>
-        )}
       </div>
 
       <button onClick={handleSave} disabled={loading} className="btn btn-primary" style={{ width: "100%", marginTop: "1rem" }}>
