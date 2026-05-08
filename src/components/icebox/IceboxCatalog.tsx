@@ -100,18 +100,20 @@ export default function IceboxCatalog({ products, deliveryInfo, isLoggedIn, canO
                 </div>
               </div>
             </div>
-            <div style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", borderRadius: "14px", padding: "1rem 1.5rem", border: "1px solid rgba(255,255,255,0.2)" }}>
-              <div style={{ fontSize: "0.78rem", opacity: 0.8, marginBottom: "4px" }}>Próxima entrega</div>
-              <div style={{ fontWeight: 700, fontSize: "1rem" }}>{deliveryInfo.deliveryStr}</div>
-              <div style={{ fontSize: "0.75rem", opacity: 0.7, marginTop: "4px" }}>
-                Pedidos até {deliveryInfo.limitStr}
-              </div>
-              {now && (
-                <div style={{ marginTop: "0.5rem", fontWeight: 700, fontSize: "1.1rem", textAlign: "center" }}>
-                  {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            {canOrder && (
+              <div style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", borderRadius: "14px", padding: "1rem 1.5rem", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <div style={{ fontSize: "0.78rem", opacity: 0.8, marginBottom: "4px" }}>Próxima entrega</div>
+                <div style={{ fontWeight: 700, fontSize: "1rem" }}>{deliveryInfo.deliveryStr}</div>
+                <div style={{ fontSize: "0.75rem", opacity: 0.7, marginTop: "4px" }}>
+                  Pedidos até {deliveryInfo.limitStr}
                 </div>
-              )}
-            </div>
+                {now && (
+                  <div style={{ marginTop: "0.5rem", fontWeight: 700, fontSize: "1.1rem", textAlign: "center" }}>
+                    {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
