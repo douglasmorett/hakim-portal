@@ -98,9 +98,17 @@ export default function MenuProductManager({ products, availableItems }: { produ
     finally { setLoading(false); }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Excluir este produto?")) return;
-    await fetch("/api/admin/menu-products", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Excluir "${name}"?`)) return;
+    const res = await fetch("/api/admin/menu-products", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name })
+    });
+    const data = await res.json();
+    if (data.softDeleted) {
+      alert(`"${name}" tem pedidos vinculados e foi desativado em vez de excluído.`);
+    }
     router.refresh();
   };
 
@@ -255,7 +263,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
                   <button onClick={() => handleToggle(p.id, p.active)} className="btn btn-outline" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }}>
                     {p.active ? <><Pause size={10} /> Pausar</> : <><Play size={10} /> Ativar</>}
                   </button>
-                  <button onClick={() => handleDelete(p.id)} className="btn btn-outline" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem", color: "var(--danger)" }}><Trash2 size={10} /></button>
+                  <button onClick={() => handleDelete(p.id, p.name)} className="btn btn-outline" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem", color: "var(--danger)" }}><Trash2 size={10} /></button>
                 </div>
               </div>
             </div>

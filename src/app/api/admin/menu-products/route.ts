@@ -98,10 +98,21 @@ export async function DELETE(req: Request) {
   if (!session || (role !== "ADMIN" && role !== "FRANCHISEE")) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
-  // Delete combo groups first (cascade)
-  await prisma.comboGroupItem.deleteMany({ where: { comboGroup: { menuProductId: body.id } } });
-  await prisma.comboGroup.deleteMany({ where: { menuProductId: body.id } });
-  await prisma.menuProduct.delete({ where: { id: body.id } });
-
-  return NextResponse.json({ deleted: true });
+  try {
+    // Remover de grupos de combo onde este produto é opção
+    await prisma.comboGroupItem.deleteMany({ where: { menuProductId: body.id } });
+    // Remover grupos de combo criados por este produto
+    await prisma.comboGroupItem.deleteMany({ where: { comboGroup: { menuProductId: body.id } } });
+    await prisma.comboGroup.deleteMany({ where: { menuProductId: body.id } });
+    // Deletar o produto
+    await prisma.menuProduct.delete({ where: { id: body.id } });
+    return NextResponse.json({ deleted: true });
+  } catch (err: any) {
+    // FK constraint — produto tem pedidos associados: fazer soft-delete
+    await prisma.menuProduct.update({
+      where: { id: body.id },
+      data: { active: false, name: `[INATIVO] ${body.name || "Produto"}` }
+    });
+    return NextResponse.json({ deleted: true, softDeleted: true });
+  }
 }

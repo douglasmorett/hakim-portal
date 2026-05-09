@@ -206,12 +206,12 @@ model CustomerOrder {
 model CustomerOrderItem {
   id              String        @id @default(cuid())
   orderId         String
-  menuProductId   String
+  menuProductId   String?
   quantity        Int
   price           Float
   comboSelections Json?
   order           CustomerOrder @relation(fields: [orderId], references: [id])
-  menuProduct     MenuProduct   @relation(fields: [menuProductId], references: [id])
+  menuProduct     MenuProduct?  @relation(fields: [menuProductId], references: [id], onDelete: SetNull)
 }
 
 model StoreCustomer {
@@ -314,3 +314,35 @@ model Motoboy {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 }
+
+// ========== SESSÕES DE CAIXA ==========
+model CashSession {
+  id              String    @id @default(cuid())
+  franchiseeId    String
+  openedAt        DateTime  @default(now())
+  closedAt        DateTime?
+  status          String    @default("OPEN")    // OPEN | CLOSED
+  openingAmount   Float     @default(0)          // Troco inicial
+  // Valores informados no fechamento (manual/presencial)
+  closingCash     Float?
+  closingDebit    Float?
+  closingCredit   Float?
+  closingPix      Float?
+  closingVoucher  Float?
+  closingOthers   Json?                          // Outras formas customizadas
+  // Valores calculados do sistema
+  expectedCash    Float?
+  expectedDebit   Float?
+  expectedCredit  Float?
+  expectedPix     Float?
+  expectedVoucher Float?
+  expectedTotal   Float?
+  // Resultado
+  difference      Float?                         // Positivo = sobra, Negativo = falta
+  justification   String?                        // Justificativa da diferença
+  closedBy        String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
