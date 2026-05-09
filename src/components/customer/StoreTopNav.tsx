@@ -98,19 +98,34 @@ export default function StoreTopNav({
       }}>
         {/* LOGO */}
         <div style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}>
-          <Link href="/firehub" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-            <img
-              src="/firehub-icon.png"
-              alt="FireHub"
-              style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
-            />
-            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-              <span style={{ color: "#fff", fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-0.5px" }}>
-                Fire<span style={{ color: "#FF6B35" }}>Hub</span>
-              </span>
-              <span style={{ color: "rgba(255,255,255,0.65)", fontWeight: 500, fontSize: "0.6rem", letterSpacing: "0.5px", textTransform: "uppercase" }}>Sistema de Pedidos</span>
+          {isCompras ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 8, background: "rgba(255,255,255,0.15)",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0
+              }}>🧊</div>
+              <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+                <span style={{ color: "#fff", fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-0.5px" }}>
+                  Ice<span style={{ color: "#90CAF9" }}>box</span>
+                </span>
+                <span style={{ color: "rgba(255,255,255,0.65)", fontWeight: 500, fontSize: "0.6rem", letterSpacing: "0.5px", textTransform: "uppercase" }}>Congelados &amp; Insumos</span>
+              </div>
             </div>
-          </Link>
+          ) : (
+            <Link href="/firehub" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+              <img
+                src="/firehub-icon.png"
+                alt="FireHub"
+                style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
+              />
+              <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+                <span style={{ color: "#fff", fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-0.5px" }}>
+                  Fire<span style={{ color: "#FF6B35" }}>Hub</span>
+                </span>
+                <span style={{ color: "rgba(255,255,255,0.65)", fontWeight: 500, fontSize: "0.6rem", letterSpacing: "0.5px", textTransform: "uppercase" }}>Sistema de Pedidos</span>
+              </div>
+            </Link>
+          )}
 
           {/* Toggles de status ao lado da logo */}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
