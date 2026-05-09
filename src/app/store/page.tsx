@@ -39,8 +39,8 @@ export default async function StorePage() {
       id: i.id,
       quantity: i.quantity,
       price: i.price,
-      cost: i.menuProduct.cost || null,
-      menuProduct: { name: i.menuProduct.name }
+      cost: i.menuProduct?.cost || null,
+      menuProduct: { name: i.menuProduct?.name || "Produto excluído" }
     }))
   }));
 
