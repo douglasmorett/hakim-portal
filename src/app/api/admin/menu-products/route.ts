@@ -3,6 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
+// GET - listar produtos (usado pelo PDV e cardápio)
+export async function GET() {
+  const products = await prisma.menuProduct.findMany({
+    where: { active: true },
+    include: {
+      comboGroups: { include: { items: { include: { menuProduct: true } } } }
+    },
+    orderBy: [{ category: "asc" }, { name: "asc" }]
+  });
+  return NextResponse.json(products);
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;

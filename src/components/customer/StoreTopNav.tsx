@@ -98,13 +98,12 @@ export default function StoreTopNav({
       }}>
         {/* LOGO */}
         <div style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}>
-          <Link href="/firehub" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C12 2 7 7.5 7 12.5C7 15.5 9.2 18 12 18C14.8 18 17 15.5 17 12.5C17 10.5 15.5 8.5 15.5 8.5C15.5 8.5 15 11 13 11C13 11 14 8 12 2Z" fill="#FF6B35" />
-                <path d="M12 18C12 18 9 16 9 13C9 13 10.5 14.5 12 14.5C13.5 14.5 15 13 15 13C15 16 12 18 12 18Z" fill="#fff" opacity="0.8" />
-              </svg>
-            </div>
+          <Link href="/firehub" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+            <img
+              src="/firehub-icon.png"
+              alt="FireHub"
+              style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
+            />
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
               <span style={{ color: "#fff", fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-0.5px" }}>
                 Fire<span style={{ color: "#FF6B35" }}>Hub</span>
