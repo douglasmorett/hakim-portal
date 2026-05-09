@@ -39,6 +39,11 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"items" | "combos">("items");
 
+  // Modal de confirmação customizado
+  const [confirmModal, setConfirmModal] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [softDeletedName, setSoftDeletedName] = useState<string | null>(null);
+
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -98,16 +103,25 @@ export default function MenuProductManager({ products, availableItems }: { produ
     finally { setLoading(false); }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Excluir "${name}"?`)) return;
+  const handleDelete = (id: string, name: string) => {
+    setConfirmModal({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmModal) return;
+    setDeleting(true);
     const res = await fetch("/api/admin/menu-products", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, name })
+      body: JSON.stringify({ id: confirmModal.id, name: confirmModal.name })
     });
     const data = await res.json();
+    setDeleting(false);
+    setConfirmModal(null);
     if (data.softDeleted) {
-      alert(`"${name}" tem pedidos vinculados e foi desativado em vez de excluído.`);
+      // Mostrar aviso suave (não precisa de alert nativo)
+      setSoftDeletedName(confirmModal.name);
+      setTimeout(() => setSoftDeletedName(null), 4000);
     }
     router.refresh();
   };
@@ -144,7 +158,78 @@ export default function MenuProductManager({ products, availableItems }: { produ
 
   return (
     <div>
+      {/* ===== MODAL DE CONFIRMAÇÃO CUSTOMIZADO ===== */}
+      {confirmModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            background: "var(--surface, #1E293B)", borderRadius: "16px",
+            padding: "2rem", maxWidth: "400px", width: "90%",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            animation: "fadeInUp 0.18s ease",
+          }}>
+            {/* Ícone */}
+            <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: "50%",
+                background: "rgba(239,68,68,0.15)", border: "2px solid #EF4444",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                fontSize: "1.5rem",
+              }}>🗑️</div>
+            </div>
+            <h3 style={{ textAlign: "center", fontWeight: 800, fontSize: "1.1rem", marginBottom: "0.4rem", color: "var(--text, #F1F5F9)" }}>
+              Excluir produto?
+            </h3>
+            <p style={{ textAlign: "center", color: "var(--text-muted, #94A3B8)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+              "<strong style={{ color: "var(--text, #F1F5F9)" }}>{confirmModal.name}</strong>" será removido do cardápio.<br />
+              <span style={{ fontSize: "0.78rem", opacity: 0.7 }}>Esta ação não pode ser desfeita.</span>
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button
+                onClick={() => setConfirmModal(null)}
+                style={{
+                  flex: 1, padding: "0.65rem", borderRadius: "10px", fontWeight: 700,
+                  border: "1.5px solid rgba(255,255,255,0.12)",
+                  background: "transparent", color: "var(--text-muted, #94A3B8)",
+                  cursor: "pointer", fontSize: "0.9rem", transition: "all 0.15s",
+                }}>
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                style={{
+                  flex: 1, padding: "0.65rem", borderRadius: "10px", fontWeight: 800,
+                  border: "none", background: deleting ? "#7F1D1D" : "#EF4444",
+                  color: "#fff", cursor: deleting ? "not-allowed" : "pointer",
+                  fontSize: "0.9rem", transition: "all 0.15s",
+                }}>
+                {deleting ? "Excluindo..." : "Sim, excluir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST soft-delete */}
+      {softDeletedName && (
+        <div style={{
+          position: "fixed", bottom: 24, right: 24, zIndex: 9998,
+          background: "#F59E0B", color: "#000", fontWeight: 700,
+          padding: "0.75rem 1.25rem", borderRadius: "12px",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.3)", fontSize: "0.85rem",
+          animation: "fadeInUp 0.2s ease",
+        }}>
+          ⚠️ "{softDeletedName}" tem pedidos vinculados e foi <u>desativado</u> em vez de excluído.
+        </div>
+      )}
+
       {/* TABS */}
+
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
         <button onClick={() => setTab("items")} className={`btn ${tab === "items" ? "btn-primary" : "btn-outline"}`}>Itens Avulsos ({itemProducts.length})</button>
         <button onClick={() => setTab("combos")} className={`btn ${tab === "combos" ? "btn-primary" : "btn-outline"}`}><Package size={16} style={{ marginRight: "4px" }} /> Combos ({comboProducts.length})</button>
