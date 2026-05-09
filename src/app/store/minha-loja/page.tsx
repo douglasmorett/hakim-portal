@@ -18,7 +18,13 @@ export default async function StoreSettingsPage() {
         id: user.id, slug: user.slug || "", storeName: user.storeName || "",
         storePhone: user.storePhone || "", storeAddress: user.storeAddress || "",
         storeBanner: user.storeBanner || "", storeLogo: user.storeLogo || "",
-        storeHours: user.storeHours || null
+        storeHours: user.storeHours || null,
+        storePause: (user as any).storePause || null,
+        storeCoupons: (user as any).storeCoupons || [],
+        paymentFees: user.paymentFees || null,
+        deliveryZoneType: user.deliveryZoneType || null,
+        deliveryZones: user.deliveryZones || null,
+        storeLatLng: user.storeLatLng || null,
       }} />
     </div>
   );

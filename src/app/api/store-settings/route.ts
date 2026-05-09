@@ -13,7 +13,7 @@ export async function PUT(req: Request) {
   if (body.cpfCnpj !== undefined) data.cpfCnpj = body.cpfCnpj;
 
   // Store settings
-  for (const key of ["storeName", "storePhone", "storeAddress", "storeBanner", "storeLogo", "storeHours", "paymentFees", "deliveryZoneType", "deliveryZones", "storeLatLng"]) {
+  for (const key of ["storeName", "storePhone", "storeAddress", "storeBanner", "storeLogo", "storeHours", "paymentFees", "deliveryZoneType", "deliveryZones", "storeLatLng", "storeCoupons", "storePause"]) {
     if (body[key] !== undefined) data[key] = body[key];
   }
   if (body.storeDeliveryOnly !== undefined) data.storeDeliveryOnly = body.storeDeliveryOnly;

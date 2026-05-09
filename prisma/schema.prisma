@@ -34,6 +34,8 @@ model User {
   deliveryConfig  Json?           // Config: freeShipping, freeShippingMinValue
   storeOpen       Boolean         @default(true)   // Toggle manual abertura/fechamento da loja
   cashOpen        Boolean         @default(false)  // Toggle abertura/fechamento de caixa
+  storePause      Json?           // { active, from, to, reason } — pausa programada (férias)
+  storeCoupons    Json?           // Array de cupons de desconto da loja
   orders          Order[]
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]

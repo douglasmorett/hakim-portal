@@ -2,10 +2,11 @@
 import DeliveryZoneMap from "@/components/customer/DeliveryZoneMap";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Copy, ExternalLink, Upload, Trash2, Plus, Tag, CreditCard, Banknote, Smartphone, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Ticket } from "lucide-react";
+import { Save, Copy, ExternalLink, Upload, Trash2, Plus, Tag, CreditCard, Banknote, Smartphone, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Ticket, Calendar, Clock, AlertTriangle } from "lucide-react";
 
 const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-const defaultHours = () => DAYS.map(d => ({ day: d, open: "10:00", close: "22:00", active: true }));
+// Padrão 18h-23h — foco em delivery de jantar, igual Brendi
+const defaultHours = () => DAYS.map(d => ({ day: d, open: "18:00", close: "23:00", active: true, shifts: [{ open: "18:00", close: "23:00" }] }));
 
 type Coupon = { id?: string; code: string; discount: number; active: boolean };
 
@@ -30,6 +31,14 @@ export default function StoreSettingsForm({ user }: { user: any }) {
   const [storeDeliveryOnly, setStoreDeliveryOnly] = useState(user.storeDeliveryOnly || false);
   const [storeHours, setStoreHours] = useState<any[]>(user.storeHours || defaultHours());
   const [coupons, setCoupons] = useState<Coupon[]>(user.storeCoupons || []);
+  // Agendar Pausa
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [pauseActive, setPauseActive] = useState<boolean>(user.storePause?.active || false);
+  const [pauseFrom, setPauseFrom] = useState<string>(user.storePause?.from || todayStr);
+  const [pauseTo, setPauseTo] = useState<string>(user.storePause?.to || todayStr);
+  const [pauseReason, setPauseReason] = useState<string>(user.storePause?.reason || "Férias");
+  const [savingPause, setSavingPause] = useState(false);
+  const [dirtyPause, setDirtyPause] = useState(false);
   // Dirty states por seção
   const [dirtyInfo, setDirtyInfo] = useState(false);
   const [dirtyHours, setDirtyHours] = useState(false);
@@ -96,6 +105,7 @@ export default function StoreSettingsForm({ user }: { user: any }) {
   const saveHours = async () => { setSavingHours(true); try { await saveFields({ storeHours }); setDirtyHours(false); } finally { setSavingHours(false); } };
   const saveCoupons = async () => { setSavingCoupons(true); try { await saveFields({ storeCoupons: coupons }); setDirtyCoupons(false); } finally { setSavingCoupons(false); } };
   const savePayment = async () => { setSavingPayment(true); try { await saveFields({ paymentFees: paymentConfig }); setDirtyPayment(false); } finally { setSavingPayment(false); } };
+  const savePause = async () => { setSavingPause(true); try { await saveFields({ storePause: { active: pauseActive, from: pauseFrom, to: pauseTo, reason: pauseReason } }); setDirtyPause(false); } finally { setSavingPause(false); } };
 
   const updateHour = (idx: number, key: string, val: any) => {
     setStoreHours(prev => prev.map((h, i) => i === idx ? { ...h, [key]: val } : h));
@@ -270,6 +280,66 @@ export default function StoreSettingsForm({ user }: { user: any }) {
           ))}
         </div>
         <SectionSaveBtn dirty={dirtyHours} saving={savingHours} onSave={saveHours} label="Salvar Horários" />
+      </div>
+
+      {/* AGENDAR PAUSA */}
+      <div className="card mb-4" style={{ border: pauseActive ? "1.5px solid #FCA5A5" : "1.5px solid #E2E8F0", background: pauseActive ? "#FFF5F5" : "#fff" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Calendar size={18} color={pauseActive ? "#DC2626" : "#64748B"} />
+            <h3 className="font-bold" style={{ margin: 0, color: pauseActive ? "#DC2626" : "inherit" }}>
+              📅 Agendar Pausa / Férias
+            </h3>
+            {pauseActive && <span style={{ padding: "2px 8px", background: "#FEE2E2", color: "#DC2626", borderRadius: "20px", fontSize: "0.72rem", fontWeight: 700 }}>ATIVO</span>}
+          </div>
+          <button
+            onClick={() => { setPauseActive(v => !v); setDirtyPause(true); }}
+            style={{ background: "none", border: "none", cursor: "pointer" }}
+          >
+            {pauseActive ? <ToggleRight size={28} color="#DC2626" /> : <ToggleLeft size={28} color="#CBD5E1" />}
+          </button>
+        </div>
+
+        <p style={{ fontSize: "0.8rem", color: "#64748B", marginBottom: "1rem" }}>
+          Quando ativado, a loja ficará automaticamente fechada no período configurado, mesmo que o horário normal esteja aberto.
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div className="input-group">
+            <label>📅 Data de início</label>
+            <input type="date" className="input-field" value={pauseFrom}
+              onChange={e => { setPauseFrom(e.target.value); setDirtyPause(true); }}
+              style={{ opacity: pauseActive ? 1 : 0.5 }} disabled={!pauseActive} />
+          </div>
+          <div className="input-group">
+            <label>📅 Data de retorno</label>
+            <input type="date" className="input-field" value={pauseTo}
+              onChange={e => { setPauseTo(e.target.value); setDirtyPause(true); }}
+              style={{ opacity: pauseActive ? 1 : 0.5 }} disabled={!pauseActive} />
+          </div>
+          <div className="input-group" style={{ gridColumn: "span 2" }}>
+            <label>💬 Motivo (exibido para clientes)</label>
+            <select className="input-field" value={pauseReason}
+              onChange={e => { setPauseReason(e.target.value); setDirtyPause(true); }}
+              disabled={!pauseActive} style={{ opacity: pauseActive ? 1 : 0.5 }}>
+              <option>Férias</option>
+              <option>Evento particular</option>
+              <option>Reforma / Manutenção</option>
+              <option>Feriado</option>
+              <option>Outros</option>
+            </select>
+          </div>
+        </div>
+
+        {pauseActive && (
+          <div style={{ marginTop: "0.75rem", padding: "10px 14px", background: "#FEE2E2", borderRadius: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <AlertTriangle size={16} color="#DC2626" />
+            <span style={{ fontSize: "0.8rem", color: "#DC2626", fontWeight: 600 }}>
+              Loja pausada de {new Date(pauseFrom + "T12:00").toLocaleDateString("pt-BR")} até {new Date(pauseTo + "T12:00").toLocaleDateString("pt-BR")} — Motivo: {pauseReason}
+            </span>
+          </div>
+        )}
+        <SectionSaveBtn dirty={dirtyPause} saving={savingPause} onSave={savePause} label="Salvar Pausa" />
       </div>
 
       {/* CUPONS */}

@@ -1,0 +1,63 @@
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import DREClient from "./DREClient";
+
+export default async function StoreFinanceiroPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/");
+  const role = (session.user as any)?.role;
+  if (role !== "FRANCHISEE" && role !== "ADMIN") redirect("/");
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user?.email || "" },
+    select: { id: true, paymentFees: true, storeName: true }
+  });
+  if (!user) redirect("/");
+
+  // Busca os últimos 365 dias para que o cliente filtre no front
+  const since = new Date();
+  since.setDate(since.getDate() - 365);
+
+  const orders = await prisma.customerOrder.findMany({
+    where: { franchiseeId: user.id, createdAt: { gte: since } },
+    include: {
+      items: { include: { menuProduct: { select: { name: true, cost: true } } } },
+      motoboy: { select: { name: true, paymentType: true, perDeliveryRate: true, dailyRate: true, perKmRate: true } }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  const serialized = orders.map(o => ({
+    id: o.id,
+    totalAmount: o.totalAmount,
+    deliveryFee: o.deliveryFee || 0,
+    motoboyFee: o.motoboyFee || 0,
+    deliveryDistance: o.deliveryDistance || 0,
+    status: o.status,
+    deliveryType: o.deliveryType,
+    paymentMethod: o.paymentMethod || "",
+    source: o.source || "ONLINE",
+    createdAt: o.createdAt.toISOString(),
+    items: o.items.map(i => ({
+      quantity: i.quantity,
+      price: i.price,
+      cost: i.menuProduct?.cost || 0,
+      name: i.menuProduct?.name || "Produto"
+    })),
+    motoboy: o.motoboy ? {
+      name: o.motoboy.name,
+      paymentType: o.motoboy.paymentType,
+      perDeliveryRate: o.motoboy.perDeliveryRate || 0,
+    } : null
+  }));
+
+  return (
+    <DREClient
+      orders={serialized}
+      paymentFees={(user.paymentFees as any) || {}}
+      storeName={user.storeName || "Minha Loja"}
+    />
+  );
+}

@@ -6,7 +6,7 @@ import "./store.css";
 
 type MenuProduct = { id: string; name: string; description: string; price: number; imageUrl: string | null; category: string; isCombo?: boolean; comboConfig?: any; comboGroups?: any[] };
 type CartItem = MenuProduct & { quantity: number; comboSelections?: any };
-type Franchisee = { id: string; name: string; storeName: string | null; storePhone: string | null; storeAddress: string | null; storeBanner: string | null; storeLogo?: string | null; storeHours?: any; storeDeliveryOnly?: boolean; paymentFees?: any; deliveryZoneType?: string | null; deliveryZones?: any; city: string | null; slug: string | null };
+type Franchisee = { id: string; name: string; storeName: string | null; storePhone: string | null; storeAddress: string | null; storeBanner: string | null; storeLogo?: string | null; storeHours?: any; storeDeliveryOnly?: boolean; paymentFees?: any; deliveryZoneType?: string | null; deliveryZones?: any; city: string | null; slug: string | null; storeOpen?: boolean; storePause?: any };
 type StoreRating = { average: number; count: number };
 
 function isStoreOpen(hours: any[]): { open: boolean; text: string } {
@@ -65,6 +65,19 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
 
   const storeName = franchisee.storeName || franchisee.name;
   const storeStatus = isStoreOpen(franchisee.storeHours as any);
+
+  // Verificar pausa programada
+  const isPaused = (() => {
+    const p = franchisee.storePause as any;
+    if (!p?.active) return false;
+    const today = new Date();
+    const from = new Date(p.from + "T00:00");
+    const to = new Date(p.to + "T23:59");
+    return today >= from && today <= to;
+  })();
+  const pauseInfo = franchisee.storePause as any;
+
+  const isStoreEffectivelyClosed = isPaused || franchisee.storeOpen === false || !storeStatus.open;
   const categories = ["Todos", ...Array.from(new Set(menuProducts.map(p => p.category)))];
 
   const filtered = menuProducts.filter(p => {
@@ -404,6 +417,21 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
   // ===== MAIN RENDER =====
   return (
     <div className="saipos-store">
+      {/* BANNER DE PAUSA */}
+      {isPaused && (
+        <div style={{ background: "linear-gradient(135deg,#B91C1C,#DC2626)", color: "#fff", padding: "1rem 1.5rem", textAlign: "center" }}>
+          <p style={{ fontWeight: 800, fontSize: "1.05rem", marginBottom: "4px" }}>📅 Loja Temporariamente Fechada</p>
+          <p style={{ fontSize: "0.85rem", opacity: 0.9, margin: 0 }}>
+            Motivo: {pauseInfo?.reason || "Pausa programada"} · Retorna em {new Date((pauseInfo?.to || "") + "T12:00").toLocaleDateString("pt-BR")}
+          </p>
+        </div>
+      )}
+      {/* Loja manualmente fechada */}
+      {!isPaused && franchisee.storeOpen === false && (
+        <div style={{ background: "#374151", color: "#fff", padding: "0.6rem 1.5rem", textAlign: "center", fontSize: "0.85rem", fontWeight: 700 }}>
+          🔴 Loja fechada no momento · Em breve voltamos!
+        </div>
+      )}
       {/* BANNER */}
       {franchisee.storeBanner && (
         <div className="store-banner">
