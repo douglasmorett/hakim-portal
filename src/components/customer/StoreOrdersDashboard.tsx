@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, MapPin, Phone, User, ChevronDown, ChevronUp, Search, ShoppingBag, ExternalLink, Settings, Store, Package, Bell, ToggleLeft, ToggleRight, GripVertical } from "lucide-react";
+import { Clock, MapPin, Phone, User, ChevronDown, ChevronUp, Search, ShoppingBag, ExternalLink, Settings, Store, Package, Bell, ToggleLeft, ToggleRight, GripVertical, Zap, ZapOff, Timer } from "lucide-react";
 
 const STATUS_CONFIG: Record<string, { label: string; emoji: string; color: string; bg: string }> = {
   NOVO: { label: "Novos Pedidos", emoji: "🔔", color: "#3B82F6", bg: "#EFF6FF" },
@@ -46,6 +46,51 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
     return false;
   });
   const prevOrderCount = useRef(initialOrders.filter(o => o.status === "NOVO").length);
+
+  // ===== ALTA DEMANDA (Surge Pricing) =====
+  const [altaDemanda, setAltaDemanda] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("altaDemanda");
+      if (saved) { const p = JSON.parse(saved); if (p.active && new Date(p.expiresAt) > new Date()) return p; }
+    }
+    return { active: false, extraMinutes: 15, extraFee: 3.0, activatedAt: null, expiresAt: null, logs: [] as any[] };
+  });
+  const [showAltaDemandaModal, setShowAltaDemandaModal] = useState(false);
+  const [adExtraMinutes, setAdExtraMinutes] = useState(15);
+  const [adExtraFee, setAdExtraFee] = useState(3.0);
+  const [adDuration, setAdDuration] = useState(60); // minutos
+  const [showAltaDemandaLog, setShowAltaDemandaLog] = useState(false);
+
+  const activateAltaDemanda = () => {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + adDuration * 60000);
+    const newState = {
+      active: true, extraMinutes: adExtraMinutes, extraFee: adExtraFee,
+      activatedAt: now.toISOString(), expiresAt: expiresAt.toISOString(),
+      logs: [
+        ...(altaDemanda.logs || []),
+        { activatedAt: now.toISOString(), expiresAt: expiresAt.toISOString(), extraMinutes: adExtraMinutes, extraFee: adExtraFee, duration: adDuration }
+      ]
+    };
+    setAltaDemanda(newState);
+    localStorage.setItem("altaDemanda", JSON.stringify(newState));
+    setShowAltaDemandaModal(false);
+  };
+
+  const deactivateAltaDemanda = () => {
+    const newState = { ...altaDemanda, active: false, expiresAt: null };
+    setAltaDemanda(newState);
+    localStorage.setItem("altaDemanda", JSON.stringify(newState));
+  };
+
+  // Auto-desativar quando expirar
+  useEffect(() => {
+    if (!altaDemanda.active || !altaDemanda.expiresAt) return;
+    const remaining = new Date(altaDemanda.expiresAt).getTime() - Date.now();
+    if (remaining <= 0) { deactivateAltaDemanda(); return; }
+    const t = setTimeout(deactivateAltaDemanda, remaining);
+    return () => clearTimeout(t);
+  }, [altaDemanda.active, altaDemanda.expiresAt]);
 
   // Drag state
   const [draggedOrderId, setDraggedOrderId] = useState<string | null>(null);
@@ -492,7 +537,128 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
           </div>
         </div>
       )}
+
+      {/* ===== MODAL ALTA DEMANDA ===== */}
+      {showAltaDemandaModal && (
+        <div onClick={() => setShowAltaDemandaModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px", padding: "32px", width: "420px", maxWidth: "95vw", boxShadow: "0 30px 80px rgba(0,0,0,0.3)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+              <div style={{ width: 44, height: 44, borderRadius: "12px", background: "linear-gradient(135deg,#EF4444,#F97316)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Zap size={22} color="#fff" />
+              </div>
+              <div>
+                <h3 style={{ fontWeight: 800, fontSize: "1.15rem", margin: 0 }}>⚡ Modo Alta Demanda</h3>
+                <p style={{ fontSize: "0.78rem", color: "#64748B", margin: 0 }}>Ative quando a loja estiver sobrecarregada</p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: "12px", padding: "14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                  <Timer size={16} color="#EA580C" />
+                  <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#EA580C" }}>+Tempo de Preparo</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  {[5,10,15,20,30].map(m => (
+                    <button key={m} onClick={() => setAdExtraMinutes(m)}
+                      style={{ padding: "6px 12px", borderRadius: "8px", border: `2px solid ${adExtraMinutes === m ? "#EA580C" : "#E2E8F0"}`,
+                        background: adExtraMinutes === m ? "#FFF7ED" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem", color: adExtraMinutes === m ? "#EA580C" : "#64748B" }}>
+                      +{m}min
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background: "#FFF1F2", border: "1px solid #FECDD3", borderRadius: "12px", padding: "14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                  <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#E11D48" }}>💰 +Taxa de Entrega (Surge)</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  {[1,2,3,5,8].map(v => (
+                    <button key={v} onClick={() => setAdExtraFee(v)}
+                      style={{ padding: "6px 12px", borderRadius: "8px", border: `2px solid ${adExtraFee === v ? "#E11D48" : "#E2E8F0"}`,
+                        background: adExtraFee === v ? "#FFF1F2" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem", color: adExtraFee === v ? "#E11D48" : "#64748B" }}>
+                      +R${v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "12px", padding: "14px" }}>
+                <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#16A34A" }}>⏱️ Duração da Ativação</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px" }}>
+                  {[30,60,90,120].map(d => (
+                    <button key={d} onClick={() => setAdDuration(d)}
+                      style={{ padding: "6px 12px", borderRadius: "8px", border: `2px solid ${adDuration === d ? "#16A34A" : "#E2E8F0"}`,
+                        background: adDuration === d ? "#F0FDF4" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem", color: adDuration === d ? "#16A34A" : "#64748B" }}>
+                      {d}min
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background: "#F8FAFC", borderRadius: "10px", padding: "12px", fontSize: "0.82rem", color: "#475569" }}>
+                <strong>Resumo:</strong> Clientes verão +{adExtraMinutes}min no tempo estimado e +R${adExtraFee.toFixed(2)} na taxa de entrega por {adDuration} minutos.
+              </div>
+
+              <button onClick={activateAltaDemanda}
+                style={{ padding: "14px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg,#EF4444,#F97316)", color: "#fff", fontWeight: 800, fontSize: "1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit" }}>
+                <Zap size={18} /> Ativar Alta Demanda
+              </button>
+
+              {altaDemanda.logs?.length > 0 && (
+                <button onClick={() => { setShowAltaDemandaModal(false); setShowAltaDemandaLog(true); }}
+                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", fontFamily: "inherit" }}>
+                  📋 Ver histórico de ativações ({altaDemanda.logs.length})
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL LOG ALTA DEMANDA ===== */}
+      {showAltaDemandaLog && (
+        <div onClick={() => setShowAltaDemandaLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "16px", padding: "28px", width: "460px", maxWidth: "95vw", boxShadow: "0 25px 60px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h3 style={{ fontWeight: 800, fontSize: "1.05rem", margin: 0 }}>📋 Histórico Alta Demanda</h3>
+              <button onClick={() => setShowAltaDemandaLog(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem" }}>×</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "400px", overflowY: "auto" }}>
+              {[...(altaDemanda.logs || [])].reverse().map((log: any, i: number) => (
+                <div key={i} style={{ padding: "12px", borderRadius: "10px", background: "#F8FAFC", border: "1px solid #E2E8F0", fontSize: "0.82rem" }}>
+                  <div style={{ fontWeight: 700, marginBottom: "4px" }}>🕐 {new Date(log.activatedAt).toLocaleString("pt-BR")}</div>
+                  <div style={{ color: "#64748B" }}>+{log.extraMinutes}min de preparo · +R${log.extraFee?.toFixed(2)} frete · Duração: {log.duration}min</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== BANNER ALTA DEMANDA ATIVO ===== */}
+      {altaDemanda.active && (
+        <div style={{ background: "linear-gradient(135deg,#EF4444,#F97316)", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#fff" }}>
+            <Zap size={18} />
+            <span style={{ fontWeight: 800, fontSize: "0.92rem" }}>⚡ ALTA DEMANDA ATIVA</span>
+            <span style={{ fontSize: "0.82rem", opacity: 0.9 }}>+{altaDemanda.extraMinutes}min preparo · +R${Number(altaDemanda.extraFee).toFixed(2)} frete</span>
+            {altaDemanda.expiresAt && (
+              <span style={{ fontSize: "0.78rem", opacity: 0.85 }}>
+                · Expira às {new Date(altaDemanda.expiresAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
+          <button onClick={deactivateAltaDemanda}
+            style={{ padding: "6px 14px", borderRadius: "8px", border: "2px solid rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.15)", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px", fontFamily: "inherit" }}>
+            <ZapOff size={14} /> Desativar
+          </button>
+        </div>
+      )}
+
       {/* FILTER BAR */}
+
       <div style={{ background: "#fff", borderBottom: "1px solid #E2E8F0", padding: "0.5rem 1.5rem" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto", display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ position: "relative", flex: 1, maxWidth: "400px" }}>
@@ -508,6 +674,19 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
             <span style={{ fontSize: "0.78rem", color: "#64748B", fontWeight: 600 }}>Ate</span>
             <input type="datetime-local" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: "5px 8px", borderRadius: "8px", border: "1.5px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
             <button onClick={() => setShowResumo(true)} style={{ padding: "6px 14px", background: "#1E293B", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", fontFamily: "inherit" }}>💰 Resumo das vendas</button>
+            <button
+              onClick={() => setShowAltaDemandaModal(true)}
+              style={{
+                padding: "6px 14px", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem",
+                cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: "5px",
+                background: altaDemanda.active ? "linear-gradient(135deg,#EF4444,#F97316)" : "#FFF7ED",
+                color: altaDemanda.active ? "#fff" : "#EA580C",
+                border: altaDemanda.active ? "none" : "1.5px solid #FED7AA",
+                animation: altaDemanda.active ? "pulse 1.5s infinite" : "none"
+              }}
+            >
+              <Zap size={14} /> {altaDemanda.active ? "⚡ Alta Demanda ON" : "Alta Demanda"}
+            </button>
           </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginLeft: "auto" }}>
@@ -596,6 +775,10 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
       <style>{`
         @media(max-width: 900px) {
           div > div[style*="min-width: 300px"] { min-width: 100% !important; min-height: 300px !important; max-height: 50vh !important; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.75; }
         }
       `}</style>
     </div>
