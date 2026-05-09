@@ -42,6 +42,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   // Modal de confirmação customizado
   const [confirmModal, setConfirmModal] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [softDeletedName, setSoftDeletedName] = useState<string | null>(null);
 
   // Smart Pause — pausar item que está em combos
@@ -114,6 +115,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   };
 
   const handleDelete = (id: string, name: string) => {
+    setDeleteConfirmText("");
     setConfirmModal({ id, name });
   };
 
@@ -211,49 +213,97 @@ export default function MenuProductManager({ products, availableItems }: { produ
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <div style={{
-            background: "var(--surface, #1E293B)", borderRadius: "16px",
-            padding: "2rem", maxWidth: "400px", width: "90%",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            animation: "fadeInUp 0.18s ease",
+            background: "#fff", borderRadius: "16px",
+            padding: "2rem", maxWidth: "420px", width: "92%",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
+            border: "1px solid #E2E8F0",
           }}>
             {/* Ícone */}
             <div style={{ textAlign: "center", marginBottom: "1rem" }}>
               <div style={{
                 width: 56, height: 56, borderRadius: "50%",
-                background: "rgba(239,68,68,0.15)", border: "2px solid #EF4444",
+                background: "rgba(239,68,68,0.1)", border: "2px solid #EF4444",
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 fontSize: "1.5rem",
               }}>🗑️</div>
             </div>
-            <h3 style={{ textAlign: "center", fontWeight: 800, fontSize: "1.1rem", marginBottom: "0.4rem", color: "var(--text, #F1F5F9)" }}>
-              Excluir produto?
+
+            <h3 style={{ textAlign: "center", fontWeight: 800, fontSize: "1.1rem", marginBottom: "0.4rem", color: "#111827" }}>
+              Excluir produto permanentemente?
             </h3>
-            <p style={{ textAlign: "center", color: "var(--text-muted, #94A3B8)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
-              "<strong style={{ color: "var(--text, #F1F5F9)" }}>{confirmModal.name}</strong>" será removido do cardápio.<br />
-              <span style={{ fontSize: "0.78rem", opacity: 0.7 }}>Esta ação não pode ser desfeita.</span>
+            <p style={{ textAlign: "center", color: "#6B7280", fontSize: "0.88rem", marginBottom: "1rem", lineHeight: 1.6 }}>
+              Você está prestes a excluir 
+              <strong style={{ color: "#111827" }}>“{confirmModal.name}”</strong>.
             </p>
+
+            {/* Aviso de irreversibilidade */}
+            <div style={{
+              background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "10px",
+              padding: "0.75rem 1rem", marginBottom: "1.25rem",
+            }}>
+              <p style={{ color: "#B91C1C", fontSize: "0.82rem", fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
+                ⚠️ <strong>Esta ação é irreversível.</strong> Uma vez excluído, o produto
+                não pode ser recuperado. O histórico de pedidos que contêm este item
+                será preservado, mas o produto não aparecerá mais no cardápio.
+              </p>
+            </div>
+
+            {/* Campo de confirmação */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#374151", marginBottom: "0.4rem" }}>
+                Para confirmar, digite <strong style={{ color: "#EF4444" }}>excluir</strong> no campo abaixo:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder="Digite: excluir"
+                autoFocus
+                style={{
+                  width: "100%", padding: "0.6rem 0.9rem", borderRadius: "8px", fontSize: "0.95rem",
+                  border: `2px solid ${deleteConfirmText === "excluir" ? "#10B981" : "#D1D5DB"}`,
+                  outline: "none", color: "#111827", boxSizing: "border-box",
+                  background: deleteConfirmText === "excluir" ? "#F0FDF4" : "#fff",
+                  transition: "border-color 0.2s, background 0.2s",
+                  fontFamily: "inherit",
+                }}
+              />
+              {deleteConfirmText.length > 0 && deleteConfirmText !== "excluir" && (
+                <p style={{ color: "#EF4444", fontSize: "0.75rem", marginTop: "4px" }}>
+                  Digite exatamente: <strong>excluir</strong>
+                </p>
+              )}
+              {deleteConfirmText === "excluir" && (
+                <p style={{ color: "#10B981", fontSize: "0.75rem", marginTop: "4px", fontWeight: 600 }}>
+                  ✓ Confirmado — botão liberado
+                </p>
+              )}
+            </div>
+
             <div style={{ display: "flex", gap: "0.75rem" }}>
               <button
-                onClick={() => setConfirmModal(null)}
+                onClick={() => { setConfirmModal(null); setDeleteConfirmText(""); }}
                 style={{
                   flex: 1, padding: "0.65rem", borderRadius: "10px", fontWeight: 700,
-                  border: "1.5px solid rgba(255,255,255,0.12)",
-                  background: "transparent", color: "var(--text-muted, #94A3B8)",
-                  cursor: "pointer", fontSize: "0.9rem", transition: "all 0.15s",
+                  border: "1.5px solid #D1D5DB",
+                  background: "#F9FAFB", color: "#374151",
+                  cursor: "pointer", fontSize: "0.9rem",
                 }}>
                 Cancelar
               </button>
               <button
                 onClick={confirmDelete}
-                disabled={deleting}
+                disabled={deleting || deleteConfirmText !== "excluir"}
                 style={{
                   flex: 1, padding: "0.65rem", borderRadius: "10px", fontWeight: 800,
-                  border: "none", background: deleting ? "#7F1D1D" : "#EF4444",
-                  color: "#fff", cursor: deleting ? "not-allowed" : "pointer",
-                  fontSize: "0.9rem", transition: "all 0.15s",
+                  border: "none",
+                  background: deleteConfirmText !== "excluir" ? "#FCA5A5" : deleting ? "#B91C1C" : "#EF4444",
+                  color: "#fff",
+                  cursor: (deleting || deleteConfirmText !== "excluir") ? "not-allowed" : "pointer",
+                  fontSize: "0.9rem", transition: "background 0.2s",
+                  opacity: deleteConfirmText !== "excluir" ? 0.7 : 1,
                 }}>
-                {deleting ? "Excluindo..." : "Sim, excluir"}
+                {deleting ? "Excluindo..." : "Excluir"}
               </button>
             </div>
           </div>
@@ -280,36 +330,37 @@ export default function MenuProductManager({ products, availableItems }: { produ
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <div style={{
-            background: "var(--surface, #1E293B)", borderRadius: "18px",
+            background: "#fff", borderRadius: "18px",
             padding: "2rem", maxWidth: "460px", width: "92%",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
+            border: "1px solid #E2E8F0",
           }}>
             {/* Ícone */}
             <div style={{ textAlign: "center", marginBottom: "1rem" }}>
               <div style={{
                 width: 60, height: 60, borderRadius: "50%",
-                background: "rgba(245,158,11,0.15)", border: "2px solid #F59E0B",
+                background: "rgba(245,158,11,0.1)", border: "2px solid #F59E0B",
                 display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem",
               }}>⏸️</div>
             </div>
 
-            <h3 style={{ textAlign: "center", fontWeight: 900, fontSize: "1.15rem", color: "var(--text, #F1F5F9)", marginBottom: "0.4rem" }}>
+            <h3 style={{ textAlign: "center", fontWeight: 900, fontSize: "1.15rem", color: "#111827", marginBottom: "0.4rem" }}>
               Pausar item vinculado a combos
             </h3>
-            <p style={{ textAlign: "center", color: "var(--text-muted, #94A3B8)", fontSize: "0.88rem", marginBottom: "1rem" }}>
-              <strong style={{ color: "#F59E0B" }}>"{pauseModal.name}"</strong> faz parte de{" "}
-              <strong style={{ color: "var(--text, #F1F5F9)" }}>{pauseModal.affectedCombos.length} combo{pauseModal.affectedCombos.length > 1 ? "s" : ""}</strong>:
+            <p style={{ textAlign: "center", color: "#6B7280", fontSize: "0.88rem", marginBottom: "1rem", lineHeight: 1.5 }}>
+              <strong style={{ color: "#B45309" }}>“{pauseModal.name}”</strong> faz parte de{" "}
+              <strong style={{ color: "#111827" }}>{pauseModal.affectedCombos.length} combo{pauseModal.affectedCombos.length > 1 ? "s" : ""}</strong>:
             </p>
 
             {/* Lista de combos afetados */}
             <div style={{
-              background: "rgba(0,0,0,0.2)", borderRadius: "10px", padding: "0.6rem 1rem",
+              background: "#F3F4F6", borderRadius: "10px", padding: "0.6rem 1rem",
               marginBottom: "1.25rem", maxHeight: "120px", overflowY: "auto",
+              border: "1px solid #E5E7EB",
             }}>
               {pauseModal.affectedCombos.map((c: any) => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0", fontSize: "0.85rem", color: "var(--text, #F1F5F9)" }}>
-                  <span style={{ fontSize: "0.7rem", background: "#F59E0B", color: "#000", borderRadius: "4px", padding: "1px 5px", fontWeight: 700 }}>COMBO</span>
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0", fontSize: "0.85rem", color: "#374151" }}>
+                  <span style={{ fontSize: "0.7rem", background: "#F59E0B", color: "#fff", borderRadius: "4px", padding: "1px 6px", fontWeight: 700 }}>COMBO</span>
                   {c.name}
                 </div>
               ))}
@@ -318,14 +369,14 @@ export default function MenuProductManager({ products, availableItems }: { produ
             {/* Três opções */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
               <button
-                onClick={() => { doToggle(pauseModal.id, false); showToast(`✅ Só "${pauseModal.name}" foi pausado.`); }}
+                onClick={() => { doToggle(pauseModal.id, false); showToast(`✅ Só “${pauseModal.name}” foi pausado.`); }}
                 disabled={pausing}
                 style={{
                   padding: "0.7rem 1rem", borderRadius: "10px", fontWeight: 700, border: "1.5px solid #F59E0B",
-                  background: "rgba(245,158,11,0.08)", color: "#F59E0B", cursor: "pointer", fontSize: "0.9rem", textAlign: "left",
+                  background: "#FFFBEB", color: "#92400E", cursor: "pointer", fontSize: "0.9rem", textAlign: "left",
                 }}>
                 ⏸️ Pausar só este item
-                <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 400, opacity: 0.7, marginTop: "2px" }}>
+                <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 400, color: "#B45309", marginTop: "2px" }}>
                   Os combos continuarão ativos (mas sem este item disponível)
                 </span>
               </button>
@@ -333,15 +384,15 @@ export default function MenuProductManager({ products, availableItems }: { produ
               <button
                 onClick={() => {
                   doToggle(pauseModal.id, false, pauseModal.affectedCombos.map((c: any) => c.id));
-                  showToast(`✅ "${pauseModal.name}" e ${pauseModal.affectedCombos.length} combo(s) foram pausados.`);
+                  showToast(`✅ “${pauseModal.name}” e ${pauseModal.affectedCombos.length} combo(s) foram pausados.`);
                 }}
                 disabled={pausing}
                 style={{
                   padding: "0.7rem 1rem", borderRadius: "10px", fontWeight: 700, border: "1.5px solid #EF4444",
-                  background: "rgba(239,68,68,0.08)", color: "#EF4444", cursor: "pointer", fontSize: "0.9rem", textAlign: "left",
+                  background: "#FEF2F2", color: "#B91C1C", cursor: "pointer", fontSize: "0.9rem", textAlign: "left",
                 }}>
                 ⏸️ Pausar este item + todos os {pauseModal.affectedCombos.length} combo(s)
-                <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 400, opacity: 0.7, marginTop: "2px" }}>
+                <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 400, color: "#DC2626", marginTop: "2px" }}>
                   Recomendado quando o item é essencial para o combo
                 </span>
               </button>
@@ -350,8 +401,8 @@ export default function MenuProductManager({ products, availableItems }: { produ
                 onClick={() => setPauseModal(null)}
                 style={{
                   padding: "0.55rem", borderRadius: "10px", fontWeight: 600,
-                  border: "1px solid rgba(255,255,255,0.1)", background: "transparent",
-                  color: "var(--text-muted, #64748B)", cursor: "pointer", fontSize: "0.85rem",
+                  border: "1px solid #D1D5DB", background: "#F9FAFB",
+                  color: "#6B7280", cursor: "pointer", fontSize: "0.85rem",
                 }}>
                 Cancelar
               </button>
