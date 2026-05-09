@@ -3,11 +3,12 @@ import { useState, useRef, useEffect } from "react";
 import { ShoppingCart, Plus, Minus, X, MapPin, Search, Clock, Store, Truck, User, Lock, LogIn, History, Star, ChevronRight } from "lucide-react";
 import ComboModal from "./ComboModal";
 import PaymentGateway from "./PaymentGateway";
+import FacebookPixel, { trackPixelEvent } from "./FacebookPixel";
 import "./store.css";
 
 type MenuProduct = { id: string; name: string; description: string; price: number; imageUrl: string | null; category: string; isCombo?: boolean; comboConfig?: any; comboGroups?: any[] };
 type CartItem = MenuProduct & { quantity: number; comboSelections?: any };
-type Franchisee = { id: string; name: string; storeName: string | null; storePhone: string | null; storeAddress: string | null; storeBanner: string | null; storeLogo?: string | null; storeHours?: any; storeDeliveryOnly?: boolean; paymentFees?: any; deliveryZoneType?: string | null; deliveryZones?: any; city: string | null; slug: string | null; storeOpen?: boolean; storePause?: any };
+type Franchisee = { id: string; name: string; storeName: string | null; storePhone: string | null; storeAddress: string | null; storeBanner: string | null; storeLogo?: string | null; storeHours?: any; storeDeliveryOnly?: boolean; paymentFees?: any; deliveryZoneType?: string | null; deliveryZones?: any; city: string | null; slug: string | null; storeOpen?: boolean; storePause?: any; facebookPixelId?: string | null };
 type StoreRating = { average: number; count: number };
 
 function isStoreOpen(hours: any[]): { open: boolean; text: string } {
@@ -448,6 +449,8 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
   // ===== MAIN RENDER =====
   return (
     <div className="saipos-store">
+      {/* FACEBOOK PIXEL — rastreamento automático por loja */}
+      {franchisee.facebookPixelId && <FacebookPixel pixelId={franchisee.facebookPixelId} />}
       {/* BANNER DE PAUSA */}
       {isPaused && (
         <div style={{ background: "linear-gradient(135deg,#B91C1C,#DC2626)", color: "#fff", padding: "1rem 1.5rem", textAlign: "center" }}>

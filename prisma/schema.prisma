@@ -37,6 +37,11 @@ model User {
   storePause      Json?           // { active, from, to, reason }
   storeCoupons    Json?           // Array de cupons de desconto
   pagarmeRecipientId String?      // ID do destinatário no Pagar.me (split por restaurante)
+  facebookPixelId String?         // ID do Pixel do Facebook/Meta Ads
+  autoAcceptOrders Boolean        @default(false) // Auto-aceitar pedidos online
+  storeAlertSound  String?        @default("bell") // Som de alerta: bell | chime | beep | none
+  storeLoyalty    Json?           // { type: cashback|points, rate: 2, active: true }
+  storeOrderCount Int             @default(0) // Contador de pedidos (Pay as You Grow)
   orders          Order[]
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]

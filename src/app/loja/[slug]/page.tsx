@@ -40,6 +40,7 @@ export default async function PublicStorePage({ params }: { params: Promise<{ sl
       slug: true,
       storeOpen: true,
       storePause: true,
+      facebookPixelId: true,
     }
   });
 
