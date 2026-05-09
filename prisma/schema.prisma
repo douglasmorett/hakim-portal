@@ -32,10 +32,11 @@ model User {
   permissions     String          @default("")
   isFranqueadoHakim Boolean      @default(false)
   deliveryConfig  Json?           // Config: freeShipping, freeShippingMinValue
-  storeOpen       Boolean         @default(true)   // Toggle manual abertura/fechamento da loja
-  cashOpen        Boolean         @default(false)  // Toggle abertura/fechamento de caixa
-  storePause      Json?           // { active, from, to, reason } — pausa programada (férias)
-  storeCoupons    Json?           // Array de cupons de desconto da loja
+  storeOpen       Boolean         @default(true)
+  cashOpen        Boolean         @default(false)
+  storePause      Json?           // { active, from, to, reason }
+  storeCoupons    Json?           // Array de cupons de desconto
+  pagarmeRecipientId String?      // ID do destinatário no Pagar.me (split por restaurante)
   orders          Order[]
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]
@@ -188,14 +189,22 @@ model CustomerOrder {
   paymentMethod    String?
   totalAmount      Float
   deliveryFee      Float               @default(0)
-  motoboyFee       Float?              // Valor real de custo para o motoboy (mesmo se frete for grátis)
-  deliveryDistance Float?              // Distância real percorrida em KM
+  motoboyFee       Float?
+  deliveryDistance Float?
   motoboyId        String?
   status           String              @default("NOVO")
   source           String              @default("ONLINE")
   notes            String?
   rating           Int?
   ratingComment    String?
+  // Pagar.me — Pagamento Online
+  pagarmeOrderId   String?             // ID do pedido no Pagar.me
+  pagarmeChargeId  String?             // ID da cobrança
+  pagarmeStatus    String?             // pending | paid | failed | canceled
+  pagarmePixQrCode String?  @db.Text  // QR code PIX (base64)
+  pagarmePixExpiry DateTime?           // Expiração do PIX
+  pagarmeMethod    String?             // pix | credit_card | debit_card | voucher
+  paymentPaidAt    DateTime?           // Confirmação de pagamento
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   franchisee       User                @relation(fields: [franchiseeId], references: [id])

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ShoppingCart, Plus, Minus, X, MapPin, Search, Clock, Store, Truck, User, Lock, LogIn, History, Star, ChevronRight } from "lucide-react";
 import ComboModal from "./ComboModal";
+import PaymentGateway from "./PaymentGateway";
 import "./store.css";
 
 type MenuProduct = { id: string; name: string; description: string; price: number; imageUrl: string | null; category: string; isCombo?: boolean; comboConfig?: any; comboGroups?: any[] };
@@ -62,6 +63,10 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
   const [ratingValue, setRatingValue] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
   const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
+  // Pagamento Online (Pagar.me)
+  const [showPayment, setShowPayment] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [pendingAmount, setPendingAmount] = useState(0);
 
   const storeName = franchisee.storeName || franchisee.name;
   const storeStatus = isStoreOpen(franchisee.storeHours as any);
@@ -208,6 +213,9 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
     } catch { alert("Erro de conexão"); }
   };
 
+  // Métodos que exigem pagamento online via Pagar.me
+  const ONLINE_METHODS = ["PIX", "CREDITO", "DEBITO", "VOUCHER", "ALELO", "TICKET", "BEN", "SODEXO", "VR"];
+
   const handleCheckout = async () => {
     if (!customerName || !customerPhone) { alert("Preencha nome e telefone."); return; }
     if (deliveryType === "DELIVERY" && !customerAddress) { alert("Preencha o endereço."); return; }
@@ -215,10 +223,33 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
     try {
       const res = await fetch("/api/customer-order", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ franchiseeSlug: franchisee.slug, customerName, customerPhone, customerAddress: deliveryType === "DELIVERY" ? customerAddress : null, deliveryType, paymentMethod, notes, couponCode: couponApplied?.code || null, items: cart.map(i => ({ menuProductId: i.id.split('_')[0], quantity: i.quantity, comboSelections: i.comboSelections || null })) })
+        body: JSON.stringify({
+          franchiseeSlug: franchisee.slug, customerName, customerPhone,
+          customerAddress: deliveryType === "DELIVERY" ? customerAddress : null,
+          deliveryType, paymentMethod, notes,
+          couponCode: couponApplied?.code || null,
+          items: cart.map(i => ({ menuProductId: i.id.split("_")[0], quantity: i.quantity, comboSelections: i.comboSelections || null }))
+        })
       });
-      if (res.ok) { const d = await res.json(); setOrderSuccess(d.orderId); setCart([]); setIsCheckout(false); setMobileCartOpen(false); }
-      else { const d = await res.json(); alert(d.error || "Erro."); }
+      if (res.ok) {
+        const d = await res.json();
+        const isOnline = ONLINE_METHODS.includes((paymentMethod || "").toUpperCase());
+        if (isOnline) {
+          // Pagamento online: mostrar gateway Pagar.me antes de confirmar
+          setPendingOrderId(d.orderId);
+          setPendingAmount(finalTotal);
+          setShowPayment(true);
+          setIsCheckout(false);
+          setMobileCartOpen(false);
+          setCart([]);
+        } else {
+          // Dinheiro/maquininha: confirma direto
+          setOrderSuccess(d.orderId);
+          setCart([]);
+          setIsCheckout(false);
+          setMobileCartOpen(false);
+        }
+      } else { const d = await res.json(); alert(d.error || "Erro."); }
     } catch { alert("Erro ao conectar."); } finally { setLoading(false); }
   };
 
@@ -678,6 +709,27 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
             <button onClick={submitReview} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg, #F59E0B, #EF4444)", color: "white", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer" }}>
               Enviar Avaliação
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT GATEWAY MODAL — Pagar.me (PIX / Cartão / Voucher) */}
+      {showPayment && pendingOrderId && (
+        <div className="mob-cart-overlay" style={{ zIndex: 9999 }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "white", borderRadius: "20px", padding: "1.75rem",
+            maxWidth: "440px", width: "92%", margin: "auto",
+            position: "relative", top: "50%", transform: "translateY(-50%)",
+            maxHeight: "90vh", overflowY: "auto",
+            boxShadow: "0 25px 60px rgba(0,0,0,0.25)"
+          }}>
+            <PaymentGateway
+              orderId={pendingOrderId}
+              amount={pendingAmount}
+              onPaid={() => { setShowPayment(false); setOrderSuccess(pendingOrderId); }}
+              onError={(msg) => { alert(`❌ ${msg}`); }}
+              onCancel={() => { setShowPayment(false); setOrderSuccess(pendingOrderId); }}
+            />
           </div>
         </div>
       )}
