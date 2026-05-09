@@ -12,7 +12,7 @@ export default async function StoreFinanceiroPage() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user?.email || "" },
-    select: { id: true, paymentFees: true, storeName: true }
+    select: { id: true, paymentFees: true, storeName: true, storeOrderCount: true, createdAt: true }
   });
   if (!user) redirect("/");
 
@@ -38,6 +38,7 @@ export default async function StoreFinanceiroPage() {
     status: o.status,
     deliveryType: o.deliveryType,
     paymentMethod: o.paymentMethod || "",
+    pagarmeMethod: (o as any).pagarmeMethod || null,
     source: o.source || "ONLINE",
     createdAt: o.createdAt.toISOString(),
     items: o.items.map(i => ({
@@ -58,6 +59,7 @@ export default async function StoreFinanceiroPage() {
       orders={serialized}
       paymentFees={(user.paymentFees as any) || {}}
       storeName={user.storeName || "Minha Loja"}
+      storeCreatedAt={user.createdAt.toISOString()}
     />
   );
 }

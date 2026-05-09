@@ -5,6 +5,7 @@ import {
   BarChart2, ArrowUpRight, ArrowDownRight, Download, Filter,
   Package, Truck, CreditCard, Percent, Users
 } from "lucide-react";
+import { calcMensalidade, FIREHUB_PLAN } from "@/lib/firehub-billing";
 
 type OrderItem = { quantity: number; price: number; cost: number; name: string };
 type Order = {
@@ -19,10 +20,10 @@ const DEFAULT_GATEWAY_FEES: Record<string, number> = {
   PIX: 0.5, CREDITO: 2.99, DEBITO: 1.5, DINHEIRO: 0, VOUCHER: 5.0
 };
 
-// Plataforma padrão FireHub = 4% do faturamento (min R$60, max R$300)
+// Plataforma FireHub — Pay as You Grow
+// < R$6.250/mês: 4% (mín R$60) | ≥ R$6.250/mês: R$250 fixo
 function calcPlatformFee(total: number): number {
-  const raw = total * 0.04;
-  return Math.min(300, Math.max(60, raw));
+  return calcMensalidade(total).mensalidade;
 }
 
 const PERIOD_PRESETS = [
@@ -92,7 +93,7 @@ function DRERow({ label, value, indent = 0, bold = false, color = "#0F172A", bor
   );
 }
 
-export default function DREClient({ orders, paymentFees, storeName }: { orders: Order[]; paymentFees: any; storeName: string }) {
+export default function DREClient({ orders, paymentFees, storeName, storeCreatedAt }: { orders: Order[]; paymentFees: any; storeName: string; storeCreatedAt?: string }) {
   const [preset, setPreset] = useState(1); // 7 dias default
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -283,7 +284,15 @@ export default function DREClient({ orders, paymentFees, storeName }: { orders: 
             <div style={{ padding: "12px 24px 4px", background: "#F0F9FF" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#0369A1", letterSpacing: 1 }}>PLATAFORMA FIREHUB</span>
             </div>
-            <DRERow label="(-) Mensalidade FireHub (4% · mín R$60 · máx R$300)" value={-dre.taxaFireHub} color="#0369A1" />
+            <DRERow label={`(-) Mensalidade FireHub (4% · mín R$60 · teto R$${FIREHUB_PLAN.MAX_MONTHLY})`} value={-dre.taxaFireHub} color="#0369A1" />
+            <div style={{ padding: "6px 24px 10px", background: "#F0F9FF" }}>
+              <span style={{ fontSize: "0.72rem", color: "#0369A1" }}>
+                {dre.receitaBruta >= FIREHUB_PLAN.THRESHOLD
+                  ? `✅ Teto atingido — R$${FIREHUB_PLAN.MAX_MONTHLY} fixo (faturamento ≥ R$${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")})`
+                  : `📊 ${FIREHUB_PLAN.PERCENT_RATE}% de R$${dre.receitaBruta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} — aumenta até R$${FIREHUB_PLAN.MAX_MONTHLY} teto`
+                }
+              </span>
+            </div>
             <div style={{ background: dre.lucroLiquido >= 0 ? "#F0FDF4" : "#FFF1F2", borderTop: "2px solid #E2E8F0" }}>
               <DRERow label="(=) LUCRO LÍQUIDO FINAL" value={dre.lucroLiquido} bold color={dre.lucroLiquido >= 0 ? "#16A34A" : "#DC2626"} />
             </div>
