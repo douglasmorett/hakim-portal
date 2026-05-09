@@ -44,6 +44,16 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const [deleting, setDeleting] = useState(false);
   const [softDeletedName, setSoftDeletedName] = useState<string | null>(null);
 
+  // Smart Pause — pausar item que está em combos
+  const [pauseModal, setPauseModal] = useState<{ id: string; name: string; affectedCombos: any[]; newActive: boolean } | null>(null);
+  const [pausing, setPausing] = useState(false);
+  const [toastMsg, setToastMsg] = useState<{ text: string; color: string } | null>(null);
+
+  const showToast = (text: string, color = "#10B981") => {
+    setToastMsg({ text, color });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -126,8 +136,43 @@ export default function MenuProductManager({ products, availableItems }: { produ
     router.refresh();
   };
 
-  const handleToggle = async (id: string, cur: boolean) => {
-    await fetch("/api/admin/menu-products", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, active: !cur }) });
+  const handleToggle = (id: string, cur: boolean) => {
+    const product = products.find(p => p.id === id);
+    const newActive = !cur;
+
+    // Se estiver PAUSANDO um item avulso, verificar se há combos que o contêm
+    if (!newActive && product && !product.isCombo) {
+      const affectedCombos = products.filter(p =>
+        p.isCombo &&
+        p.comboGroups?.some((g: any) =>
+          g.items?.some((i: any) => i.menuProduct?.id === id || i.menuProductId === id)
+        )
+      );
+      if (affectedCombos.length > 0) {
+        setPauseModal({ id, name: product.name, affectedCombos, newActive });
+        return;
+      }
+    }
+    // Sem combos afetados: toggle direto
+    doToggle(id, newActive);
+  };
+
+  const doToggle = async (id: string, newActive: boolean, alsoComboIds?: string[]) => {
+    setPausing(true);
+    await fetch("/api/admin/menu-products", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, active: newActive })
+    });
+    if (alsoComboIds && alsoComboIds.length > 0) {
+      await Promise.all(alsoComboIds.map(cid =>
+        fetch("/api/admin/menu-products", {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: cid, active: newActive })
+        })
+      ));
+    }
+    setPausing(false);
+    setPauseModal(null);
     router.refresh();
   };
 
@@ -215,18 +260,106 @@ export default function MenuProductManager({ products, availableItems }: { produ
         </div>
       )}
 
-      {/* TOAST soft-delete */}
-      {softDeletedName && (
+      {/* TOAST genérico */}
+      {(toastMsg || softDeletedName) && (
         <div style={{
           position: "fixed", bottom: 24, right: 24, zIndex: 9998,
-          background: "#F59E0B", color: "#000", fontWeight: 700,
-          padding: "0.75rem 1.25rem", borderRadius: "12px",
+          background: toastMsg?.color || "#F59E0B", color: toastMsg?.color === "#EF4444" ? "#fff" : "#000",
+          fontWeight: 700, padding: "0.75rem 1.25rem", borderRadius: "12px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.3)", fontSize: "0.85rem",
-          animation: "fadeInUp 0.2s ease",
         }}>
-          ⚠️ "{softDeletedName}" tem pedidos vinculados e foi <u>desativado</u> em vez de excluído.
+          {toastMsg ? toastMsg.text : `⚠️ "${softDeletedName}" foi desativado (tem pedidos vinculados).`}
         </div>
       )}
+
+      {/* ===== MODAL PAUSE INTELIGENTE ===== */}
+      {pauseModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            background: "var(--surface, #1E293B)", borderRadius: "18px",
+            padding: "2rem", maxWidth: "460px", width: "92%",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            {/* Ícone */}
+            <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+              <div style={{
+                width: 60, height: 60, borderRadius: "50%",
+                background: "rgba(245,158,11,0.15)", border: "2px solid #F59E0B",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem",
+              }}>⏸️</div>
+            </div>
+
+            <h3 style={{ textAlign: "center", fontWeight: 900, fontSize: "1.15rem", color: "var(--text, #F1F5F9)", marginBottom: "0.4rem" }}>
+              Pausar item vinculado a combos
+            </h3>
+            <p style={{ textAlign: "center", color: "var(--text-muted, #94A3B8)", fontSize: "0.88rem", marginBottom: "1rem" }}>
+              <strong style={{ color: "#F59E0B" }}>"{pauseModal.name}"</strong> faz parte de{" "}
+              <strong style={{ color: "var(--text, #F1F5F9)" }}>{pauseModal.affectedCombos.length} combo{pauseModal.affectedCombos.length > 1 ? "s" : ""}</strong>:
+            </p>
+
+            {/* Lista de combos afetados */}
+            <div style={{
+              background: "rgba(0,0,0,0.2)", borderRadius: "10px", padding: "0.6rem 1rem",
+              marginBottom: "1.25rem", maxHeight: "120px", overflowY: "auto",
+            }}>
+              {pauseModal.affectedCombos.map((c: any) => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0", fontSize: "0.85rem", color: "var(--text, #F1F5F9)" }}>
+                  <span style={{ fontSize: "0.7rem", background: "#F59E0B", color: "#000", borderRadius: "4px", padding: "1px 5px", fontWeight: 700 }}>COMBO</span>
+                  {c.name}
+                </div>
+              ))}
+            </div>
+
+            {/* Três opções */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              <button
+                onClick={() => { doToggle(pauseModal.id, false); showToast(`✅ Só "${pauseModal.name}" foi pausado.`); }}
+                disabled={pausing}
+                style={{
+                  padding: "0.7rem 1rem", borderRadius: "10px", fontWeight: 700, border: "1.5px solid #F59E0B",
+                  background: "rgba(245,158,11,0.08)", color: "#F59E0B", cursor: "pointer", fontSize: "0.9rem", textAlign: "left",
+                }}>
+                ⏸️ Pausar só este item
+                <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 400, opacity: 0.7, marginTop: "2px" }}>
+                  Os combos continuarão ativos (mas sem este item disponível)
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  doToggle(pauseModal.id, false, pauseModal.affectedCombos.map((c: any) => c.id));
+                  showToast(`✅ "${pauseModal.name}" e ${pauseModal.affectedCombos.length} combo(s) foram pausados.`);
+                }}
+                disabled={pausing}
+                style={{
+                  padding: "0.7rem 1rem", borderRadius: "10px", fontWeight: 700, border: "1.5px solid #EF4444",
+                  background: "rgba(239,68,68,0.08)", color: "#EF4444", cursor: "pointer", fontSize: "0.9rem", textAlign: "left",
+                }}>
+                ⏸️ Pausar este item + todos os {pauseModal.affectedCombos.length} combo(s)
+                <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 400, opacity: 0.7, marginTop: "2px" }}>
+                  Recomendado quando o item é essencial para o combo
+                </span>
+              </button>
+
+              <button
+                onClick={() => setPauseModal(null)}
+                style={{
+                  padding: "0.55rem", borderRadius: "10px", fontWeight: 600,
+                  border: "1px solid rgba(255,255,255,0.1)", background: "transparent",
+                  color: "var(--text-muted, #64748B)", cursor: "pointer", fontSize: "0.85rem",
+                }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* TABS */}
 
