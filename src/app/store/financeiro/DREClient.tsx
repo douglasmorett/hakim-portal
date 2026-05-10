@@ -1,11 +1,13 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag,
   BarChart2, ArrowUpRight, ArrowDownRight, Download, Filter,
-  Package, Truck, CreditCard, Percent, Users
+  Package, Truck, CreditCard, Percent, Users, Plus, Trash2, Building2
 } from "lucide-react";
 import { calcMensalidade, FIREHUB_PLAN } from "@/lib/firehub-billing";
+
+type FixedCost = { id: string; label: string; value: number };
 
 type OrderItem = { quantity: number; price: number; cost: number; name: string };
 type Order = {
@@ -93,19 +95,58 @@ function DRERow({ label, value, indent = 0, bold = false, color = "#0F172A", bor
   );
 }
 
-export default function DREClient({ orders, paymentFees, storeName, storeCreatedAt, produtosSemCusto = [] }: {
+export default function DREClient({ orders, paymentFees, storeName, storeCreatedAt, produtosSemCusto = [], initialFixedCosts = [] }: {
   orders: Order[];
   paymentFees: any;
   storeName: string;
   storeCreatedAt?: string;
   produtosSemCusto?: { id: string; name: string }[];
+  initialFixedCosts?: FixedCost[];
 }) {
   const [preset, setPreset] = useState(1); // 7 dias default
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [useCustom, setUseCustom] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dre" | "extrato" | "pagamentos" | "mensalidade">("dre");
+  const [activeTab, setActiveTab] = useState<"dre" | "extrato" | "pagamentos" | "mensalidade" | "custosfix">("dre");
   const [showAllSemCusto, setShowAllSemCusto] = useState(false);
+
+  // ===== CUSTOS FIXOS =====
+  const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(initialFixedCosts);
+  const [newLabel, setNewLabel] = useState("");
+  const [newValue, setNewValue] = useState("");
+  const [savingFC, setSavingFC] = useState(false);
+  const [savedFC, setSavedFC] = useState(false);
+
+  const totalFixedCosts = fixedCosts.reduce((s, c) => s + c.value, 0);
+
+  const saveFixedCosts = useCallback(async (costs: FixedCost[]) => {
+    setSavingFC(true);
+    try {
+      await fetch("/api/store/fixed-costs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fixedCosts: costs }),
+      });
+      setSavedFC(true);
+      setTimeout(() => setSavedFC(false), 2000);
+    } finally { setSavingFC(false); }
+  }, []);
+
+  const addFixedCost = () => {
+    const val = parseFloat(newValue.replace(",", "."));
+    if (!newLabel.trim() || isNaN(val) || val <= 0) return;
+    const updated = [...fixedCosts, { id: Date.now().toString(), label: newLabel.trim(), value: val }];
+    setFixedCosts(updated);
+    setNewLabel("");
+    setNewValue("");
+    saveFixedCosts(updated);
+  };
+
+  const removeFixedCost = (id: string) => {
+    const updated = fixedCosts.filter(c => c.id !== id);
+    setFixedCosts(updated);
+    saveFixedCosts(updated);
+  };
 
   const { from, to } = useMemo(() => {
     if (useCustom && customFrom && customTo) {
@@ -156,11 +197,18 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
     // Taxa FireHub (Pay as You Grow)
     const taxaFireHub = calcPlatformFee(receitaBruta);
 
+    // Proporção dos custos fixos mensais no período selecionado
+    // (ex: 7 dias = 7/30 dos custos fixos mensais)
+    const diasNoPeriodo = Math.max(1, Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)));
+    const proporcaoPeriodo = Math.min(1, diasNoPeriodo / 30);
+    const custosFixosPeriodo = totalFixedCosts * proporcaoPeriodo;
+
     // DRE
     const lucro1 = receitaSemFrete - cmv;  // Lucro Bruto
     const despesasOp = taxaGateway + custoMotoboy;
     const ebitda = lucro1 - despesasOp;
-    const lucroLiquido = ebitda - taxaFireHub;
+    const lucroAntesFixos = ebitda - taxaFireHub;
+    const lucroLiquido = lucroAntesFixos - custosFixosPeriodo; // ← impacto dos custos fixos
 
     // Totais
     const totalPedidos = filtered.length;
@@ -172,11 +220,12 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
 
     return {
       receitaBruta, totalFrete, receitaSemFrete, cmv, taxaGateway,
-      custoMotoboy, taxaFireHub, lucro1, despesasOp, ebitda, lucroLiquido,
+      custoMotoboy, taxaFireHub, lucro1, despesasOp, ebitda,
+      lucroAntesFixos, custosFixosPeriodo, lucroLiquido,
       totalPedidos, ticketMedio, delivery, retirada, margemLiquida, margemCMV,
-      cancelados: cancelled.length
+      cancelados: cancelled.length, diasNoPeriodo, proporcaoPeriodo
     };
-  }, [filtered, cancelled, paymentFees]);
+  }, [filtered, cancelled, paymentFees, totalFixedCosts, from, to]);
 
   // Grupos por forma de pagamento
   const paymentGroups = useMemo(() => {
@@ -239,90 +288,96 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
             <button style={tabStyle("extrato")} onClick={() => setActiveTab("extrato")}>📋 Extrato</button>
             <button style={tabStyle("pagamentos")} onClick={() => setActiveTab("pagamentos")}>💳 Pagamentos</button>
             <button style={tabStyle("mensalidade")} onClick={() => setActiveTab("mensalidade")}>💰 Mensalidade</button>
+            <button
+              style={{
+                ...tabStyle("custosfix"),
+                background: activeTab === "custosfix" ? "#7C3AED" : (fixedCosts.length > 0 ? "#F3E8FF" : "transparent"),
+                color: activeTab === "custosfix" ? "#fff" : (fixedCosts.length > 0 ? "#7C3AED" : "#64748B"),
+              }}
+              onClick={() => setActiveTab("custosfix")}
+            >
+              🏢 Custos Fixos {fixedCosts.length > 0 && <span style={{ background: "#7C3AED", color: "#fff", borderRadius: 20, padding: "1px 7px", fontSize: "0.72rem", marginLeft: 4 }}>{fixedCosts.length}</span>}
+            </button>
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "1.5rem" }}>
 
-        {/* ===== ALERTA PRODUTOS SEM CUSTO ===== */}
-        {produtosSemCusto.length > 0 && (
-          <div style={{
-            background: "#FFFBEB", border: "2px solid #F59E0B", borderRadius: "14px",
-            padding: "16px 20px", marginBottom: "1.5rem",
-            display: "flex", gap: "14px", alignItems: "flex-start"
-          }}>
-            <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>⚠️</div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontWeight: 800, color: "#92400E", margin: "0 0 4px", fontSize: "0.95rem" }}>
-                Dados de CMV incompletos — {produtosSemCusto.length} {produtosSemCusto.length === 1 ? "produto sem" : "produtos sem"} custo cadastrado
-              </p>
-              <p style={{ color: "#78350F", fontSize: "0.82rem", margin: "0 0 10px", lineHeight: 1.5 }}>
-                O <strong>Custo dos Produtos Vendidos (CMV)</strong> e a <strong>margem de lucro</strong> exibidos abaixo estão <strong>incorretos</strong>.
-                Clique em cada produto para cadastrar o custo direto no cardápio.
-              </p>
-
-              {/* Badges clicáveis */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
-                {(showAllSemCusto ? produtosSemCusto : produtosSemCusto.slice(0, 10)).map(p => (
+        {/* ===== ALERTA CMV + KPIs — visíveis apenas na aba DRE ===== */}
+        {activeTab === "dre" && (
+          <>
+            {/* ALERTA PRODUTOS SEM CUSTO */}
+            {produtosSemCusto.length > 0 && (
+              <div style={{
+                background: "#FFFBEB", border: "2px solid #F59E0B", borderRadius: "14px",
+                padding: "16px 20px", marginBottom: "1.5rem",
+                display: "flex", gap: "14px", alignItems: "flex-start"
+              }}>
+                <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>⚠️</div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontWeight: 800, color: "#92400E", margin: "0 0 4px", fontSize: "0.95rem" }}>
+                    Dados de CMV incompletos — {produtosSemCusto.length} {produtosSemCusto.length === 1 ? "produto sem" : "produtos sem"} custo cadastrado
+                  </p>
+                  <p style={{ color: "#78350F", fontSize: "0.82rem", margin: "0 0 10px", lineHeight: 1.5 }}>
+                    O <strong>Custo dos Produtos Vendidos (CMV)</strong> e a <strong>margem de lucro</strong> exibidos abaixo estão <strong>incorretos</strong>.
+                    Clique em cada produto para cadastrar o custo direto no cardápio.
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+                    {(showAllSemCusto ? produtosSemCusto : produtosSemCusto.slice(0, 10)).map(p => (
+                      <a
+                        key={p.id}
+                        href="/store/cardapio"
+                        title={`Clique para cadastrar custo de ${p.name}`}
+                        style={{
+                          background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: "6px",
+                          padding: "3px 10px", fontSize: "0.78rem", fontWeight: 600, color: "#92400E",
+                          textDecoration: "none", cursor: "pointer", transition: "background 0.15s",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "#FDE68A")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "#FEF3C7")}
+                      >
+                        {p.name}
+                      </a>
+                    ))}
+                    {produtosSemCusto.length > 10 && (
+                      <button
+                        onClick={() => setShowAllSemCusto(v => !v)}
+                        style={{
+                          fontSize: "0.78rem", color: "#92400E", fontWeight: 700,
+                          background: "none", border: "1px dashed #FCD34D", borderRadius: "6px",
+                          padding: "3px 10px", cursor: "pointer", alignSelf: "center"
+                        }}
+                      >
+                        {showAllSemCusto ? "▲ Ver menos" : `▼ Ver mais ${produtosSemCusto.length - 10} produtos`}
+                      </button>
+                    )}
+                  </div>
                   <a
-                    key={p.id}
                     href="/store/cardapio"
-                    title={`Clique para cadastrar custo de ${p.name}`}
                     style={{
-                      background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: "6px",
-                      padding: "3px 10px", fontSize: "0.78rem", fontWeight: 600, color: "#92400E",
-                      textDecoration: "none", cursor: "pointer",
-                      transition: "background 0.15s",
+                      display: "inline-flex", alignItems: "center", gap: "6px",
+                      background: "#F59E0B", color: "#fff", padding: "8px 16px",
+                      borderRadius: "8px", fontWeight: 700, fontSize: "0.82rem", textDecoration: "none"
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#FDE68A")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "#FEF3C7")}
                   >
-                    {p.name}
+                    📦 Abrir cardápio e cadastrar custos
                   </a>
-                ))}
-
-                {/* Botão Ver mais / Ver menos */}
-                {produtosSemCusto.length > 10 && (
-                  <button
-                    onClick={() => setShowAllSemCusto(v => !v)}
-                    style={{
-                      fontSize: "0.78rem", color: "#92400E", fontWeight: 700,
-                      background: "none", border: "1px dashed #FCD34D", borderRadius: "6px",
-                      padding: "3px 10px", cursor: "pointer", alignSelf: "center"
-                    }}
-                  >
-                    {showAllSemCusto
-                      ? "▲ Ver menos"
-                      : `▼ Ver mais ${produtosSemCusto.length - 10} produtos`}
-                  </button>
-                )}
+                </div>
               </div>
+            )}
 
-              <a
-                href="/store/cardapio"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: "6px",
-                  background: "#F59E0B", color: "#fff", padding: "8px 16px",
-                  borderRadius: "8px", fontWeight: 700, fontSize: "0.82rem",
-                  textDecoration: "none"
-                }}
-              >
-                📦 Abrir cardápio e cadastrar custos
-              </a>
+            {/* KPIs */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+              <KPICard icon={<DollarSign size={18} color="#16A34A" />} label="Receita Bruta" value={fmtR(dre.receitaBruta)} sub={`${dre.totalPedidos} pedidos`} color="#16A34A" />
+              <KPICard icon={<TrendingUp size={18} color="#3B82F6" />} label="Lucro Líquido" value={fmtR(dre.lucroLiquido)} sub={`Margem: ${fmtPct(dre.margemLiquida)}`} color="#3B82F6" />
+              <KPICard icon={<ShoppingBag size={18} color="#8B5CF6" />} label="Ticket Médio" value={fmtR(dre.ticketMedio)} sub={`Delivery: ${dre.delivery} | Retirada: ${dre.retirada}`} color="#8B5CF6" />
+              <KPICard icon={<Package size={18} color="#F59E0B" />} label="CMV (Custo Produto)" value={fmtR(dre.cmv)} sub={`${fmtPct(dre.margemCMV)} da receita`} color="#F59E0B" />
+              <KPICard icon={<Truck size={18} color="#06B6D4" />} label="Custo Motoboy" value={fmtR(dre.custoMotoboy)} sub={`${dre.delivery} entregas`} color="#06B6D4" />
+              <KPICard icon={<Users size={18} color="#EC4899" />} label="Cancelamentos" value={`${dre.cancelados}`} sub="pedidos cancelados" color="#EC4899" />
             </div>
-          </div>
+          </>
         )}
-
-        {/* ===== KPIs ===== */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-          <KPICard icon={<DollarSign size={18} color="#16A34A" />} label="Receita Bruta" value={fmtR(dre.receitaBruta)} sub={`${dre.totalPedidos} pedidos`} color="#16A34A" />
-          <KPICard icon={<TrendingUp size={18} color="#3B82F6" />} label="Lucro Líquido" value={fmtR(dre.lucroLiquido)} sub={`Margem: ${fmtPct(dre.margemLiquida)}`} color="#3B82F6" />
-          <KPICard icon={<ShoppingBag size={18} color="#8B5CF6" />} label="Ticket Médio" value={fmtR(dre.ticketMedio)} sub={`Delivery: ${dre.delivery} | Retirada: ${dre.retirada}`} color="#8B5CF6" />
-          <KPICard icon={<Package size={18} color="#F59E0B" />} label="CMV (Custo Produto)" value={fmtR(dre.cmv)} sub={`${fmtPct(dre.margemCMV)} da receita`} color="#F59E0B" />
-          <KPICard icon={<Truck size={18} color="#06B6D4" />} label="Custo Motoboy" value={fmtR(dre.custoMotoboy)} sub={`${dre.delivery} entregas`} color="#06B6D4" />
-          <KPICard icon={<Users size={18} color="#EC4899" />} label="Cancelamentos" value={`${dre.cancelados}`} sub="pedidos cancelados" color="#EC4899" />
-        </div>
 
         {/* ===== ABA DRE ===== */}
         {activeTab === "dre" && (
@@ -370,6 +425,41 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
                 }
               </span>
             </div>
+            <div style={{ background: dre.lucroAntesFixos >= 0 ? "#F0FDF4" : "#FFF1F2", borderTop: "2px solid #E2E8F0" }}>
+              <DRERow label="(=) LUCRO ANTES DOS CUSTOS FIXOS" value={dre.lucroAntesFixos} bold color={dre.lucroAntesFixos >= 0 ? "#16A34A" : "#DC2626"} />
+            </div>
+
+            {/* CUSTOS FIXOS */}
+            {fixedCosts.length > 0 && (
+              <>
+                <div style={{ padding: "12px 24px 4px", background: "#F5F3FF" }}>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#7C3AED", letterSpacing: 1 }}>
+                    CUSTOS FIXOS MENSAIS
+                    {dre.proporcaoPeriodo < 1 && (
+                      <span style={{ fontWeight: 400, marginLeft: 8 }}>
+                        (proporcional: {dre.diasNoPeriodo} dias = {Math.round(dre.proporcaoPeriodo * 100)}% do mês)
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {fixedCosts.map(c => (
+                  <DRERow key={c.id} label={`(-) ${c.label}`} value={-(c.value * dre.proporcaoPeriodo)} color="#7C3AED" indent={1} />
+                ))}
+                <DRERow label="(-) Total Custos Fixos (período)" value={-dre.custosFixosPeriodo} color="#7C3AED" />
+              </>
+            )}
+
+            {fixedCosts.length === 0 && (
+              <div style={{ padding: "10px 24px", background: "#FAFAFA", borderTop: "1px solid #F1F5F9" }}>
+                <span style={{ fontSize: "0.75rem", color: "#94A3B8" }}>
+                  💡 Nenhum custo fixo cadastrado —{" "}
+                  <button onClick={() => setActiveTab("custosfix")} style={{ background: "none", border: "none", color: "#7C3AED", cursor: "pointer", fontWeight: 700, fontSize: "0.75rem", padding: 0, fontFamily: "inherit" }}>
+                    clique aqui para cadastrar aluguel, funcionários, etc.
+                  </button>
+                </span>
+              </div>
+            )}
+
             <div style={{ background: dre.lucroLiquido >= 0 ? "#F0FDF4" : "#FFF1F2", borderTop: "2px solid #E2E8F0" }}>
               <DRERow label="(=) LUCRO LÍQUIDO FINAL" value={dre.lucroLiquido} bold color={dre.lucroLiquido >= 0 ? "#16A34A" : "#DC2626"} />
             </div>
@@ -578,6 +668,120 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
           );
         })()}
       </div>
+
+      {/* ===== ABA CUSTOS FIXOS ===== */}
+      {activeTab === "custosfix" && (
+        <div style={{ maxWidth: 700, margin: "0 auto", padding: "1.5rem" }}>
+          <div style={{ background: "linear-gradient(135deg,#7C3AED,#6D28D9)", borderRadius: 16, padding: "1.5rem", color: "#fff", marginBottom: "1.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+              <Building2 size={24} />
+              <h2 style={{ fontWeight: 900, fontSize: "1.2rem", margin: 0 }}>Custos Fixos Mensais</h2>
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.8)", margin: 0 }}>
+              Cadastre aluguel, funcionários, energia, internet e outros. Eles são descontados proporcionalmente do lucro líquido no DRE.
+            </p>
+            {fixedCosts.length > 0 && (
+              <div style={{ marginTop: 12, background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>Total mensal cadastrado:</span>
+                <span style={{ fontSize: "1.1rem", fontWeight: 900 }}>R$ {totalFixedCosts.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Formulário para adicionar */}
+          <div style={{ background: "#fff", borderRadius: 16, padding: "1.25rem", border: "1px solid #E2E8F0", marginBottom: "1.25rem" }}>
+            <h3 style={{ fontWeight: 800, fontSize: "0.95rem", margin: "0 0 1rem" }}>➕ Adicionar custo fixo</h3>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <input
+                value={newLabel}
+                onChange={e => setNewLabel(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addFixedCost()}
+                placeholder="Descrição (ex: Aluguel, Salário João, Energia...)"
+                style={{ flex: 2, minWidth: 180, padding: "10px 14px", borderRadius: 10, border: "1.5px solid #E2E8F0", fontSize: "0.88rem", fontFamily: "inherit" }}
+              />
+              <div style={{ position: "relative", flex: 1, minWidth: 120 }}>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#64748B", fontSize: "0.85rem", fontWeight: 700 }}>R$</span>
+                <input
+                  value={newValue}
+                  onChange={e => setNewValue(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addFixedCost()}
+                  placeholder="0,00"
+                  type="text"
+                  inputMode="decimal"
+                  style={{ width: "100%", padding: "10px 14px 10px 34px", borderRadius: 10, border: "1.5px solid #E2E8F0", fontSize: "0.88rem", fontFamily: "inherit", boxSizing: "border-box" }}
+                />
+              </div>
+              <button
+                onClick={addFixedCost}
+                disabled={!newLabel.trim() || !newValue}
+                style={{ padding: "10px 20px", borderRadius: 10, background: (!newLabel.trim() || !newValue) ? "#E2E8F0" : "#7C3AED", color: (!newLabel.trim() || !newValue) ? "#94A3B8" : "#fff", border: "none", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}
+              >
+                <Plus size={16} /> Adicionar
+              </button>
+            </div>
+            <p style={{ fontSize: "0.72rem", color: "#94A3B8", margin: "8px 0 0" }}>
+              💡 Pressione Enter para adicionar rapidamente. Salvo automaticamente.
+            </p>
+          </div>
+
+          {/* Lista */}
+          {fixedCosts.length === 0 ? (
+            <div style={{ background: "#fff", borderRadius: 16, padding: "2.5rem", textAlign: "center", border: "1.5px dashed #E2E8F0" }}>
+              <Building2 size={40} color="#CBD5E1" style={{ marginBottom: 12 }} />
+              <p style={{ fontWeight: 700, color: "#64748B", margin: "0 0 6px" }}>Nenhum custo fixo cadastrado</p>
+              <p style={{ fontSize: "0.82rem", color: "#94A3B8", margin: 0 }}>Adicione aluguel, salários, energia, internet, etc.</p>
+            </div>
+          ) : (
+            <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E2E8F0", overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748B" }}>DESCRIÇÃO</span>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748B" }}>VALOR / MÊS</span>
+              </div>
+              {fixedCosts.map((c, i) => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderTop: i === 0 ? "none" : "1px solid #F1F5F9" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#7C3AED", flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{c.label}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "#7C3AED" }}>
+                      R$ {c.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                    <button onClick={() => removeFixedCost(c.id)} style={{ padding: 6, borderRadius: 8, background: "#FEF2F2", border: "none", cursor: "pointer" }}>
+                      <Trash2 size={14} color="#EF4444" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div style={{ padding: "14px 16px", background: "#F5F3FF", borderTop: "2px solid #DDD6FE", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontWeight: 800, color: "#7C3AED" }}>Total mensal</span>
+                <span style={{ fontWeight: 900, fontSize: "1.05rem", color: "#7C3AED" }}>
+                  R$ {totalFixedCosts.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Impacto */}
+          {fixedCosts.length > 0 && (
+            <div style={{ background: "#FFFBEB", border: "1.5px solid #FDE68A", borderRadius: 14, padding: "1rem 1.25rem", marginTop: "1.25rem" }}>
+              <p style={{ fontWeight: 800, fontSize: "0.88rem", color: "#92400E", margin: "0 0 8px" }}>📊 Impacto no período atual ({dre.diasNoPeriodo} dias)</p>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#78350F", marginBottom: 4 }}>
+                <span>Custo proporcional do período:</span>
+                <strong>- R$ {dre.custosFixosPeriodo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#78350F" }}>
+                <span>Lucro líquido resultante:</span>
+                <strong style={{ color: dre.lucroLiquido >= 0 ? "#16A34A" : "#DC2626" }}>
+                  R$ {dre.lucroLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </strong>
+              </div>
+            </div>
+          )}
+
+          {savedFC && <div style={{ marginTop: 12, textAlign: "center", color: "#16A34A", fontWeight: 700 }}>✅ Custos salvos!</div>}
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 768px) {

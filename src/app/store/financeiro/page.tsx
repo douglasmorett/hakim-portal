@@ -12,11 +12,14 @@ export default async function StoreFinanceiroPage() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user?.email || "" },
-    select: { id: true, paymentFees: true, storeName: true, storeOrderCount: true, createdAt: true }
+    select: {
+      id: true, paymentFees: true, storeName: true,
+      storeOrderCount: true, createdAt: true,
+      fixedCosts: true, financialGoals: true
+    }
   });
   if (!user) redirect("/");
 
-  // Busca os últimos 365 dias para que o cliente filtre no front
   const since = new Date();
   since.setDate(since.getDate() - 365);
 
@@ -29,14 +32,8 @@ export default async function StoreFinanceiroPage() {
     orderBy: { createdAt: "desc" }
   });
 
-  // Produtos sem custo cadastrado (impacta CMV e margem)
   const produtosSemCusto = await prisma.menuProduct.findMany({
-    where: {
-      OR: [
-        { cost: null },
-        { cost: 0 }
-      ]
-    },
+    where: { OR: [{ cost: null }, { cost: 0 }] },
     select: { name: true, id: true }
   });
 
@@ -65,6 +62,9 @@ export default async function StoreFinanceiroPage() {
     } : null
   }));
 
+  const fixedCosts = Array.isArray(user.fixedCosts) ? (user.fixedCosts as any[]) : [];
+  const financialGoals = (user.financialGoals as any) || {};
+
   return (
     <DREClient
       orders={serialized}
@@ -72,6 +72,8 @@ export default async function StoreFinanceiroPage() {
       storeName={user.storeName || "Minha Loja"}
       storeCreatedAt={user.createdAt.toISOString()}
       produtosSemCusto={produtosSemCusto.map(p => ({ id: p.id, name: p.name || "Sem nome" }))}
+      initialFixedCosts={fixedCosts}
+      initialGoals={financialGoals}
     />
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCart } from "./CartProvider";
-import { Plus, Minus, Info, Clock, Search, ShoppingCart, Trash2, X } from "lucide-react";
+import { Plus, Minus, Info, Clock, Search, ShoppingCart, Trash2, X, AlertCircle } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ProductGrid({ products, deliveryInfo }: { products: any[], deliveryInfo: { limitStr: string, deliveryStr: string, limitDateIso?: string } }) {
   const { items, addToCart, removeFromCart, total } = useCart();
@@ -12,6 +13,9 @@ export default function ProductGrid({ products, deliveryInfo }: { products: any[
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Todos");
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [showMinError, setShowMinError] = useState(false);
+  const router = useRouter();
+  const MIN_ORDER = 300;
   
   const [now, setNow] = useState<Date | null>(null);
 
@@ -47,6 +51,15 @@ export default function ProductGrid({ products, deliveryInfo }: { products: any[
   }, [products, searchQuery, selectedCategory]);
 
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
+
+  const handleFinalizarPedido = () => {
+    if (total < MIN_ORDER) {
+      setShowMinError(true);
+      return;
+    }
+    setShowMinError(false);
+    router.push("/store/cart");
+  };
 
   const CartSidebar = () => (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -94,13 +107,60 @@ export default function ProductGrid({ products, deliveryInfo }: { products: any[
 
       {items.length > 0 && (
         <div style={{ borderTop: "2px solid #E2E8F0", padding: "1rem 1.25rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-            <span style={{ fontWeight: 600, color: "#64748B" }}>Total</span>
-            <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "#1565C0" }}>R$ {total.toFixed(2)}</span>
+          {/* Progress bar + alerta de mínimo */}
+          <div style={{ marginBottom: "0.75rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span style={{ fontWeight: 600, color: "#64748B", fontSize: "0.82rem" }}>Total</span>
+              <span style={{ fontWeight: 800, fontSize: "1.05rem", color: total >= MIN_ORDER ? "#16A34A" : "#1565C0" }}>
+                R$ {total.toFixed(2)}
+              </span>
+            </div>
+
+            {/* Barra de progresso em relação ao mínimo */}
+            {total < MIN_ORDER && (
+              <>
+                <div style={{ width: "100%", height: "6px", background: "#E2E8F0", borderRadius: "3px", overflow: "hidden", marginBottom: "6px" }}>
+                  <div style={{ width: `${Math.min((total / MIN_ORDER) * 100, 100)}%`, height: "100%", background: "linear-gradient(90deg, #F59E0B, #EF4444)", borderRadius: "3px", transition: "width 0.3s" }} />
+                </div>
+                <p style={{ fontSize: "0.75rem", color: "#B45309", margin: 0, textAlign: "center" }}>
+                  Faltam <strong>R$ {(MIN_ORDER - total).toFixed(2)}</strong> para o mínimo de R$ {MIN_ORDER},00
+                </p>
+              </>
+            )}
+
+            {total >= MIN_ORDER && (
+              <div style={{ background: "#F0FDF4", borderRadius: 8, padding: "6px 10px", textAlign: "center" }}>
+                <span style={{ fontSize: "0.78rem", color: "#16A34A", fontWeight: 700 }}>✅ Pedido mínimo atingido!</span>
+              </div>
+            )}
           </div>
-          <Link href="/store/cart" style={{ display: "block", width: "100%", padding: "0.7rem", borderRadius: "10px", background: "linear-gradient(135deg, #1565C0, #1976D2)", color: "#fff", fontWeight: 700, fontSize: "0.92rem", textAlign: "center", textDecoration: "none", boxShadow: "0 4px 12px rgba(21,101,192,0.3)" }}>
-            Finalizar Pedido
-          </Link>
+
+          {/* Alerta vermelho ao tentar finalizar sem atingir o mínimo */}
+          {showMinError && total < MIN_ORDER && (
+            <div style={{ background: "#FEF2F2", border: "1.5px solid #FCA5A5", borderRadius: 10, padding: "10px 12px", marginBottom: "0.75rem", display: "flex", gap: 8, alignItems: "flex-start", animation: "shake 0.4s ease" }}>
+              <AlertCircle size={16} color="#DC2626" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <p style={{ fontWeight: 700, fontSize: "0.82rem", color: "#DC2626", margin: "0 0 2px" }}>Pedido mínimo não atingido</p>
+                <p style={{ fontSize: "0.75rem", color: "#B91C1C", margin: 0 }}>Adicione mais <strong>R$ {(MIN_ORDER - total).toFixed(2)}</strong> em produtos para finalizar.</p>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleFinalizarPedido}
+            style={{
+              display: "block", width: "100%", padding: "0.7rem", borderRadius: "10px",
+              background: total >= MIN_ORDER
+                ? "linear-gradient(135deg, #1565C0, #1976D2)"
+                : "linear-gradient(135deg, #94A3B8, #64748B)",
+              color: "#fff", fontWeight: 700, fontSize: "0.92rem", textAlign: "center",
+              border: "none", cursor: "pointer",
+              boxShadow: total >= MIN_ORDER ? "0 4px 12px rgba(21,101,192,0.3)" : "none",
+              fontFamily: "inherit"
+            }}
+          >
+            {total >= MIN_ORDER ? "Finalizar Pedido" : `Faltam R$ ${(MIN_ORDER - total).toFixed(2)}`}
+          </button>
         </div>
       )}
     </div>
@@ -241,6 +301,7 @@ export default function ProductGrid({ products, deliveryInfo }: { products: any[
           .cart-sidebar-desktop { display: flex !important; flex-direction: column !important; }
           .cart-mobile-btn { display: none !important; }
         }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
       `}</style>
     </>
   );
