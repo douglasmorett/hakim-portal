@@ -4,23 +4,24 @@ import { Check, X, Zap, TrendingUp, CreditCard, Smartphone, Star, ArrowRight, Ca
 import { calcMensalidade, FIREHUB_PLAN } from "@/lib/firehub-billing";
 
 const FEATURES = [
-  { label: "Cardápio digital com link próprio", firehub: true, brendi: true },
-  { label: "Pedidos via WhatsApp + IA", firehub: true, brendi: true },
-  { label: "Pagamento PIX online", firehub: true, brendi: true },
-  { label: "Pagamento Cartão online", firehub: true, brendi: true },
-  { label: "Voucher VR / Alelo / Ticket online", firehub: true, brendi: false },
-  { label: "Recebimento cartão crédito", firehub: "D+2", brendi: "D+14" },
-  { label: "Teto de mensalidade", firehub: "R$400/mês", brendi: "R$300/mês" },
-  { label: "Alta Demanda (Surge Pricing)", firehub: true, brendi: true },
-  { label: "Log de auditoria de operações", firehub: true, brendi: false },
-  { label: "Agendar pausa / Férias", firehub: true, brendi: true },
-  { label: "Facebook Pixel automático", firehub: true, brendi: true },
-  { label: "Auto-aceitar pedidos", firehub: true, brendi: true },
-  { label: "Som de alerta configurável", firehub: true, brendi: true },
-  { label: "DRE financeiro completo", firehub: true, brendi: true },
-  { label: "Programa de fidelidade / Cashback", firehub: true, brendi: true },
-  { label: "Cupons de desconto por loja", firehub: true, brendi: true },
-  { label: "Suporte em português (BR)", firehub: true, brendi: true },
+  { label: "Cardápio digital com link próprio", firehub: true, mercado: true },
+  { label: "Pedidos via WhatsApp + IA", firehub: true, mercado: false },
+  { label: "Pagamento PIX online", firehub: true, mercado: true },
+  { label: "Pagamento Cartão online", firehub: true, mercado: true },
+  { label: "Voucher VR / Alelo / Ticket online", firehub: true, mercado: false },
+  { label: "Recebimento cartão crédito", firehub: "D+2", mercado: "D+14" },
+  { label: "Teto de mensalidade (nunca paga mais)", firehub: "R$400/mês", mercado: "Sem teto" },
+  { label: "Zero cobrança em mês sem vendas", firehub: true, mercado: false },
+  { label: "Alta Demanda (Surge Pricing)", firehub: true, mercado: false },
+  { label: "Log de auditoria de operações", firehub: true, mercado: false },
+  { label: "Agendar pausa / Férias", firehub: true, mercado: false },
+  { label: "Facebook Pixel automático", firehub: true, mercado: false },
+  { label: "Auto-aceitar pedidos", firehub: true, mercado: false },
+  { label: "Som de alerta configurável", firehub: true, mercado: false },
+  { label: "DRE financeiro completo", firehub: true, mercado: false },
+  { label: "Programa de fidelidade / Cashback", firehub: true, mercado: false },
+  { label: "Cupons de desconto por loja", firehub: true, mercado: true },
+  { label: "Suporte em português (BR)", firehub: true, mercado: true },
 ];
 
 const PAYMENT_FEES = [
@@ -34,7 +35,6 @@ const PAYMENT_FEES = [
 function SimuladorMensalidade() {
   const [faturamento, setFaturamento] = useState(5000);
   const result = calcMensalidade(faturamento);
-  const brendiResult = faturamento === 0 ? 0 : faturamento >= 7500 ? 300 : Math.max(60, faturamento * 0.04);
 
   const modeloLabel = result.modelo === "zero"
     ? "✅ Mês sem vendas = R$0"
@@ -75,34 +75,26 @@ function SimuladorMensalidade() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1.5rem" }}>
-        <div style={{ background: "#1E293B", borderRadius: "14px", padding: "1.25rem", border: "2px solid #E63946" }}>
-          <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: "0 0 4px" }}>🔥 FireHub</p>
-          <p style={{ fontSize: "2rem", fontWeight: 900, color: result.modelo === "zero" ? "#4ADE80" : "#E63946", margin: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem", marginTop: "1.5rem" }}>
+        <div style={{ background: "#1E293B", borderRadius: "14px", padding: "1.5rem", border: "2px solid #E63946" }}>
+          <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: "0 0 4px" }}>🔥 Sua mensalidade FireHub</p>
+          <p style={{ fontSize: "2.5rem", fontWeight: 900, color: result.modelo === "zero" ? "#4ADE80" : "#E63946", margin: 0 }}>
             {result.modelo === "zero" ? "R$0" : `R$${result.mensalidade.toFixed(0)}`}
           </p>
-          <p style={{ fontSize: "0.72rem", color: "#64748B", margin: "4px 0 0" }}>
+          <p style={{ fontSize: "0.82rem", color: "#64748B", margin: "4px 0 0" }}>
             {modeloLabel}
           </p>
-        </div>
-        <div style={{ background: "#1E293B", borderRadius: "14px", padding: "1.25rem", opacity: 0.7 }}>
-          <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: "0 0 4px" }}>Concorrente</p>
-          <p style={{ fontSize: "2rem", fontWeight: 900, color: "#94A3B8", margin: 0 }}>
-            R${brendiResult.toFixed(0)}
-          </p>
-          <p style={{ fontSize: "0.72rem", color: "#64748B", margin: "4px 0 0" }}>
-            {faturamento === 0 ? "Mês sem vendas = R$0" : faturamento >= 7500 ? "Teto fixo (≥ R$7.500)" : "4% do faturamento"}
-          </p>
+          {faturamento > 0 && result.modelo !== "zero" && (
+            <div style={{ marginTop: "12px", background: "#16A34A20", border: "1px solid #16A34A40", borderRadius: "8px", padding: "8px 12px" }}>
+              <span style={{ color: "#4ADE80", fontWeight: 700, fontSize: "0.82rem" }}>
+                ✅ Sem surpresas — você sabe exatamente o que paga
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {result.economia > 0 && (
-        <div style={{ marginTop: "1rem", background: "#16A34A20", border: "1px solid #16A34A40", borderRadius: "10px", padding: "10px 14px", textAlign: "center" }}>
-          <span style={{ color: "#4ADE80", fontWeight: 700, fontSize: "0.9rem" }}>
-            💰 Você economiza R${result.economia.toFixed(0)}/mês com o FireHub
-          </span>
-        </div>
-      )}
+
 
       <div style={{ marginTop: "1rem", fontSize: "0.75rem", color: "#475569", lineHeight: 1.6 }}>
         <strong style={{ color: "#94A3B8" }}>Como funciona:</strong><br />
@@ -270,15 +262,15 @@ export default function PlanosPage() {
 
         {/* ===== ABA COMPARATIVO ===== */}
         {activeTab === "comparativo" && (
-          <div>
-            <h2 style={{ fontWeight: 800, fontSize: "1.3rem", marginBottom: "0.5rem" }}>FireHub vs Concorrentes</h2>
-            <p style={{ color: "#64748B", marginBottom: "1.5rem" }}>Compare e decida com informação.</p>
+        <div>
+            <h2 style={{ fontWeight: 800, fontSize: "1.3rem", marginBottom: "0.5rem" }}>FireHub vs Mercado Tradicional</h2>
+            <p style={{ color: "#64748B", marginBottom: "1.5rem" }}>Veja o que só o FireHub oferece para o seu restaurante.</p>
             <div style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", border: "1px solid #E2E8F0" }}>
               {/* Header */}
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", background: "#0F172A", padding: "14px 20px", gap: "1rem" }}>
                 <span style={{ fontWeight: 700, fontSize: "0.8rem", color: "#94A3B8" }}>Funcionalidade</span>
                 <span style={{ fontWeight: 800, fontSize: "0.85rem", color: "#E63946", textAlign: "center" }}>🔥 FireHub</span>
-                <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#64748B", textAlign: "center" }}>Concorrente</span>
+                <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#64748B", textAlign: "center" }}>Mercado Tradicional</span>
               </div>
               {FEATURES.map((f, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", padding: "12px 20px", gap: "1rem", borderBottom: "1px solid #F1F5F9", background: i % 2 === 0 ? "#fff" : "#FAFAFA", alignItems: "center" }}>
@@ -292,11 +284,11 @@ export default function PlanosPage() {
                     }
                   </div>
                   <div style={{ textAlign: "center" }}>
-                    {f.brendi === true
+                    {f.mercado === true
                       ? <Check size={18} color="#94A3B8" />
-                      : f.brendi === false
+                      : f.mercado === false
                       ? <X size={18} color="#DC2626" />
-                      : <span style={{ fontWeight: 700, fontSize: "0.8rem", color: "#DC2626" }}>{f.brendi}</span>
+                      : <span style={{ fontWeight: 700, fontSize: "0.8rem", color: "#DC2626" }}>{f.mercado}</span>
                     }
                   </div>
                 </div>
