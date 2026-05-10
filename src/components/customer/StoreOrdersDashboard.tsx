@@ -556,13 +556,13 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
               <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: "12px", padding: "14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
                   <Timer size={16} color="#EA580C" />
-                  <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#EA580C" }}>+Tempo de Preparo</span>
+                  <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#EA580C" }}>+Tempo de Preparo (minutos extras)</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                   {[5,10,15,20,30].map(m => (
                     <button key={m} onClick={() => setAdExtraMinutes(m)}
                       style={{ padding: "6px 12px", borderRadius: "8px", border: `2px solid ${adExtraMinutes === m ? "#EA580C" : "#E2E8F0"}`,
-                        background: adExtraMinutes === m ? "#FFF7ED" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem", color: adExtraMinutes === m ? "#EA580C" : "#64748B" }}>
+                        background: adExtraMinutes === m ? "#FFF7ED" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem", color: adExtraMinutes === m ? "#EA580C" : "#64748B", fontFamily: "inherit" }}>
                       +{m}min
                     </button>
                   ))}
@@ -570,15 +570,18 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
               </div>
 
               <div style={{ background: "#FFF1F2", border: "1px solid #FECDD3", borderRadius: "12px", padding: "14px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                  <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#E11D48" }}>💰 +Taxa de Entrega (Surge)</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+                  <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#E11D48" }}>💰 Taxa extra de entrega</span>
+                  <span style={{ fontSize: "0.72rem", color: "#E11D48", background: "#FFE4E6", padding: "3px 8px", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "4px", width: "fit-content" }}>
+                    ⚠️ O cliente paga R${adExtraFee.toFixed(2)} a mais no frete durante o período ativo
+                  </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {[1,2,3,5,8].map(v => (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  {[0,1,2,3,5,8].map(v => (
                     <button key={v} onClick={() => setAdExtraFee(v)}
                       style={{ padding: "6px 12px", borderRadius: "8px", border: `2px solid ${adExtraFee === v ? "#E11D48" : "#E2E8F0"}`,
-                        background: adExtraFee === v ? "#FFF1F2" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem", color: adExtraFee === v ? "#E11D48" : "#64748B" }}>
-                      +R${v}
+                        background: adExtraFee === v ? "#FFF1F2" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem", color: adExtraFee === v ? "#E11D48" : "#64748B", fontFamily: "inherit" }}>
+                      {v === 0 ? "Sem taxa" : `+R$${v}`}
                     </button>
                   ))}
                 </div>
@@ -605,6 +608,14 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
                 style={{ padding: "14px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg,#EF4444,#F97316)", color: "#fff", fontWeight: 800, fontSize: "1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit" }}>
                 <Zap size={18} /> Ativar Alta Demanda
               </button>
+
+              {/* Botão desativar — aparece quando Alta Demanda já está ativa */}
+              {altaDemanda.active && (
+                <button onClick={() => { deactivateAltaDemanda(); setShowAltaDemandaModal(false); }}
+                  style={{ padding: "12px", borderRadius: "12px", border: "2px solid #E2E8F0", background: "#fff", color: "#64748B", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit" }}>
+                  <ZapOff size={16} /> Desativar Alta Demanda
+                </button>
+              )}
 
               {altaDemanda.logs?.length > 0 && (
                 <button onClick={() => { setShowAltaDemandaModal(false); setShowAltaDemandaLog(true); }}
