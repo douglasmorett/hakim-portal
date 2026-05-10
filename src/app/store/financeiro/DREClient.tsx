@@ -21,7 +21,7 @@ const DEFAULT_GATEWAY_FEES: Record<string, number> = {
 };
 
 // Plataforma FireHub — Pay as You Grow
-// < R$6.250/mês: 4% (mín R$60) | ≥ R$6.250/mês: R$250 fixo
+// 3% do faturamento (mín R$60 · teto R$300)
 function calcPlatformFee(total: number): number {
   return calcMensalidade(total).mensalidade;
 }
@@ -361,7 +361,7 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
             <div style={{ padding: "12px 24px 4px", background: "#F0F9FF" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#0369A1", letterSpacing: 1 }}>PLATAFORMA FIREHUB</span>
             </div>
-            <DRERow label={`(-) Mensalidade FireHub (4% · mín R$60 · teto R$${FIREHUB_PLAN.MAX_MONTHLY})`} value={-dre.taxaFireHub} color="#0369A1" />
+            <DRERow label={`(-) Mensalidade FireHub (3% · mín R$60 · teto R$${FIREHUB_PLAN.MAX_MONTHLY})`} value={-dre.taxaFireHub} color="#0369A1" />
             <div style={{ padding: "6px 24px 10px", background: "#F0F9FF" }}>
               <span style={{ fontSize: "0.72rem", color: "#0369A1" }}>
                 {dre.receitaBruta >= FIREHUB_PLAN.THRESHOLD

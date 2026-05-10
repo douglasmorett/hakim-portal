@@ -40,7 +40,7 @@ function SimuladorMensalidade() {
     ? "✅ Mês sem vendas = R$0"
     : result.modelo === "fixo"
     ? `✅ Teto fixo (≥ R$${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")})`
-    : `4% do faturamento (mín. R$${FIREHUB_PLAN.MIN_MONTHLY})`;
+    : `${FIREHUB_PLAN.PERCENT_RATE}% do faturamento (mín. R$${FIREHUB_PLAN.MIN_MONTHLY})`;
 
   return (
     <div style={{ background: "#0F172A", borderRadius: "20px", padding: "2rem", color: "#fff" }}>
@@ -136,7 +136,7 @@ export default function PlanosPage() {
             <span style={{ color: "#E63946" }}>Sem surpresas.</span>
           </h1>
           <p style={{ fontSize: "1.1rem", color: "#94A3B8", maxWidth: 540, margin: "0 auto 2rem" }}>
-            Nosso modelo cresce com você. Quanto mais você fatura, mais sentido faz — com teto máximo de <strong style={{ color: "#fff" }}>R$400/mês</strong>.
+            Nosso modelo cresce com você. Quanto mais você fatura, mais sentido faz — com teto máximo de <strong style={{ color: "#fff" }}>R${FIREHUB_PLAN.MAX_MONTHLY}/mês</strong>.
           </p>
           <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
             <a href="/login" style={{ padding: "14px 32px", borderRadius: "14px", background: "#E63946", color: "#fff", fontWeight: 800, fontSize: "1rem", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "8px" }}>
@@ -153,9 +153,9 @@ export default function PlanosPage() {
       <div style={{ background: "#fff", borderBottom: "1px solid #E2E8F0" }}>
         <div style={{ maxWidth: 900, margin: "0 auto", padding: "2rem 1.5rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "2rem", textAlign: "center" }}>
           {[
-            { value: "R$60", label: "Mínimo por mês", sub: "Para quem está começando" },
-            { value: "4%", label: "Taxa sobre faturamento", sub: "Só pedidos FireHub" },
-            { value: "R$400", label: "Teto máximo", sub: "Nunca paga mais que isso" },
+            { value: `R$${FIREHUB_PLAN.MIN_MONTHLY}`, label: "Mínimo por mês", sub: "Para quem está começando" },
+            { value: `${FIREHUB_PLAN.PERCENT_RATE}%`, label: "Taxa sobre faturamento", sub: "Só pedidos FireHub" },
+            { value: `R$${FIREHUB_PLAN.MAX_MONTHLY}`, label: "Teto máximo", sub: "Nunca paga mais que isso" },
             { value: "15 dias", label: "Trial gratuito", sub: "Sem cartão de crédito" },
           ].map((item, i) => (
             <div key={i}>
@@ -189,9 +189,9 @@ export default function PlanosPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {[
                   { fatur: "R$1.500/mês", mensalidade: "R$60", desc: "Mínimo — para quem está começando" },
-                  { fatur: "R$3.000/mês", mensalidade: "R$120", desc: "4% de R$3.000" },
-                  { fatur: "R$6.000/mês", mensalidade: "R$240", desc: "4% de R$6.000" },
-                  { fatur: "R$10.000+/mês", mensalidade: "R$400", desc: "✅ Teto máximo — nunca paga mais" },
+                  { fatur: "R$3.000/mês", mensalidade: "R$90", desc: "3% de R$3.000" },
+                  { fatur: "R$6.000/mês", mensalidade: "R$180", desc: "3% de R$6.000" },
+                  { fatur: "R$10.000+/mês", mensalidade: "R$300", desc: "✅ Teto máximo — nunca paga mais" },
                 ].map((row, i) => (
                   <div key={i} style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",

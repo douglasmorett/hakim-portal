@@ -3,29 +3,30 @@
  * 
  * Regras:
  *  - Faturamento = 0 no mês        → R$0 (sem cobrança)
- *  - Faturamento > 0                → mínimo de R$60/mês
- *  - Faturamento < R$10.000/mês    → 4% do faturamento (mín R$60)
- *  - Faturamento ≥ R$10.000/mês    → R$400 fixo (teto máximo)
+ *  - Faturamento > 0               → mínimo de R$60/mês
+ *  - Faturamento < R$10.000/mês    → 3% do faturamento (mín R$60)
+ *  - Faturamento ≥ R$10.000/mês    → R$300 fixo (teto máximo)
  *  - Apenas pedidos FireHub contam (iFood, 99Food, Rappi = fora)
  *  - 1ª cobrança: após trial de 15 dias
  *  - Débito automático do saldo online (Pagar.me)
  *  - Se saldo insuficiente: dívida acumula para o próximo mês
  *
- * Comparativo: Brendi cobra R$300 teto — FireHub cobra até R$400 (mais justo para alto volume)
+ * ✅ Diferencial: Concorrência cobra 4% — FireHub cobra apenas 3%
+ *    mantendo piso de R$60 e teto de R$300.
  */
 
 export const FIREHUB_PLAN = {
-  PERCENT_RATE: 4,          // 4% sobre o faturamento
+  PERCENT_RATE: 3,          // 3% sobre o faturamento (concorrência cobra 4%)
   MIN_MONTHLY: 60,          // Mínimo R$60/mês
-  MAX_MONTHLY: 400,         // Teto R$400/mês (atualizado 10/05/2026 — Brendi = R$300)
-  THRESHOLD: 10000,         // A partir de R$10.000, vai pro teto fixo (4% × R$10.000 = R$400)
-  TRIAL_DAYS: 15,           // Dias de trial gratuito (atualizado 10/05/2026)
+  MAX_MONTHLY: 300,         // Teto R$300/mês (3% × R$10.000)
+  THRESHOLD: 10000,         // A partir de R$10.000, vai pro teto fixo
+  TRIAL_DAYS: 15,           // Dias de trial gratuito
   PIX_RATE: 0.005,          // 0,5% por transação PIX
   PIX_FIXED: 0.40,          // R$0,40 fixo por transação PIX
   CREDIT_RATE: 0.0399,      // 3,99% cartão crédito (spread MDR)
   DEBIT_RATE: 0.0149,       // 1,49% débito
   VOUCHER_RATE: 0.0249,     // 2,49% voucher VR
-  SPLIT_PLATFORM: 0.04,     // 4% do faturamento inclui a mensalidade
+  SPLIT_PLATFORM: 0.03,     // 3% do faturamento = mensalidade via split
 };
 
 /**
@@ -39,7 +40,8 @@ export function calcMensalidade(faturamentoMes: number): {
   mensalidade: number;
   modelo: "zero" | "percentual" | "fixo";
   faturamento: number;
-  economia: number; // Quanto economiza vs Brendi
+  economia: number; // Quanto economiza vs concorrência (que cobra 4%)
+  economiaAnual: number;
 } {
   let mensalidade: number;
   let modelo: "zero" | "percentual" | "fixo";
@@ -49,10 +51,10 @@ export function calcMensalidade(faturamentoMes: number): {
     mensalidade = 0;
     modelo = "zero";
   } else if (faturamentoMes >= FIREHUB_PLAN.THRESHOLD) {
-    mensalidade = FIREHUB_PLAN.MAX_MONTHLY; // R$400 fixo
+    mensalidade = FIREHUB_PLAN.MAX_MONTHLY; // R$300 fixo
     modelo = "fixo";
   } else {
-    // 4% do faturamento, com mínimo de R$60
+    // 3% do faturamento, com mínimo de R$60
     mensalidade = Math.max(
       FIREHUB_PLAN.MIN_MONTHLY,
       faturamentoMes * (FIREHUB_PLAN.PERCENT_RATE / 100)
@@ -60,16 +62,17 @@ export function calcMensalidade(faturamentoMes: number): {
     modelo = "percentual";
   }
 
-  // Economia vs Brendi (R$300 teto, threshold R$7.500)
-  // Nota: FireHub tem teto maior (R$400) mas é mais justo para restaurantes menores
-  const brendiMensalidade = faturamentoMes === 0 ? 0
-    : faturamentoMes >= 7500 ? 300
-    : Math.max(60, faturamentoMes * 0.04);
-  // economia pode ser negativa para alto volume (FireHub cobra mais que Brendi acima de R$7.500)
-  // mas FireHub oferece MUITO mais features que justificam o valor
-  const economia = brendiMensalidade - mensalidade;
+  // Economia vs concorrência (que cobra 4% com teto diferente)
+  const concorrenciaMensalidade = faturamentoMes === 0 ? 0
+    : Math.min(
+        Math.max(60, faturamentoMes * 0.04), // 4% com mín R$60
+        400                                   // teto da concorrência
+      );
 
-  return { mensalidade, modelo, faturamento: faturamentoMes, economia };
+  const economia = concorrenciaMensalidade - mensalidade;
+  const economiaAnual = economia * 12;
+
+  return { mensalidade, modelo, faturamento: faturamentoMes, economia, economiaAnual };
 }
 
 /**

@@ -18,9 +18,9 @@ const PAGARME_BASE = "https://api.pagar.me/core/v5";
 const SECRET_KEY = process.env.PAGARME_SECRET_KEY || "";
 const FIREHUB_RECIPIENT_ID = process.env.PAGARME_RECIPIENT_ID || "";
 
-// Taxa FireHub: 4% de cada pedido (Pay as You Grow)
-// Min R$0.50 por transação, Max aplicado no split
-const FIREHUB_SPLIT_PERCENTAGE = 4;
+// Taxa FireHub: 3% de cada pedido (Pay as You Grow — concorrência cobra 4%)
+// Min R$60/mês | Teto R$300/mês
+const FIREHUB_SPLIT_PERCENTAGE = 3;
 
 function authHeader() {
   const encoded = Buffer.from(`${SECRET_KEY}:`).toString("base64");
