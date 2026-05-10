@@ -179,7 +179,6 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
               body: `Você tem ${currentNewCount} pedido${currentNewCount > 1 ? "s" : ""} aguardando confirmação.`,
               icon: "/icon.jpg",
               tag: "new-order",
-              renotify: true,
             });
           } catch {}
         } else if (Notification.permission !== "denied") {
