@@ -37,14 +37,24 @@ export function middleware(request: NextRequest) {
   // ── FIREHUB ──────────────────────────────────────────────────────
   if (FIREHUB_DOMAINS.some(d => hostname.includes(d))) {
     // Já está em /firehub → deixa passar
-    if (url.pathname.startsWith("/firehub")) {
-      return NextResponse.next();
-    }
-    // APIs e assets → passa sem alterar
-    if (url.pathname.startsWith("/api") || url.pathname.startsWith("/_next") || url.pathname.includes(".")) {
-      return NextResponse.next();
-    }
-    // Raiz ou qualquer outra rota → reescreve para /firehub
+    if (url.pathname.startsWith("/firehub")) return NextResponse.next();
+    // APIs, assets, auth → passa sem alterar
+    if (
+      url.pathname.startsWith("/api") ||
+      url.pathname.startsWith("/_next") ||
+      url.pathname.includes(".")
+    ) return NextResponse.next();
+    // Rotas do portal (dashboard do lojista) → passa sem alterar
+    // O lojista pode fazer login pelo firehubfood.com.br e cair em /store normalmente
+    if (
+      url.pathname.startsWith("/store") ||
+      url.pathname.startsWith("/login") ||
+      url.pathname.startsWith("/loja") ||
+      url.pathname.startsWith("/planos") ||
+      url.pathname.startsWith("/admin") ||
+      url.pathname.startsWith("/icebox")
+    ) return NextResponse.next();
+    // Raiz ou rota desconhecida → landing FireHub
     url.pathname = "/firehub";
     return NextResponse.rewrite(url);
   }
