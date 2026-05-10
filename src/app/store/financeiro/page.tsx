@@ -29,6 +29,17 @@ export default async function StoreFinanceiroPage() {
     orderBy: { createdAt: "desc" }
   });
 
+  // Produtos sem custo cadastrado (impacta CMV e margem)
+  const produtosSemCusto = await prisma.menuProduct.findMany({
+    where: {
+      OR: [
+        { cost: null },
+        { cost: 0 }
+      ]
+    },
+    select: { name: true, id: true }
+  });
+
   const serialized = orders.map(o => ({
     id: o.id,
     totalAmount: o.totalAmount,
@@ -60,6 +71,7 @@ export default async function StoreFinanceiroPage() {
       paymentFees={(user.paymentFees as any) || {}}
       storeName={user.storeName || "Minha Loja"}
       storeCreatedAt={user.createdAt.toISOString()}
+      produtosSemCusto={produtosSemCusto.map(p => ({ id: p.id, name: p.name || "Sem nome" }))}
     />
   );
 }
