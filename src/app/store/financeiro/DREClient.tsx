@@ -98,7 +98,7 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [useCustom, setUseCustom] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dre" | "extrato" | "pagamentos">("dre");
+  const [activeTab, setActiveTab] = useState<"dre" | "extrato" | "pagamentos" | "mensalidade">("dre");
 
   const { from, to } = useMemo(() => {
     if (useCustom && customFrom && customTo) {
@@ -227,10 +227,11 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
           </div>
 
           {/* TABS */}
-          <div style={{ display: "flex", gap: "4px", marginTop: "1rem", background: "#F8FAFC", borderRadius: "12px", padding: "4px", width: "fit-content" }}>
+          <div style={{ display: "flex", gap: "4px", marginTop: "1rem", background: "#F8FAFC", borderRadius: "12px", padding: "4px", width: "fit-content", flexWrap: "wrap" }}>
             <button style={tabStyle("dre")} onClick={() => setActiveTab("dre")}>📊 DRE</button>
             <button style={tabStyle("extrato")} onClick={() => setActiveTab("extrato")}>📋 Extrato</button>
             <button style={tabStyle("pagamentos")} onClick={() => setActiveTab("pagamentos")}>💳 Pagamentos</button>
+            <button style={tabStyle("mensalidade")} onClick={() => setActiveTab("mensalidade")}>💰 Mensalidade</button>
           </div>
         </div>
       </div>
@@ -395,6 +396,111 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
             )}
           </div>
         )}
+
+        {/* ===== ABA MENSALIDADE ===== */}
+        {activeTab === "mensalidade" && (() => {
+          const billing = calcMensalidade(dre.receitaBruta);
+          return (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", alignItems: "start" }}>
+              {/* Explicação */}
+              <div>
+                <h2 style={{ fontWeight: 800, fontSize: "1.2rem", marginBottom: "0.5rem" }}>💰 Mensalidade FireHub</h2>
+                <p style={{ color: "#64748B", fontSize: "0.85rem", marginBottom: "1.5rem", lineHeight: 1.7 }}>
+                  Modelo <strong>Pay as You Grow</strong>: você paga proporcionalmente ao quanto fatura.
+                  Quanto mais cresce, mais sentido faz — e tem um teto máximo garantido.
+                </p>
+
+                {/* Regras */}
+                <div style={{ background: "#F8FAFC", borderRadius: "14px", padding: "1.25rem", border: "1px solid #E2E8F0", marginBottom: "1rem" }}>
+                  <p style={{ fontWeight: 800, fontSize: "0.85rem", marginBottom: "0.75rem", color: "#0F172A" }}>📋 Como é calculado:</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.83rem", padding: "8px 12px", background: "#fff", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
+                      <span>Faturamento &lt; R${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")}/mês</span>
+                      <strong>{FIREHUB_PLAN.PERCENT_RATE}% do faturamento</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.83rem", padding: "8px 12px", background: "#fff", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
+                      <span>Faturamento ≥ R${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")}/mês</span>
+                      <strong style={{ color: "#E63946" }}>R${FIREHUB_PLAN.MAX_MONTHLY} fixo (teto)</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.83rem", padding: "8px 12px", background: "#fff", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
+                      <span>Mínimo por mês</span>
+                      <strong>R${FIREHUB_PLAN.MIN_MONTHLY}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Exemplos */}
+                <p style={{ fontWeight: 700, fontSize: "0.82rem", color: "#475569", margin: "0 0 8px" }}>Exemplos práticos:</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {[
+                    { fat: 1500, label: "R$1.500" }, { fat: 3000, label: "R$3.000" },
+                    { fat: 5000, label: "R$5.000" }, { fat: 6250, label: "R$6.250 (teto)" },
+                    { fat: 15000, label: "R$15.000" }
+                  ].map((ex, i) => {
+                    const r = calcMensalidade(ex.fat);
+                    return (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.82rem", padding: "7px 12px", background: ex.fat >= FIREHUB_PLAN.THRESHOLD ? "#FFF1F2" : "#F8FAFC", borderRadius: "8px", border: ex.fat >= FIREHUB_PLAN.THRESHOLD ? "1px solid #FCA5A5" : "1px solid #F1F5F9" }}>
+                        <span style={{ color: "#64748B" }}>Faturamento {ex.label}</span>
+                        <strong style={{ color: ex.fat >= FIREHUB_PLAN.THRESHOLD ? "#DC2626" : "#0F172A" }}>
+                          R${r.mensalidade.toFixed(0)}/mês {ex.fat >= FIREHUB_PLAN.THRESHOLD && "✅ teto"}
+                        </strong>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Regras extras */}
+                <div style={{ marginTop: "1rem", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "10px", padding: "0.75rem 1rem", fontSize: "0.79rem", color: "#166534", lineHeight: 1.8 }}>
+                  ✅ Só contam pedidos feitos pelo FireHub<br />
+                  ✅ 1ª cobrança após 14 dias de trial gratuito<br />
+                  ✅ Débito automático do saldo online<br />
+                  ✅ Teto de R${FIREHUB_PLAN.MAX_MONTHLY}/mês — nunca paga mais
+                </div>
+
+                <a href="/planos" target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginTop: "1rem", padding: "8px 16px", borderRadius: "10px", background: "#0F172A", color: "#fff", fontSize: "0.82rem", fontWeight: 700, textDecoration: "none" }}>
+                  🔍 Ver página completa de planos
+                </a>
+              </div>
+
+              {/* Resumo do mês atual */}
+              <div style={{ background: "#0F172A", borderRadius: "16px", padding: "1.5rem", color: "#fff" }}>
+                <p style={{ fontWeight: 800, fontSize: "1rem", marginBottom: "1rem" }}>📊 Seu resumo do período selecionado</p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ background: "#1E293B", borderRadius: "10px", padding: "1rem" }}>
+                    <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: "0 0 4px" }}>Faturamento no período</p>
+                    <p style={{ fontSize: "1.6rem", fontWeight: 900, color: "#F59E0B", margin: 0 }}>{fmtR(dre.receitaBruta)}</p>
+                  </div>
+                  <div style={{ background: "#1E293B", borderRadius: "10px", padding: "1rem", border: "2px solid #E63946" }}>
+                    <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: "0 0 4px" }}>Mensalidade estimada</p>
+                    <p style={{ fontSize: "1.8rem", fontWeight: 900, color: "#E63946", margin: 0 }}>{fmtR(billing.mensalidade)}</p>
+                    <p style={{ fontSize: "0.72rem", color: "#64748B", margin: "4px 0 0" }}>
+                      {billing.modelo === "fixo"
+                        ? `✅ Teto atingido (faturamento ≥ R$${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")})`
+                        : `${FIREHUB_PLAN.PERCENT_RATE}% de ${fmtR(dre.receitaBruta)}`}
+                    </p>
+                  </div>
+                  {billing.economia > 0 && (
+                    <div style={{ background: "#16A34A20", border: "1px solid #16A34A40", borderRadius: "10px", padding: "0.75rem 1rem", textAlign: "center" }}>
+                      <p style={{ color: "#4ADE80", fontWeight: 700, margin: 0, fontSize: "0.85rem" }}>
+                        💰 R${billing.economia.toFixed(0)} mais barato que o concorrente
+                      </p>
+                    </div>
+                  )}
+                  <div style={{ background: "#1E293B", borderRadius: "10px", padding: "1rem" }}>
+                    <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: "0 0 4px" }}>% da receita em mensalidade</p>
+                    <p style={{ fontSize: "1.4rem", fontWeight: 900, color: "#fff", margin: 0 }}>
+                      {dre.receitaBruta > 0 ? ((billing.mensalidade / dre.receitaBruta) * 100).toFixed(1) : "0"}%
+                    </p>
+                    <p style={{ fontSize: "0.72rem", color: "#64748B", margin: "4px 0 0" }}>
+                      Tende a cair com o crescimento do faturamento
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <style>{`
