@@ -95,13 +95,14 @@ function DRERow({ label, value, indent = 0, bold = false, color = "#0F172A", bor
   );
 }
 
-export default function DREClient({ orders, paymentFees, storeName, storeCreatedAt, produtosSemCusto = [], initialFixedCosts = [] }: {
+export default function DREClient({ orders, paymentFees, storeName, storeCreatedAt, produtosSemCusto = [], initialFixedCosts = [], initialGoals = {} }: {
   orders: Order[];
   paymentFees: any;
   storeName: string;
   storeCreatedAt?: string;
   produtosSemCusto?: { id: string; name: string }[];
   initialFixedCosts?: FixedCost[];
+  initialGoals?: Record<string, any>;
 }) {
   const [preset, setPreset] = useState(1); // 7 dias default
   const [customFrom, setCustomFrom] = useState("");
