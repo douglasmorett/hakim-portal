@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Package, Users, ShoppingCart, LogOut, Truck, DollarSign, UserCog, Receipt, Sparkles, Tag, UtensilsCrossed, ClipboardList, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Package, Users, ShoppingCart, LogOut, Truck, DollarSign, UserCog, Receipt, Sparkles, Tag, UtensilsCrossed, BarChart3 } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -122,11 +122,7 @@ export default async function AdminSidebar() {
               <UtensilsCrossed size={18} style={{ marginRight: "10px", color: "var(--primary)" }} /> Cardápio Digital
             </Link>
           )}
-          {role === "ADMIN" && (
-            <Link href="/admin/pedidos-clientes" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
-              <ClipboardList size={18} style={{ marginRight: "10px", color: "var(--primary)" }} /> Pedidos Clientes
-            </Link>
-          )}
+
           {role === "ADMIN" && (
             <Link href="/admin/ai-chat" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none", background: "linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1))", borderLeft: "3px solid #667eea", marginTop: "8px" }}>
               <Sparkles size={18} style={{ marginRight: "10px", color: "#667eea" }} /> Hakim IA
