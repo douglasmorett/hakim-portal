@@ -452,7 +452,7 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
                 {/* Regras extras */}
                 <div style={{ marginTop: "1rem", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "10px", padding: "0.75rem 1rem", fontSize: "0.79rem", color: "#166534", lineHeight: 1.8 }}>
                   ✅ Só contam pedidos feitos pelo FireHub<br />
-                  ✅ 1ª cobrança após 14 dias de trial gratuito<br />
+                  ✅ 1ª cobrança após 15 dias de trial gratuito<br />
                   ✅ Débito automático do saldo online<br />
                   ✅ Teto de R${FIREHUB_PLAN.MAX_MONTHLY}/mês — nunca paga mais
                 </div>

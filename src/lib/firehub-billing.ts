@@ -2,11 +2,14 @@
  * FireHub — Modelo de Mensalidade "Pay as You Grow"
  * 
  * Regras:
- *  - Faturamento < R$7.500/mês  → 4% do faturamento (mín R$60)
- *  - Faturamento ≥ R$7.500/mês  → R$250 fixo (teto máximo)
+ *  - Faturamento = 0 no mês        → R$0 (sem cobrança)
+ *  - Faturamento > 0                → mínimo de R$60/mês
+ *  - Faturamento < R$6.250/mês     → 4% do faturamento (mín R$60)
+ *  - Faturamento ≥ R$6.250/mês     → R$250 fixo (teto máximo)
  *  - Apenas pedidos FireHub contam (iFood, 99Food, Rappi = fora)
- *  - 1ª cobrança: após trial de 14 dias
+ *  - 1ª cobrança: após trial de 15 dias
  *  - Débito automático do saldo online (Pagar.me)
+ *  - Se saldo insuficiente: dívida acumula para o próximo mês
  *
  * Comparativo: Brendi cobra R$300 teto — FireHub cobra R$250 (R$50 mais barato)
  */
@@ -16,7 +19,7 @@ export const FIREHUB_PLAN = {
   MIN_MONTHLY: 60,          // Mínimo R$60/mês
   MAX_MONTHLY: 250,         // Teto R$250/mês (Brendi = R$300)
   THRESHOLD: 6250,          // A partir de R$6.250, vai pro teto fixo (4% × R$6.250 = R$250)
-  TRIAL_DAYS: 14,           // Dias de trial gratuito
+  TRIAL_DAYS: 15,           // Dias de trial gratuito (atualizado 10/05/2026)
   PIX_RATE: 0.005,          // 0,5% por transação PIX
   PIX_FIXED: 0.40,          // R$0,40 fixo por transação PIX
   CREDIT_RATE: 0.0399,      // 3,99% cartão crédito (spread MDR)
@@ -27,20 +30,29 @@ export const FIREHUB_PLAN = {
 
 /**
  * Calcula a mensalidade do mês com base no faturamento FireHub
+ * 
+ * Regra especial:
+ * - Se faturamento = 0 → cobra R$0 (restaurante não vendeu nada online)
+ * - Se faturamento > 0 → mínimo de R$60 se aplica
  */
 export function calcMensalidade(faturamentoMes: number): {
   mensalidade: number;
-  modelo: "percentual" | "fixo";
+  modelo: "zero" | "percentual" | "fixo";
   faturamento: number;
   economia: number; // Quanto economiza vs Brendi
 } {
   let mensalidade: number;
-  let modelo: "percentual" | "fixo";
+  let modelo: "zero" | "percentual" | "fixo";
 
-  if (faturamentoMes >= FIREHUB_PLAN.THRESHOLD) {
+  // REGRA PRINCIPAL: sem vendas = sem cobrança
+  if (faturamentoMes === 0) {
+    mensalidade = 0;
+    modelo = "zero";
+  } else if (faturamentoMes >= FIREHUB_PLAN.THRESHOLD) {
     mensalidade = FIREHUB_PLAN.MAX_MONTHLY; // R$250 fixo
     modelo = "fixo";
   } else {
+    // 4% do faturamento, com mínimo de R$60
     mensalidade = Math.max(
       FIREHUB_PLAN.MIN_MONTHLY,
       faturamentoMes * (FIREHUB_PLAN.PERCENT_RATE / 100)
@@ -49,12 +61,36 @@ export function calcMensalidade(faturamentoMes: number): {
   }
 
   // Economia vs Brendi (R$300 teto, threshold R$7.500)
-  const brendiMensalidade = faturamentoMes >= 7500
-    ? 300
+  const brendiMensalidade = faturamentoMes === 0 ? 0
+    : faturamentoMes >= 7500 ? 300
     : Math.max(60, faturamentoMes * 0.04);
   const economia = brendiMensalidade - mensalidade;
 
   return { mensalidade, modelo, faturamento: faturamentoMes, economia };
+}
+
+/**
+ * Calcula quanto deve ser cobrado considerando dívida acumulada de meses anteriores
+ * Se o lojista não vendeu nos meses anteriores mas teve mísero meses com cobrança,
+ * o sistema tenta cobrar a dívida acumulada junto com o mês atual.
+ */
+export function calcCobrancaComAcumulado(
+  faturamentoMes: number,
+  dividaAcumulada: number = 0
+): {
+  mensalidadeBase: number;    // Cobrança do mês atual
+  dividaAnterior: number;      // Dívida de meses anteriores
+  totalDevido: number;         // Total a cobrar (base + dívida)
+  modelo: "zero" | "percentual" | "fixo";
+} {
+  const { mensalidade, modelo } = calcMensalidade(faturamentoMes);
+  const totalDevido = mensalidade + dividaAcumulada;
+  return {
+    mensalidadeBase: mensalidade,
+    dividaAnterior: dividaAcumulada,
+    totalDevido,
+    modelo,
+  };
 }
 
 /**

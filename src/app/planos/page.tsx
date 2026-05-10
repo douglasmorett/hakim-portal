@@ -34,7 +34,13 @@ const PAYMENT_FEES = [
 function SimuladorMensalidade() {
   const [faturamento, setFaturamento] = useState(5000);
   const result = calcMensalidade(faturamento);
-  const brendiResult = faturamento >= 7500 ? 300 : Math.max(60, faturamento * 0.04);
+  const brendiResult = faturamento === 0 ? 0 : faturamento >= 7500 ? 300 : Math.max(60, faturamento * 0.04);
+
+  const modeloLabel = result.modelo === "zero"
+    ? "✅ Mês sem vendas = R$0"
+    : result.modelo === "fixo"
+    ? `✅ Teto fixo (≥ R$${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")})`
+    : `4% do faturamento (mín. R$${FIREHUB_PLAN.MIN_MONTHLY})`;
 
   return (
     <div style={{ background: "#0F172A", borderRadius: "20px", padding: "2rem", color: "#fff" }}>
@@ -49,25 +55,34 @@ function SimuladorMensalidade() {
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
           <span style={{ fontSize: "0.85rem", color: "#94A3B8" }}>Faturamento mensal:</span>
           <strong style={{ color: "#F59E0B", fontSize: "1.1rem" }}>
-            R$ {faturamento.toLocaleString("pt-BR")}
+            {faturamento === 0 ? "R$ 0 (sem vendas)" : `R$ ${faturamento.toLocaleString("pt-BR")}`}
           </strong>
         </div>
-        <input type="range" min={500} max={30000} step={500} value={faturamento}
+        <input type="range" min={0} max={30000} step={500} value={faturamento}
           onChange={e => setFaturamento(Number(e.target.value))}
           style={{ width: "100%", accentColor: "#E63946" }} />
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#475569" }}>
-          <span>R$500</span><span>R$30.000</span>
+          <span>R$0</span><span>R$30.000</span>
         </div>
       </div>
+
+      {/* Aviso zero */}
+      {faturamento === 0 && (
+        <div style={{ background: "#16A34A20", border: "1px solid #16A34A40", borderRadius: "10px", padding: "10px 14px", marginBottom: "1rem", textAlign: "center" }}>
+          <span style={{ color: "#4ADE80", fontWeight: 700, fontSize: "0.9rem" }}>
+            🎉 Mês sem vendas online = R$0 de mensalidade
+          </span>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1.5rem" }}>
         <div style={{ background: "#1E293B", borderRadius: "14px", padding: "1.25rem", border: "2px solid #E63946" }}>
           <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: "0 0 4px" }}>🔥 FireHub</p>
-          <p style={{ fontSize: "2rem", fontWeight: 900, color: "#E63946", margin: 0 }}>
-            R${result.mensalidade.toFixed(0)}
+          <p style={{ fontSize: "2rem", fontWeight: 900, color: result.modelo === "zero" ? "#4ADE80" : "#E63946", margin: 0 }}>
+            {result.modelo === "zero" ? "R$0" : `R$${result.mensalidade.toFixed(0)}`}
           </p>
           <p style={{ fontSize: "0.72rem", color: "#64748B", margin: "4px 0 0" }}>
-            {result.modelo === "fixo" ? `✅ Teto fixo (≥ R$${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")})` : `4% do faturamento`}
+            {modeloLabel}
           </p>
         </div>
         <div style={{ background: "#1E293B", borderRadius: "14px", padding: "1.25rem", opacity: 0.7 }}>
@@ -76,7 +91,7 @@ function SimuladorMensalidade() {
             R${brendiResult.toFixed(0)}
           </p>
           <p style={{ fontSize: "0.72rem", color: "#64748B", margin: "4px 0 0" }}>
-            {faturamento >= 7500 ? "Teto fixo (≥ R$7.500)" : "4% do faturamento"}
+            {faturamento === 0 ? "Mês sem vendas = R$0" : faturamento >= 7500 ? "Teto fixo (≥ R$7.500)" : "4% do faturamento"}
           </p>
         </div>
       </div>
@@ -91,8 +106,10 @@ function SimuladorMensalidade() {
 
       <div style={{ marginTop: "1rem", fontSize: "0.75rem", color: "#475569", lineHeight: 1.6 }}>
         <strong style={{ color: "#94A3B8" }}>Como funciona:</strong><br />
-        • Faturamento &lt; R${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")}/mês → {FIREHUB_PLAN.PERCENT_RATE}% do valor (mín. R${FIREHUB_PLAN.MIN_MONTHLY})<br />
-        • Faturamento ≥ R${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")}/mês → R${FIREHUB_PLAN.MAX_MONTHLY} fixo (teto máximo)<br />
+        • Mês sem vendas online → <strong style={{ color: "#4ADE80" }}>R$0 cobrado</strong><br />
+        • Faturamento &gt; R$0 → mínimo de <strong>R${FIREHUB_PLAN.MIN_MONTHLY}</strong>/mês<br />
+        • Faturamento &lt; R${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")}/mês → {FIREHUB_PLAN.PERCENT_RATE}% do valor<br />
+        • Faturamento ≥ R${FIREHUB_PLAN.THRESHOLD.toLocaleString("pt-BR")}/mês → R${FIREHUB_PLAN.MAX_MONTHLY} fixo (teto)<br />
         • Só conta pedidos do FireHub (iFood não entra)<br />
         • 1ª cobrança após {FIREHUB_PLAN.TRIAL_DAYS} dias grátis<br />
         • Débito automático do saldo online
@@ -131,7 +148,7 @@ export default function PlanosPage() {
           </p>
           <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
             <a href="/login" style={{ padding: "14px 32px", borderRadius: "14px", background: "#E63946", color: "#fff", fontWeight: 800, fontSize: "1rem", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "8px" }}>
-              Começar Grátis — 14 dias <ArrowRight size={18} />
+              Começar Grátis — 15 dias <ArrowRight size={18} />
             </a>
             <a href="#simulador" style={{ padding: "14px 32px", borderRadius: "14px", border: "1.5px solid #334155", color: "#94A3B8", fontWeight: 700, fontSize: "1rem", textDecoration: "none" }}>
               Ver Simulador
@@ -147,7 +164,7 @@ export default function PlanosPage() {
             { value: "R$60", label: "Mínimo por mês", sub: "Para quem está começando" },
             { value: "4%", label: "Taxa sobre faturamento", sub: "Só pedidos FireHub" },
             { value: "R$250", label: "Teto máximo", sub: "Nunca paga mais que isso" },
-            { value: "14 dias", label: "Trial gratuito", sub: "Sem cartão de crédito" },
+            { value: "15 dias", label: "Trial gratuito", sub: "Sem cartão de crédito" },
           ].map((item, i) => (
             <div key={i}>
               <p style={{ fontSize: "2rem", fontWeight: 900, color: "#E63946", margin: "0 0 4px" }}>{item.value}</p>
@@ -205,7 +222,7 @@ export default function PlanosPage() {
                 <p style={{ fontWeight: 800, color: "#16A34A", margin: "0 0 8px", fontSize: "0.9rem" }}>✅ Regras importantes:</p>
                 <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.82rem", color: "#475569", lineHeight: 2 }}>
                   <li>Só contam pedidos feitos <strong>pelo FireHub</strong> (iFood, 99Food não entram)</li>
-                  <li>1ª cobrança só após os <strong>14 dias de trial gratuito</strong></li>
+                  <li>1ª cobrança só após os <strong>15 dias de trial gratuito</strong></li>
                   <li>Débito automático do <strong>saldo online</strong> (sem boleto)</li>
                   <li>Teto de <strong>R$250/mês</strong> — nunca vai além disso</li>
                 </ul>
@@ -291,7 +308,7 @@ export default function PlanosPage() {
         {/* CTA FINAL */}
         <div style={{ marginTop: "3rem", background: "linear-gradient(135deg, #E63946, #C62828)", borderRadius: "20px", padding: "2.5rem", textAlign: "center", color: "#fff" }}>
           <h2 style={{ fontWeight: 900, fontSize: "1.6rem", marginBottom: "0.5rem" }}>Pronto para começar?</h2>
-          <p style={{ color: "rgba(255,255,255,0.8)", marginBottom: "1.5rem" }}>14 dias grátis. Sem cartão. Cancele quando quiser.</p>
+          <p style={{ color: "rgba(255,255,255,0.8)", marginBottom: "1.5rem" }}>15 dias grátis. Sem cartão. Cancele quando quiser.</p>
           <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "14px 36px", borderRadius: "14px", background: "#fff", color: "#E63946", fontWeight: 800, fontSize: "1rem", textDecoration: "none" }}>
             Começar Agora <ArrowRight size={18} />
           </a>
