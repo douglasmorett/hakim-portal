@@ -33,7 +33,9 @@ export async function POST(req: NextRequest) {
     const resetUrl = `${APP_URL}/firehub/redefinir-senha?token=${resetToken}`;
 
     await resend.emails.send({
-      from: "FireHub <noreply@firehubfood.com.br>",
+      // onboarding@resend.dev funciona sem verificação de domínio
+      // Trocar para "noreply@firehubfood.com.br" após verificar domínio no Resend
+      from: "FireHub <onboarding@resend.dev>",
       to: email,
       subject: "🔥 Redefinição de senha — FireHub",
       html: `
