@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import { TrendingUp, DollarSign, ShoppingCart, Users, CreditCard, Banknote, Smartphone, ArrowUpRight, ArrowDownRight, Filter, Calendar, Package, Clock, Truck, Store as StoreIcon } from "lucide-react";
+import OnboardingChecklist from "@/components/OnboardingChecklist";
 
 type Order = {
   id: string; totalAmount: number; status: string; deliveryType: string;
@@ -28,7 +29,7 @@ const STATUS_LABELS: Record<string, { label: string; emoji: string; color: strin
 
 type DateFilter = "hoje" | "ontem" | "semana" | "mes" | "custom";
 
-export default function StoreDashboard({ orders: allOrders, paymentFees = {} }: { orders: Order[]; paymentFees?: Record<string, any> }) {
+export default function StoreDashboard({ orders: allOrders, paymentFees = {}, completedOnboardingSteps = [] }: { orders: Order[]; paymentFees?: Record<string, any>; completedOnboardingSteps?: string[] }) {
   const [dateFilter, setDateFilter] = useState<DateFilter>("hoje");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -192,6 +193,12 @@ export default function StoreDashboard({ orders: allOrders, paymentFees = {} }: 
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "1.25rem 1.5rem", fontFamily: "'Inter', sans-serif" }}>
+
+      {/* ONBOARDING — some se todas as etapas estiverem concluídas */}
+      {completedOnboardingSteps.length < 6 && (
+        <OnboardingChecklist completedSteps={completedOnboardingSteps} />
+      )}
+
       {/* FILTER BAR */}
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", marginBottom: "1.25rem" }}>
         <Filter size={16} color="#94A3B8" />

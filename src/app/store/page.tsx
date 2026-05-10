@@ -12,9 +12,25 @@ export default async function StorePage() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user?.email || "" },
-    select: { id: true, paymentFees: true }
+    select: {
+      id: true, paymentFees: true, slug: true,
+      storeLogo: true, storeBanner: true, storeHours: true,
+      paymentFees: true, deliveryZones: true, storeOrderCount: true,
+    }
   });
   if (!user) redirect("/");
+
+  // Detectar etapas de onboarding concluídas
+  const completedSteps: string[] = [];
+  if (user.storeLogo || user.storeBanner) completedSteps.push("logo");
+  if (user.storeHours) completedSteps.push("hours");
+  if (user.paymentFees && Object.keys(user.paymentFees as object).length > 0) completedSteps.push("payment");
+  if (user.deliveryZones) completedSteps.push("delivery");
+  if ((user.storeOrderCount || 0) > 0) completedSteps.push("first_order");
+
+  // Verificar se tem produto cadastrado
+  const productCount = await prisma.menuProduct.count({ where: { storeId: user.id, active: true } });
+  if (productCount > 0) completedSteps.push("menu");
 
   // Busca últimos 90 dias de pedidos para relatórios
   const since = new Date();
@@ -23,7 +39,7 @@ export default async function StorePage() {
   const orders = await prisma.customerOrder.findMany({
     where: { franchiseeId: user.id, createdAt: { gte: since } },
     include: { items: { include: { menuProduct: { select: { name: true, cost: true } } } } },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: "desc" }
   });
 
   const serialized = orders.map(o => ({
@@ -44,5 +60,11 @@ export default async function StorePage() {
     }))
   }));
 
-  return <StoreDashboard orders={serialized} paymentFees={(user.paymentFees as any) || {}} />;
+  return (
+    <StoreDashboard
+      orders={serialized}
+      paymentFees={(user.paymentFees as any) || {}}
+      completedOnboardingSteps={completedSteps}
+    />
+  );
 }
