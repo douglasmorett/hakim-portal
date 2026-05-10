@@ -10,10 +10,8 @@ const NAV_ITEMS = [
   { href: "/store/pedidos-clientes", label: "Pedidos", icon: ClipboardList, highlight: true },
   { href: "/store/venda-presencial", label: "PDV", icon: ShoppingBag },
   { href: "/store/cardapio", label: "Cardápio", icon: UtensilsCrossed },
-  { href: "/store/cardapio/custos", label: "Custos CMV", icon: BarChart2 },
   { href: "/store/financeiro", label: "Financeiro", icon: BarChart2 },
   { href: "/store/motoboys", label: "Motoboys", icon: Bike },
-  { href: "/store/impressoras", label: "Impressoras", icon: Printer },
   { href: "/store/minha-loja", label: "Minha Loja", icon: Store },
   { href: "/store/profile", label: "Perfil", icon: Users },
 ];
@@ -139,6 +137,21 @@ export default function StoreTopNav({
 
         {/* Ações direita */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+          {/* Ícone Impressora */}
+          <a
+            href="/store/impressoras"
+            title="Configurar Impressora"
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 10,
+              background: "rgba(255,255,255,0.15)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              color: "#fff", textDecoration: "none",
+              transition: "background 0.2s",
+            }}
+          >
+            <Printer size={17} />
+          </a>
           {isFranqueado && (
             <a href="/store/compras" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.4rem 1rem", borderRadius: 8, background: isCompras ? "rgba(255,255,255,0.2)" : "#FF8A00", color: "#fff", fontWeight: 700, fontSize: "0.82rem", textDecoration: "none", boxShadow: isCompras ? "none" : "0 2px 8px rgba(255,138,0,0.4)" }}>
               <ShoppingBag size={15} /> {isCompras ? "Comprando..." : "Fazer Compras"}
