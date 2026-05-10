@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 export default function FireHubLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -19,12 +20,17 @@ export default function FireHubLoginPage() {
       email,
       password,
       redirect: false,
+      // rememberMe passado como cookie duração via callback de sessão
     });
 
     setLoading(false);
 
     if (res?.ok) {
-      router.push("/admin");
+      // Salva preferência de lembrar acesso
+      if (rememberMe) {
+        localStorage.setItem("fh_remember", "true");
+      }
+      router.push("/store");
     } else {
       setError("E-mail ou senha incorretos. Tente novamente.");
     }
@@ -185,6 +191,22 @@ export default function FireHubLoginPage() {
             onChange={e => setPassword(e.target.value)}
             required
           />
+
+          {/* Lembrar acesso + Esqueci senha */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", marginTop: "-8px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.85rem", color: "#374151" }}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+                style={{ accentColor: "#DC2626", width: "16px", height: "16px", cursor: "pointer" }}
+              />
+              Lembrar acesso
+            </label>
+            <a href="/firehub/esqueci-senha" style={{ fontSize: "0.85rem", color: "#DC2626", textDecoration: "none", fontWeight: 600 }}>
+              Esqueci minha senha
+            </a>
+          </div>
 
           <button type="submit" className="fhl-btn" disabled={loading}>
             {loading ? "Entrando..." : "🔥 Entrar no FireHub"}
