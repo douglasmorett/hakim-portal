@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     data: {
       name: body.name, description: body.description, price: body.price,
       cost: body.cost || null,
+      tags: body.tags ? JSON.stringify(body.tags) : null,
       category: body.category || "Lanches", imageUrl: body.imageUrl || null,
       active: body.active ?? true, isCombo: body.isCombo ?? false,
       activePDV: body.activePDV ?? true,
@@ -63,6 +64,7 @@ export async function PUT(req: Request) {
   if (body.category !== undefined) data.category = body.category;
   if (body.imageUrl !== undefined) data.imageUrl = body.imageUrl;
   if (body.cost !== undefined) data.cost = body.cost;
+  if (body.tags !== undefined) data.tags = body.tags ? JSON.stringify(body.tags) : null;
   if (body.active !== undefined) data.active = body.active;
   if (body.isCombo !== undefined) data.isCombo = body.isCombo;
   if (body.activePDV !== undefined) data.activePDV = body.activePDV;

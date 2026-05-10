@@ -63,6 +63,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const [imageUrl, setImageUrl] = useState("");
   const [active, setActive] = useState(true);
   const [cost, setCost] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [isCombo, setIsCombo] = useState(false);
   const [activePDV, setActivePDV] = useState(true);
   const [activeDelivery, setActiveDelivery] = useState(true);
@@ -73,7 +74,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const categories = ["Promoção do Dia", "Combos", "Esfihas Salgadas", "Esfihas Doces", "Acompanhamentos", "Bebidas", "Outros"];
 
   const resetForm = () => {
-    setName(""); setDescription(""); setPrice(""); setCost(""); setCategory("Esfihas Salgadas");
+    setName(""); setDescription(""); setPrice(""); setCost(""); setTags([]); setCategory("Esfihas Salgadas");
     setImageUrl(""); setActive(true); setIsCombo(false); setComboGroups([]);
     setActivePDV(true); setActiveDelivery(true); setActiveTotem(false); setActiveGarcom(false);
     setShowForm(false); setEditingId(null);
@@ -82,6 +83,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const openEdit = (p: any) => {
     setName(p.name); setDescription(p.description); setPrice(String(p.price));
     setCost(p.cost != null && p.cost > 0 ? String(p.cost) : "");
+    try { setTags(p.tags ? JSON.parse(p.tags) : []); } catch { setTags([]); }
     setCategory(p.category); setImageUrl(p.imageUrl || ""); setActive(p.active);
     setIsCombo(p.isCombo);
     setActivePDV(p.activePDV ?? true);
@@ -107,6 +109,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
         body: JSON.stringify({
           id: editingId, name, description, price: parseFloat(price),
           cost: cost ? parseFloat(cost) : 0,
+          tags: tags.length > 0 ? tags : null,
           category,
           imageUrl: imageUrl || null, active, isCombo,
           activePDV, activeDelivery, activeTotem, activeGarcom,
@@ -465,6 +468,45 @@ export default function MenuProductManager({ products, availableItems }: { produ
             <div className="input-group"><label>URL da Imagem</label><input className="input-field" value={imageUrl} onChange={e => setImageUrl(e.target.value)} /></div>
           </div>
 
+          {/* TAGS DE PRODUTO */}
+          {!isCombo && (
+            <div style={{ marginTop: "1rem", padding: "0.875rem 1rem", background: "#FFF7ED", borderRadius: "10px", border: "1.5px solid #FCD34D" }}>
+              <p style={{ fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.6rem", color: "#92400E" }}>🏷️ Tags do Produto <span style={{ fontSize: "0.7rem", fontWeight: 400, color: "#B45309" }}>(aparecem no cardápio digital)</span></p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {[
+                  { label: "🔥 Mais Vendido", color: "#EF4444" },
+                  { label: "✨ Novo", color: "#8B5CF6" },
+                  { label: "🏷️ Promoção", color: "#10B981" },
+                  { label: "🌱 Vegano", color: "#16A34A" },
+                  { label: "🌶️ Picante", color: "#F59E0B" },
+                  { label: "⭐ Destaque", color: "#F59E0B" },
+                  { label: "❄️ Gelado", color: "#3B82F6" },
+                  { label: "🎉 Especial do Dia", color: "#EC4899" },
+                ].map(tag => {
+                  const active = tags.includes(tag.label);
+                  return (
+                    <button
+                      key={tag.label}
+                      onClick={() => setTags(prev => active ? prev.filter(t => t !== tag.label) : [...prev, tag.label])}
+                      style={{
+                        padding: "4px 12px", borderRadius: "20px", fontSize: "0.78rem", fontWeight: 700,
+                        border: `2px solid ${active ? tag.color : "#E2E8F0"}`,
+                        background: active ? tag.color + "18" : "#F8FAFC",
+                        color: active ? tag.color : "#94A3B8",
+                        cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
+                      }}
+                    >{tag.label}</button>
+                  );
+                })}
+              </div>
+              {tags.length > 0 && (
+                <p style={{ fontSize: "0.72rem", color: "#92400E", marginTop: "6px" }}>
+                  ✅ {tags.length} tag{tags.length > 1 ? "s" : ""} selecionada{tags.length > 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* CANAIS DE VENDA */}
           <div style={{ marginTop: "1rem", padding: "0.875rem 1rem", background: "#F8FAFC", borderRadius: "10px", border: "1.5px solid #E2E8F0" }}>
             <p style={{ fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.6rem" }}>📡 Canais de Venda</p>
@@ -571,6 +613,17 @@ export default function MenuProductManager({ products, availableItems }: { produ
                   <span className="font-extrabold gradient-text">R$ {p.price.toFixed(2)}</span>
                 </div>
                 {!p.active && <span style={{ fontSize: "0.7rem", color: "#EF4444", fontWeight: 700 }}>⏸️ PAUSADO</span>}
+
+                {/* Tags do produto */}
+                {p.tags && (() => { try { const t = JSON.parse(p.tags); return t.length > 0 ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                    {t.map((tag: string) => (
+                      <span key={tag} style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: "20px", background: "#FEF3C7", color: "#92400E", border: "1px solid #FCD34D" }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null; } catch { return null; } })()}
 
                 {/* Badges de canais inline — clicáveis */}
                 <ChannelBadges product={p} onToggle={(key, val) => handleChannelToggle(p.id, key, val)} />

@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/store/pedidos-clientes", label: "Pedidos", icon: ClipboardList, highlight: true },
   { href: "/store/venda-presencial", label: "PDV", icon: ShoppingBag },
   { href: "/store/cardapio", label: "Cardápio", icon: UtensilsCrossed },
+  { href: "/store/cardapio/custos", label: "Custos CMV", icon: BarChart2 },
   { href: "/store/financeiro", label: "Financeiro", icon: BarChart2 },
   { href: "/store/motoboys", label: "Motoboys", icon: Bike },
   { href: "/store/minha-loja", label: "Minha Loja", icon: Store },

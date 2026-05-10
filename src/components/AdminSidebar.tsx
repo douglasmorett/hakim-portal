@@ -132,6 +132,11 @@ export default async function AdminSidebar() {
               <Sparkles size={18} style={{ marginRight: "10px", color: "#667eea" }} /> Hakim IA
             </Link>
           )}
+          {role === "ADMIN" && (
+            <Link href="/admin/lojistas" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none", background: "rgba(220,38,38,0.06)", borderLeft: "3px solid #DC2626", marginTop: "8px" }}>
+              <BarChart3 size={18} style={{ marginRight: "10px", color: "#DC2626" }} /> 🏪 Painel de Lojistas
+            </Link>
+          )}
         </nav>
 
         <div style={{ padding: "20px", borderTop: "1px solid var(--border-color)" }}>

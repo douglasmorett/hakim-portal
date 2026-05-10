@@ -553,6 +553,29 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
                         {p.isCombo && <span className="product-combo-tag">COMBO</span>}
                       </div>
                       {p.description && <p className="product-desc">{p.description}</p>}
+                      {/* Tags do produto */}
+                      {(p as any).tags && (() => { try { const t = JSON.parse((p as any).tags); return t.length > 0 ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", margin: "4px 0" }}>
+                          {t.map((tag: string) => {
+                            const colorMap: Record<string, { bg: string; color: string }> = {
+                              "🔥 Mais Vendido": { bg: "#FEF2F2", color: "#DC2626" },
+                              "✨ Novo": { bg: "#F5F3FF", color: "#7C3AED" },
+                              "🏷️ Promoção": { bg: "#F0FDF4", color: "#16A34A" },
+                              "🌱 Vegano": { bg: "#DCFCE7", color: "#15803D" },
+                              "🌶️ Picante": { bg: "#FEF3C7", color: "#D97706" },
+                              "⭐ Destaque": { bg: "#FEFCE8", color: "#CA8A04" },
+                              "❄️ Gelado": { bg: "#EFF6FF", color: "#2563EB" },
+                              "🎉 Especial do Dia": { bg: "#FDF2F8", color: "#BE185D" },
+                            };
+                            const c = colorMap[tag] || { bg: "#F8FAFC", color: "#475569" };
+                            return (
+                              <span key={tag} style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 8px", borderRadius: "20px", background: c.bg, color: c.color }}>
+                                {tag}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null; } catch { return null; } })()}
                       <p className="product-price">
                         {p.isCombo && <span className="product-price-from">A partir de </span>}
                         R$ {p.price.toFixed(2)}
