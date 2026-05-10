@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const orders = await prisma.customerOrder.findMany({
     where: { franchiseeId: user.id },
-    include: { items: { include: { menuProduct: { select: { id: true, name: true } } } } },
+    include: { items: { include: { menuProduct: { select: { id: true, name: true, cost: true } } } } },
     orderBy: { createdAt: "desc" },
     take: 100
   });

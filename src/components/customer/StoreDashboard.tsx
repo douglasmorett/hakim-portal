@@ -139,15 +139,16 @@ export default function StoreDashboard({ orders: allOrders, paymentFees = {}, co
   const deliveryCount = activeOrders.filter(o => o.deliveryType === "DELIVERY").length;
   const pickupCount = activeOrders.filter(o => o.deliveryType !== "DELIVERY").length;
 
-  // Top produtos
+  // Top produtos com margem
   const topProducts = useMemo(() => {
-    const map: Record<string, { name: string; qty: number; total: number }> = {};
+    const map: Record<string, { name: string; qty: number; total: number; cost: number }> = {};
     activeOrders.forEach(o => {
       o.items?.forEach((item: any) => {
         const name = item.menuProduct?.name || "—";
-        if (!map[name]) map[name] = { name, qty: 0, total: 0 };
+        if (!map[name]) map[name] = { name, qty: 0, total: 0, cost: 0 };
         map[name].qty += item.quantity;
         map[name].total += item.price * item.quantity;
+        map[name].cost += (item.cost || 0) * item.quantity;
       });
     });
     return Object.values(map).sort((a, b) => b.qty - a.qty).slice(0, 8);
@@ -331,18 +332,27 @@ export default function StoreDashboard({ orders: allOrders, paymentFees = {}, co
             <p style={{ color: "#94A3B8", fontSize: "0.85rem" }}>Sem dados no período</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-              {topProducts.map((p, i) => (
-                <div key={p.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.4rem 0.5rem", borderRadius: "8px", background: i === 0 ? "#FFF7ED" : "transparent" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ width: "22px", height: "22px", borderRadius: "6px", background: i < 3 ? "#C62828" : "#E2E8F0", color: i < 3 ? "#fff" : "#64748B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: 700 }}>{i + 1}</span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 500 }}>{p.name}</span>
+              {topProducts.map((p, i) => {
+                const margem = p.total > 0 && p.cost > 0 ? ((p.total - p.cost) / p.total * 100) : null;
+                const margemColor = margem === null ? "#94A3B8" : margem >= 40 ? "#16A34A" : margem >= 20 ? "#F59E0B" : "#EF4444";
+                return (
+                  <div key={p.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.4rem 0.5rem", borderRadius: "8px", background: i === 0 ? "#FFF7ED" : "transparent" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ width: "22px", height: "22px", borderRadius: "6px", background: i < 3 ? "#C62828" : "#E2E8F0", color: i < 3 ? "#fff" : "#64748B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: 700 }}>{i + 1}</span>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 500 }}>{p.name}</span>
+                    </div>
+                    <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700 }}>{p.qty}x</span>
+                      {margem !== null && (
+                        <span style={{ fontSize: "0.68rem", fontWeight: 700, padding: "2px 6px", borderRadius: "8px", background: margemColor + "18", color: margemColor }}>
+                          {margem.toFixed(0)}% mg
+                        </span>
+                      )}
+                      <span style={{ fontSize: "0.72rem", color: "#94A3B8" }}>R$ {p.total.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <span style={{ fontSize: "0.8rem", fontWeight: 700 }}>{p.qty}x</span>
-                    <span style={{ fontSize: "0.72rem", color: "#94A3B8", marginLeft: "6px" }}>R$ {p.total.toFixed(2)}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

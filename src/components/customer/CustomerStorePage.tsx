@@ -9,7 +9,7 @@ import "./store.css";
 type MenuProduct = { id: string; name: string; description: string; price: number; imageUrl: string | null; category: string; isCombo?: boolean; comboConfig?: any; comboGroups?: any[] };
 type CartItem = MenuProduct & { quantity: number; comboSelections?: any };
 type Franchisee = { id: string; name: string; storeName: string | null; storePhone: string | null; storeAddress: string | null; storeBanner: string | null; storeLogo?: string | null; storeHours?: any; storeDeliveryOnly?: boolean; paymentFees?: any; deliveryZoneType?: string | null; deliveryZones?: any; city: string | null; slug: string | null; storeOpen?: boolean; storePause?: any; facebookPixelId?: string | null };
-type StoreRating = { average: number; count: number };
+type StoreRating = { average: number; count: number; reviews?: { rating: number; comment: string; customerName: string; createdAt: string }[] };
 
 function isStoreOpen(hours: any[]): { open: boolean; text: string } {
   if (!hours || !Array.isArray(hours)) return { open: true, text: "Horário não definido" };
@@ -335,6 +335,21 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
           )}
 
           {franchisee.storePhone && <a href={`https://wa.me/55${franchisee.storePhone.replace(/\D/g, "")}`} target="_blank" className="order-whatsapp">💬 Falar no WhatsApp</a>}
+          
+          {/* Link de rastreamento dedicado */}
+          {!isCancelled && (
+            <a
+              href={`/loja/${franchisee.slug}/pedido/${orderSuccess}`}
+              style={{
+                display: "block", width: "100%", padding: "12px", borderRadius: "14px",
+                background: "linear-gradient(135deg, #1E293B, #0F172A)", color: "#fff",
+                fontWeight: 700, fontSize: "0.9rem", textAlign: "center", textDecoration: "none",
+                marginBottom: "8px", boxSizing: "border-box",
+              }}
+            >
+              📍 Abrir Rastreamento ao Vivo
+            </a>
+          )}
           <button onClick={() => { setOrderSuccess(null); setTrackingStatus("NOVO"); }} className="order-new-btn">Fazer Novo Pedido</button>
         </div>
       </div>
@@ -598,6 +613,38 @@ export default function CustomerStorePage({ franchisee, menuProducts, storeRatin
             </div>
           ))}
         </div>
+
+        {/* ===== SEÇÃO DE AVALIAÇÕES ===== */}
+        {storeRating && storeRating.reviews && storeRating.reviews.length > 0 && (
+          <div style={{ marginTop: "2rem", paddingBottom: "2rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
+              <h2 style={{ fontWeight: 800, fontSize: "1.1rem", margin: 0 }}>⭐ Avaliações dos clientes</h2>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "#FFF7ED", border: "1px solid #FCD34D", borderRadius: "20px", padding: "3px 12px", fontSize: "0.82rem", fontWeight: 700, color: "#92400E" }}>
+                <Star size={12} fill="#F59E0B" color="#F59E0B" />
+                {storeRating.average.toFixed(1)} ({storeRating.count} avaliações)
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+              {storeRating.reviews.map((r, i) => (
+                <div key={i} style={{ background: "#fff", borderRadius: "14px", padding: "1rem 1.25rem", border: "1px solid #F1F5F9", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #E63946, #C62828)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.82rem" }}>
+                      {r.customerName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: "0.82rem", margin: 0 }}>{r.customerName.split(" ")[0]}</p>
+                      <p style={{ fontSize: "0.65rem", color: "#94A3B8", margin: 0 }}>{new Date(r.createdAt).toLocaleDateString("pt-BR")}</p>
+                    </div>
+                    <div style={{ marginLeft: "auto", display: "flex", gap: "2px" }}>
+                      {[1,2,3,4,5].map(n => <Star key={n} size={11} fill={n <= r.rating ? "#F59E0B" : "none"} color={n <= r.rating ? "#F59E0B" : "#CBD5E1"} />)}
+                    </div>
+                  </div>
+                  <p style={{ fontSize: "0.82rem", color: "#475569", margin: 0, lineHeight: 1.5 }}>"{r.comment}"</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* DESKTOP CART SIDEBAR */}
         <div className="desk-cart">{cartContentJSX}</div>

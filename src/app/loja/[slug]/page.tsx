@@ -70,9 +70,22 @@ export default async function PublicStorePage({ params }: { params: Promise<{ sl
     _count: { rating: true }
   });
 
+  const recentReviews = await prisma.storeReview.findMany({
+    where: { franchiseeId: franchisee.id, comment: { not: null } },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    include: { customer: { select: { name: true } } },
+  });
+
   const storeRating = {
     average: reviewsData._avg.rating || 0,
-    count: reviewsData._count.rating || 0
+    count: reviewsData._count.rating || 0,
+    reviews: recentReviews.map(r => ({
+      rating: r.rating,
+      comment: r.comment || "",
+      customerName: r.customer?.name || "Cliente",
+      createdAt: r.createdAt.toISOString(),
+    })),
   };
 
   return (

@@ -160,7 +160,7 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
     localStorage.setItem("autoAcceptOrders", next.toString());
   };
 
-  // Sound notification for new orders
+  // Sound + Push Notification for new orders
   useEffect(() => {
     const currentNewCount = orders.filter(o => o.status === "NOVO").length;
     if (currentNewCount > prevOrderCount.current) {
@@ -170,9 +170,43 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
         audio.volume = 0.5;
         audio.play().catch(() => {});
       } catch {}
+
+      // Push Notification (browser)
+      if ("Notification" in window) {
+        if (Notification.permission === "granted") {
+          try {
+            new Notification("🔔 Novo pedido chegou!", {
+              body: `Você tem ${currentNewCount} pedido${currentNewCount > 1 ? "s" : ""} aguardando confirmação.`,
+              icon: "/icon.jpg",
+              tag: "new-order",
+              renotify: true,
+            });
+          } catch {}
+        } else if (Notification.permission !== "denied") {
+          Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+              try {
+                new Notification("🔔 Notificações ativadas!", {
+                  body: "Você receberá alertas quando chegar novos pedidos.",
+                  icon: "/icon.jpg",
+                });
+              } catch {}
+            }
+          });
+        }
+      }
     }
     prevOrderCount.current = currentNewCount;
   }, [orders]);
+
+  // Solicitar permissão de notificação na montagem
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      // Pequeno delay para não parecer intrusivo
+      const t = setTimeout(() => Notification.requestPermission(), 3000);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   const updateStatus = async (orderId: string, newStatus: string) => {
     setLoadingId(orderId);
