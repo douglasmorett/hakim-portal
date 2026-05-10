@@ -62,6 +62,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const [category, setCategory] = useState("Esfihas Salgadas");
   const [imageUrl, setImageUrl] = useState("");
   const [active, setActive] = useState(true);
+  const [cost, setCost] = useState("");
   const [isCombo, setIsCombo] = useState(false);
   const [activePDV, setActivePDV] = useState(true);
   const [activeDelivery, setActiveDelivery] = useState(true);
@@ -72,7 +73,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
   const categories = ["Promoção do Dia", "Combos", "Esfihas Salgadas", "Esfihas Doces", "Acompanhamentos", "Bebidas", "Outros"];
 
   const resetForm = () => {
-    setName(""); setDescription(""); setPrice(""); setCategory("Esfihas Salgadas");
+    setName(""); setDescription(""); setPrice(""); setCost(""); setCategory("Esfihas Salgadas");
     setImageUrl(""); setActive(true); setIsCombo(false); setComboGroups([]);
     setActivePDV(true); setActiveDelivery(true); setActiveTotem(false); setActiveGarcom(false);
     setShowForm(false); setEditingId(null);
@@ -80,6 +81,7 @@ export default function MenuProductManager({ products, availableItems }: { produ
 
   const openEdit = (p: any) => {
     setName(p.name); setDescription(p.description); setPrice(String(p.price));
+    setCost(p.cost != null && p.cost > 0 ? String(p.cost) : "");
     setCategory(p.category); setImageUrl(p.imageUrl || ""); setActive(p.active);
     setIsCombo(p.isCombo);
     setActivePDV(p.activePDV ?? true);
@@ -103,7 +105,9 @@ export default function MenuProductManager({ products, availableItems }: { produ
         method: editingId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: editingId, name, description, price: parseFloat(price), category,
+          id: editingId, name, description, price: parseFloat(price),
+          cost: cost ? parseFloat(cost) : 0,
+          category,
           imageUrl: imageUrl || null, active, isCombo,
           activePDV, activeDelivery, activeTotem, activeGarcom,
           comboGroups: isCombo ? comboGroups : undefined
@@ -433,8 +437,31 @@ export default function MenuProductManager({ products, availableItems }: { produ
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
             <div className="input-group"><label>Nome</label><input className="input-field" value={name} onChange={e => setName(e.target.value)} /></div>
             <div className="input-group"><label>Preço (R$)</label><input className="input-field" type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} /></div>
-            <div className="input-group" style={{ gridColumn: "span 2" }}><label>Descrição</label><textarea className="input-field" rows={2} value={description} onChange={e => setDescription(e.target.value)} style={{ resize: "vertical" }} /></div>
+            <div className="input-group"><label>Descrição</label><textarea className="input-field" rows={2} value={description} onChange={e => setDescription(e.target.value)} style={{ resize: "vertical" }} /></div>
             <div className="input-group"><label>Categoria</label><select className="input-field" value={category} onChange={e => setCategory(e.target.value)}>{categories.map(c => <option key={c}>{c}</option>)}</select></div>
+            {/* Campo Custo */}
+            <div className="input-group" style={{ position: "relative" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                Custo do Produto (R$)
+                <span style={{ fontSize: "0.68rem", background: "#FEF3C7", color: "#92400E", padding: "1px 6px", borderRadius: "4px", fontWeight: 700 }}>
+                  Usado no CMV
+                </span>
+              </label>
+              <input
+                className="input-field"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Ex: 8.50"
+                value={cost}
+                onChange={e => setCost(e.target.value)}
+              />
+              {cost && parseFloat(price) > 0 && parseFloat(cost) > 0 && (
+                <p style={{ fontSize: "0.72rem", color: "#16A34A", marginTop: "4px", fontWeight: 600 }}>
+                  Margem bruta: {(((parseFloat(price) - parseFloat(cost)) / parseFloat(price)) * 100).toFixed(1)}%
+                </p>
+              )}
+            </div>
             <div className="input-group"><label>URL da Imagem</label><input className="input-field" value={imageUrl} onChange={e => setImageUrl(e.target.value)} /></div>
           </div>
 
@@ -519,6 +546,27 @@ export default function MenuProductManager({ products, availableItems }: { produ
                   <div>
                     <h3 className="font-bold" style={{ fontSize: "0.9rem" }}>{p.name}</h3>
                     <p className="text-muted" style={{ fontSize: "0.7rem" }}>{p.category}{p.isCombo && " • COMBO"}</p>
+                    {/* Custo e margem */}
+                    {!p.isCombo && (
+                      <div style={{ display: "flex", gap: "5px", marginTop: "3px", flexWrap: "wrap" }}>
+                        {p.cost > 0 ? (
+                          <>
+                            <span style={{ fontSize: "0.63rem", background: "#F0FDF4", color: "#16A34A", border: "1px solid #BBF7D0", borderRadius: "4px", padding: "1px 6px", fontWeight: 700 }}>
+                              Custo: R${p.cost.toFixed(2)}
+                            </span>
+                            <span style={{ fontSize: "0.63rem", background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", borderRadius: "4px", padding: "1px 6px", fontWeight: 700 }}>
+                              Margem: {(((p.price - p.cost) / p.price) * 100).toFixed(0)}%
+                            </span>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => openEdit(p)}
+                            style={{ fontSize: "0.63rem", background: "#FEF3C7", color: "#92400E", border: "1px solid #FCD34D", borderRadius: "4px", padding: "1px 8px", fontWeight: 700, cursor: "pointer" }}>
+                            ⚠️ Sem custo — clique para cadastrar
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <span className="font-extrabold gradient-text">R$ {p.price.toFixed(2)}</span>
                 </div>

@@ -105,6 +105,7 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
   const [customTo, setCustomTo] = useState("");
   const [useCustom, setUseCustom] = useState(false);
   const [activeTab, setActiveTab] = useState<"dre" | "extrato" | "pagamentos" | "mensalidade">("dre");
+  const [showAllSemCusto, setShowAllSemCusto] = useState(false);
 
   const { from, to } = useMemo(() => {
     if (useCustom && customFrom && customTo) {
@@ -257,24 +258,47 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
                 Dados de CMV incompletos — {produtosSemCusto.length} {produtosSemCusto.length === 1 ? "produto sem" : "produtos sem"} custo cadastrado
               </p>
               <p style={{ color: "#78350F", fontSize: "0.82rem", margin: "0 0 10px", lineHeight: 1.5 }}>
-                O <strong>Custo dos Produtos Vendidos (CMV)</strong> e a <strong>margem de lucro</strong> exibidos abaixo estão <strong>incorretos</strong> porque os produtos abaixo não têm custo cadastrado.
-                Cadastre o custo de cada produto para obter dados financeiros precisos.
+                O <strong>Custo dos Produtos Vendidos (CMV)</strong> e a <strong>margem de lucro</strong> exibidos abaixo estão <strong>incorretos</strong>.
+                Clique em cada produto para cadastrar o custo direto no cardápio.
               </p>
+
+              {/* Badges clicáveis */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
-                {produtosSemCusto.slice(0, 10).map(p => (
-                  <span key={p.id} style={{
-                    background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: "6px",
-                    padding: "3px 10px", fontSize: "0.78rem", fontWeight: 600, color: "#92400E"
-                  }}>
+                {(showAllSemCusto ? produtosSemCusto : produtosSemCusto.slice(0, 10)).map(p => (
+                  <a
+                    key={p.id}
+                    href="/store/cardapio"
+                    title={`Clique para cadastrar custo de ${p.name}`}
+                    style={{
+                      background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: "6px",
+                      padding: "3px 10px", fontSize: "0.78rem", fontWeight: 600, color: "#92400E",
+                      textDecoration: "none", cursor: "pointer",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#FDE68A")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "#FEF3C7")}
+                  >
                     {p.name}
-                  </span>
+                  </a>
                 ))}
+
+                {/* Botão Ver mais / Ver menos */}
                 {produtosSemCusto.length > 10 && (
-                  <span style={{ fontSize: "0.78rem", color: "#92400E", fontWeight: 600, alignSelf: "center" }}>
-                    +{produtosSemCusto.length - 10} mais...
-                  </span>
+                  <button
+                    onClick={() => setShowAllSemCusto(v => !v)}
+                    style={{
+                      fontSize: "0.78rem", color: "#92400E", fontWeight: 700,
+                      background: "none", border: "1px dashed #FCD34D", borderRadius: "6px",
+                      padding: "3px 10px", cursor: "pointer", alignSelf: "center"
+                    }}
+                  >
+                    {showAllSemCusto
+                      ? "▲ Ver menos"
+                      : `▼ Ver mais ${produtosSemCusto.length - 10} produtos`}
+                  </button>
                 )}
               </div>
+
               <a
                 href="/store/cardapio"
                 style={{
@@ -284,7 +308,7 @@ export default function DREClient({ orders, paymentFees, storeName, storeCreated
                   textDecoration: "none"
                 }}
               >
-                📦 Ir para o cardápio e cadastrar custos
+                📦 Abrir cardápio e cadastrar custos
               </a>
             </div>
           </div>
