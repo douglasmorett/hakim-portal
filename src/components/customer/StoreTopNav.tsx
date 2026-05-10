@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, ClipboardList, Store, Users, ShoppingBag, ExternalLink, LogOut, UtensilsCrossed, Bike, BarChart2 } from "lucide-react";
+import { Home, ClipboardList, Store, Users, ShoppingBag, ExternalLink, LogOut, UtensilsCrossed, Bike, BarChart2, Printer } from "lucide-react";
 import { useState, useTransition } from "react";
 
 const NAV_ITEMS = [
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/store/cardapio/custos", label: "Custos CMV", icon: BarChart2 },
   { href: "/store/financeiro", label: "Financeiro", icon: BarChart2 },
   { href: "/store/motoboys", label: "Motoboys", icon: Bike },
+  { href: "/store/impressoras", label: "Impressoras", icon: Printer },
   { href: "/store/minha-loja", label: "Minha Loja", icon: Store },
   { href: "/store/profile", label: "Perfil", icon: Users },
 ];
