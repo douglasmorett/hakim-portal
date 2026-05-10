@@ -681,7 +681,7 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
                 cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: "5px",
                 background: altaDemanda.active ? "linear-gradient(135deg,#EF4444,#F97316)" : "#FFF7ED",
                 color: altaDemanda.active ? "#fff" : "#EA580C",
-                border: altaDemanda.active ? "none" : "1.5px solid #FED7AA",
+                outline: altaDemanda.active ? "none" : "1.5px solid #FED7AA",
                 animation: altaDemanda.active ? "pulse 1.5s infinite" : "none"
               }}
             >

@@ -13,7 +13,7 @@ export default async function StorePage() {
   const user = await prisma.user.findUnique({
     where: { email: session.user?.email || "" },
     select: {
-      id: true, paymentFees: true, slug: true,
+      id: true, slug: true,
       storeLogo: true, storeBanner: true, storeHours: true,
       paymentFees: true, deliveryZones: true, storeOrderCount: true,
     }
@@ -29,7 +29,7 @@ export default async function StorePage() {
   if ((user.storeOrderCount || 0) > 0) completedSteps.push("first_order");
 
   // Verificar se tem produto cadastrado
-  const productCount = await prisma.menuProduct.count({ where: { storeId: user.id, active: true } });
+  const productCount = await prisma.menuProduct.count({ where: { userId: user.id, active: true } });
   if (productCount > 0) completedSteps.push("menu");
 
   // Busca últimos 90 dias de pedidos para relatórios
