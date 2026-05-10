@@ -13,8 +13,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Portal Hakim",
-  description: "Sistema de gerenciamento Hakim",
+  title: "FireHub — Gestão para Restaurantes",
+  description: "Plataforma completa de gestão para restaurantes. Cardápio digital, pedidos online, delivery e muito mais.",
+  icons: {
+    icon: [
+      { url: "/icon.jpg", type: "image/jpeg" },
+    ],
+    apple: [
+      { url: "/apple-icon.jpg", type: "image/jpeg" },
+    ],
+    shortcut: "/favicon.ico",
+  },
+  themeColor: "#C62828",
+  applicationName: "FireHub",
+  keywords: ["restaurante", "delivery", "cardápio digital", "gestão", "pedidos"],
 };
 
 import { Providers } from "@/components/Providers";
