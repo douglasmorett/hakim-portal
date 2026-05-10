@@ -10,7 +10,7 @@ const FEATURES = [
   { label: "Pagamento Cartão online", firehub: true, brendi: true },
   { label: "Voucher VR / Alelo / Ticket online", firehub: true, brendi: false },
   { label: "Recebimento cartão crédito", firehub: "D+2", brendi: "D+14" },
-  { label: "Teto de mensalidade", firehub: "R$250/mês", brendi: "R$300/mês" },
+  { label: "Teto de mensalidade", firehub: "R$400/mês", brendi: "R$300/mês" },
   { label: "Alta Demanda (Surge Pricing)", firehub: true, brendi: true },
   { label: "Log de auditoria de operações", firehub: true, brendi: false },
   { label: "Agendar pausa / Férias", firehub: true, brendi: true },
@@ -144,7 +144,7 @@ export default function PlanosPage() {
             <span style={{ color: "#E63946" }}>Sem surpresas.</span>
           </h1>
           <p style={{ fontSize: "1.1rem", color: "#94A3B8", maxWidth: 540, margin: "0 auto 2rem" }}>
-            Nosso modelo cresce com você. Quanto mais você fatura, mais sentido faz — com teto máximo de <strong style={{ color: "#fff" }}>R$250/mês</strong>.
+            Nosso modelo cresce com você. Quanto mais você fatura, mais sentido faz — com teto máximo de <strong style={{ color: "#fff" }}>R$400/mês</strong>.
           </p>
           <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
             <a href="/login" style={{ padding: "14px 32px", borderRadius: "14px", background: "#E63946", color: "#fff", fontWeight: 800, fontSize: "1rem", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "8px" }}>
@@ -163,7 +163,7 @@ export default function PlanosPage() {
           {[
             { value: "R$60", label: "Mínimo por mês", sub: "Para quem está começando" },
             { value: "4%", label: "Taxa sobre faturamento", sub: "Só pedidos FireHub" },
-            { value: "R$250", label: "Teto máximo", sub: "Nunca paga mais que isso" },
+            { value: "R$400", label: "Teto máximo", sub: "Nunca paga mais que isso" },
             { value: "15 dias", label: "Trial gratuito", sub: "Sem cartão de crédito" },
           ].map((item, i) => (
             <div key={i}>
@@ -198,8 +198,8 @@ export default function PlanosPage() {
                 {[
                   { fatur: "R$1.500/mês", mensalidade: "R$60", desc: "Mínimo — para quem está começando" },
                   { fatur: "R$3.000/mês", mensalidade: "R$120", desc: "4% de R$3.000" },
-                  { fatur: "R$5.000/mês", mensalidade: "R$200", desc: "4% de R$5.000" },
-                  { fatur: "R$6.250+/mês", mensalidade: "R$250", desc: "✅ Teto máximo — nunca paga mais" },
+                  { fatur: "R$6.000/mês", mensalidade: "R$240", desc: "4% de R$6.000" },
+                  { fatur: "R$10.000+/mês", mensalidade: "R$400", desc: "✅ Teto máximo — nunca paga mais" },
                 ].map((row, i) => (
                   <div key={i} style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -224,7 +224,7 @@ export default function PlanosPage() {
                   <li>Só contam pedidos feitos <strong>pelo FireHub</strong> (iFood, 99Food não entram)</li>
                   <li>1ª cobrança só após os <strong>15 dias de trial gratuito</strong></li>
                   <li>Débito automático do <strong>saldo online</strong> (sem boleto)</li>
-                  <li>Teto de <strong>R$250/mês</strong> — nunca vai além disso</li>
+                  <li>Teto de <strong>R$400/mês</strong> — nunca vai além disso</li>
                 </ul>
               </div>
             </div>
