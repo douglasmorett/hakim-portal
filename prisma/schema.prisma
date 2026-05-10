@@ -210,6 +210,8 @@ model CustomerOrder {
   pagarmePixExpiry DateTime?           // Expiração do PIX
   pagarmeMethod    String?             // pix | credit_card | debit_card | voucher
   paymentPaidAt    DateTime?           // Confirmação de pagamento
+  cashbackEarned   Float?              // Cashback gerado neste pedido (R$)
+  cashbackUsed     Float?              // Cashback resgatado neste pedido (R$)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   franchisee       User                @relation(fields: [franchiseeId], references: [id])
@@ -231,15 +233,17 @@ model CustomerOrderItem {
 }
 
 model StoreCustomer {
-  id        String          @id @default(cuid())
-  name      String
-  phone     String          @unique
-  password  String
-  address   String?
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  orders    CustomerOrder[]
-  reviews   StoreReview[]
+  id               String          @id @default(cuid())
+  name             String
+  phone            String          @unique
+  password         String
+  address          String?
+  cashbackBalance  Float           @default(0) // Saldo atual de cashback (R$)
+  cashbackHistory  Json?           // Array: [{ orderId, amount, type: earn|redeem, date, storeId }]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  orders           CustomerOrder[]
+  reviews          StoreReview[]
 }
 
 model StoreReview {
