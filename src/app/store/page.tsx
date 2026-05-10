@@ -20,18 +20,6 @@ export default async function StorePage() {
   });
   if (!user) redirect("/");
 
-  // Detectar etapas de onboarding concluídas
-  const completedSteps: string[] = [];
-  if (user.storeLogo || user.storeBanner) completedSteps.push("logo");
-  if (user.storeHours) completedSteps.push("hours");
-  if (user.paymentFees && Object.keys(user.paymentFees as object).length > 0) completedSteps.push("payment");
-  if (user.deliveryZones) completedSteps.push("delivery");
-  if ((user.storeOrderCount || 0) > 0) completedSteps.push("first_order");
-
-  // Verificar se tem produto cadastrado
-  const productCount = await prisma.menuProduct.count({ where: { userId: user.id, active: true } });
-  if (productCount > 0) completedSteps.push("menu");
-
   // Busca últimos 90 dias de pedidos para relatórios
   const since = new Date();
   since.setDate(since.getDate() - 90);
@@ -41,6 +29,15 @@ export default async function StorePage() {
     include: { items: { include: { menuProduct: { select: { name: true, cost: true } } } } },
     orderBy: { createdAt: "desc" }
   });
+
+  // Detectar etapas de onboarding concluídas
+  const completedSteps: string[] = [];
+  if (user.storeLogo || user.storeBanner) completedSteps.push("logo");
+  if (user.storeHours) completedSteps.push("hours");
+  if (user.paymentFees && Object.keys(user.paymentFees as object).length > 0) completedSteps.push("payment");
+  if (user.deliveryZones) completedSteps.push("delivery");
+  if ((user.storeOrderCount || 0) > 0) completedSteps.push("first_order");
+  if (orders.length > 0) completedSteps.push("menu"); // proxy: se recebeu pedidos, tem produto
 
   const serialized = orders.map(o => ({
     id: o.id,
