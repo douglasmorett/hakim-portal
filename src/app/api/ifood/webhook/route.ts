@@ -153,17 +153,17 @@ async function processIfoodEvent(event: any, franchiseeIdOverride?: string) {
       quantity: i.quantity ?? 1,
       menuProduct: {
         connectOrCreate: {
-          where: { id: `ifood-${i.id}` },
+          where: { id: `ifood-${i.id}` } as any,
           create: {
-            id:          `ifood-${i.id}`,
+            id:           `ifood-${i.id}`,
             franchiseeId: franchisee.id,
-            name:        i.name ?? i.description ?? "Item iFood",
-            description: "",
-            price:       i.unitPrice ?? 0,
-            category:    "iFood",
-            active:      true,
+            name:         i.name ?? i.description ?? "Item iFood",
+            description:  "",
+            price:        i.unitPrice ?? 0,
+            category:     "iFood",
+            active:       true,
           } as any,
-        },
+        } as any,
       },
     }));
 
