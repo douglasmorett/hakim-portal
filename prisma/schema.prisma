@@ -47,6 +47,9 @@ model User {
   financialGoals  Json?           // Metas financeiras mensais: { faturamento, margemLiquida, cmvPct, pedidos, ticketMedio }
   resetToken      String?         // Token de recuperação de senha
   resetTokenExp   DateTime?       // Expiração do token de recuperação
+  // === FATURAMENTO: USE FIRST, PAY LATER ===
+  planPercent     Float           @default(0)  // % cobrado sobre vendas (ex: 5.0 = 5%)
+  billingCycles   FranchiseeBillingCycle[]
   orders          Order[]
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]
@@ -372,3 +375,42 @@ model CashSession {
   updatedAt       DateTime  @updatedAt
 }
 
+// ========== FATURAMENTO: USE FIRST, PAY LATER ==========
+// Ciclo mensal de cobrança por franqueado. 
+// O franqueado usa o sistema o mês todo, e paga no fechamento.
+// Pagamentos online recebidos vão abatendo a dívida em tempo real.
+
+model FranchiseeBillingCycle {
+  id               String    @id @default(cuid())
+  franchiseeId     String
+  // Referência do mês (ex: "2025-05" = Maio/2025)
+  yearMonth        String    // formato "YYYY-MM"
+  // Valores calculados
+  totalSales       Float     @default(0)   // Total de vendas do mês
+  planPercent      Float     @default(0)   // % aplicado (snapshot do plano no fechamento)
+  amountDue        Float     @default(0)   // Valor devido = totalSales * planPercent / 100
+  // Abatimentos acumulados de pagamentos online
+  amountOffset     Float     @default(0)   // Já abatido por recebimentos online (Pagar.me)
+  // Resultado no fechamento
+  amountPending    Float     @default(0)   // amountDue - amountOffset (o que ainda falta)
+  // Status do ciclo
+  status           String    @default("OPEN")
+  // OPEN       = mês em andamento, abatendo em tempo real
+  // CLOSED     = mês encerrado, link gerado se havia diferença
+  // PAID       = quitado (link pago OU offset cobriu tudo)
+  // FORGIVEN   = admin zerou manualmente
+  closedAt         DateTime?
+  // Link de cobrança da diferença (gerado no fechamento se amountPending > 0)
+  asaasPaymentId   String?
+  asaasBoletoUrl   String?
+  asaasBoletoCode  String?
+  asaasPixQrCode   String?   @db.Text
+  // Log de abatimentos: [{ date, orderId, amount, pagarmeOrderId }]
+  offsetLog        Json?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  franchisee       User      @relation(fields: [franchiseeId], references: [id])
+
+  @@unique([franchiseeId, yearMonth])
+}
