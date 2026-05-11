@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   Zap, Facebook, BarChart2, Play, Pause, Settings,
   CheckCircle, AlertCircle, TrendingUp, MousePointer,
-  Eye, ShoppingBag, ChevronRight, Wifi, WifiOff
+  Eye, ShoppingBag, ChevronRight, Activity, PauseCircle
 } from "lucide-react";
 
 type Campaign = {
@@ -249,8 +249,8 @@ export default function MetaAdsPage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 14, padding: "1rem 1.25rem", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0", flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {campaign.status === "ACTIVE"
-                ? <Wifi size={18} color="#16A34A" />
-                : <WifiOff size={18} color="#94A3B8" />}
+                ? <Activity size={18} color="#16A34A" />
+                : <PauseCircle size={18} color="#94A3B8" />}
               <div>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: "0.875rem" }}>
                   {campaign.status === "ACTIVE" ? "Campanha ativa e rodando" : "Campanha pausada"}
