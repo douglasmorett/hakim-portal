@@ -66,28 +66,38 @@ export async function GET(req: NextRequest) {
   });
 
   if (!existing) {
-    const items = order.items ?? [];
-    const total = order.totalPrice ?? items.reduce((s: number, i: any) => s + i.totalPrice, 0);
+    const ifoodItems: any[] = order.items ?? [];
+    const totalAmount: number = order.totalPrice ?? ifoodItems.reduce((s: number, i: any) => s + (i.totalPrice ?? 0), 0);
+
+    // Usa o primeiro admin como franchiseeId para pedidos iFood de teste
+    const adminUser = await prisma.user.findFirst({ where: { role: "ADMIN" }, select: { id: true } });
+    if (!adminUser) {
+      return NextResponse.json({ error: "Nenhum admin encontrado" }, { status: 500 });
+    }
+
+    const addr = order.delivery?.deliveryAddress;
+    const customerAddress = addr
+      ? `${addr.streetName ?? ""}, ${addr.streetNumber ?? ""} - ${addr.neighborhood ?? ""}`.trim()
+      : "Retirada";
 
     await prisma.customerOrder.create({
       data: {
         ifoodOrderId:    orderId,
+        ifoodReference:  order.displayId ?? undefined,
         status:          "NOVO",
-        origem:          "IFOOD",
+        source:          "IFOOD",
         customerName:    order.customer?.name ?? "Cliente iFood",
         customerPhone:   order.customer?.phone ?? "",
-        customerEmail:   order.customer?.documentNumber ?? "",
-        deliveryAddress: JSON.stringify(order.delivery?.deliveryAddress ?? {}),
-        total,
+        customerAddress,
+        deliveryType:    order.orderType === "TAKEOUT" ? "RETIRADA" : "DELIVERY",
         paymentMethod:   order.payments?.[0]?.name ?? "iFood",
-        notes:           order.merchant?.name ?? "",
-        franchiseeId:    undefined,
+        totalAmount,
+        notes:           `[IFOOD] ${order.merchant?.name ?? ""}`,
+        franchiseeId:    adminUser.id,
         items: {
-          create: items.map((i: any) => ({
-            name:      i.name,
-            quantity:  i.quantity,
-            unitPrice: i.unitPrice,
-            total:     i.totalPrice,
+          create: ifoodItems.map((i: any) => ({
+            quantity: i.quantity ?? 1,
+            price:    i.totalPrice ?? i.unitPrice ?? 0,
           })),
         },
       },
