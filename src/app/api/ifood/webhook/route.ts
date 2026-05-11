@@ -162,7 +162,7 @@ async function processIfoodEvent(event: any, franchiseeIdOverride?: string) {
             price:       i.unitPrice ?? 0,
             category:    "iFood",
             active:      true,
-          },
+          } as any,
         },
       },
     }));
