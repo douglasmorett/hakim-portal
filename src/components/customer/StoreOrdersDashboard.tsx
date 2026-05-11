@@ -41,6 +41,8 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [now, setNow] = useState(new Date());
+  const [motoboys, setMotoboys] = useState<any[]>([]);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
   const [autoAccept, setAutoAccept] = useState(() => {
     if (typeof window !== "undefined") return localStorage.getItem("autoAcceptOrders") === "true";
     return false;
@@ -206,6 +208,30 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
       return () => clearTimeout(t);
     }
   }, []);
+
+  // Carrega motoboys cadastrados
+  useEffect(() => {
+    fetch("/api/motoboys")
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setMotoboys(Array.isArray(data) ? data.filter((m: any) => m.active !== false) : []))
+      .catch(() => {});
+  }, []);
+
+  const assignMotoboy = async (orderId: string, motoboyId: string) => {
+    setAssigningId(orderId);
+    try {
+      await fetch("/api/customer-order/assign-motoboy", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, motoboyId: motoboyId || null }),
+      });
+      setOrders(prev => prev.map(o =>
+        o.id === orderId
+          ? { ...o, motoboyId, motoboy: motoboys.find(m => m.id === motoboyId) || null }
+          : o
+      ));
+    } finally { setAssigningId(null); }
+  };
 
   const updateStatus = async (orderId: string, newStatus: string) => {
     setLoadingId(orderId);
@@ -467,6 +493,37 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
               {order.customerAddress && <div><span style={{ color: "#94A3B8" }}>End:</span> <strong>{order.customerAddress}</strong></div>}
             </div>
             {order.paymentMethod && <div style={{ fontSize: "0.78rem", color: "#64748B", marginBottom: "0.25rem" }}>💳 {order.paymentMethod}</div>}
+
+            {/* SELETOR DE MOTOBOY */}
+            {order.deliveryType === "DELIVERY" && motoboys.length > 0 && (
+              <div style={{ margin: "0.5rem 0", padding: "8px 10px", background: "#F0F9FF", borderRadius: "8px", border: "1px solid #BAE6FD" }}>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#0369A1", display: "block", marginBottom: "4px" }}>🛵 Motoboy responsável:</label>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <select
+                    value={order.motoboyId || ""}
+                    onChange={e => assignMotoboy(order.id, e.target.value)}
+                    disabled={assigningId === order.id}
+                    style={{ flex: 1, padding: "5px 8px", borderRadius: "6px", border: "1px solid #BAE6FD", fontSize: "0.82rem", outline: "none", background: "white", fontFamily: "inherit" }}
+                  >
+                    <option value="">— Não atribuído —</option>
+                    {motoboys.map((m: any) => (
+                      <option key={m.id} value={m.id}>{m.name}{m.phone ? ` · ${m.phone}` : ""}</option>
+                    ))}
+                  </select>
+                  {order.motoboy && (
+                    <a
+                      href={`https://wa.me/55${(order.motoboy.phone || "").replace(/\D/g, "")}`}
+                      target="_blank" rel="noopener noreferrer"
+                      title={`WhatsApp ${order.motoboy.name}`}
+                      style={{ padding: "5px 8px", background: "#25D366", color: "white", borderRadius: "6px", textDecoration: "none", fontSize: "0.8rem", fontWeight: 700 }}
+                    >📲</a>
+                  )}
+                </div>
+                {order.motoboy && (
+                  <div style={{ fontSize: "0.72rem", color: "#0369A1", marginTop: "3px" }}>✅ {order.motoboy.name} atribuído</div>
+                )}
+              </div>
+            )}
             {order.notes && <div style={{ padding: "0.4rem 0.6rem", background: "#FFF7ED", borderRadius: "6px", fontSize: "0.8rem", marginBottom: "0.5rem" }}>💬 {order.notes}</div>}
             <div style={{ fontSize: "0.82rem", marginBottom: "0.5rem" }}>
               {order.items?.map((item: any) => (
