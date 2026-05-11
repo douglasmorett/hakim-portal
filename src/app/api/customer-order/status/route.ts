@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { trackSaleForBilling } from "@/lib/billing";
+
+// Status que contam como venda confirmada para fins de faturamento
+const BILLING_TRIGGER_STATUSES = ["ACEITO", "ENTREGUE", "PRONTO", "SAIU_PARA_ENTREGA"];
 
 // GET: Public status check (no auth required)
 export async function GET(req: NextRequest) {
@@ -64,6 +68,13 @@ export async function PUT(req: Request) {
     where: { id: orderId },
     data: { status }
   });
+
+  // Atualiza faturamento do ciclo mensal se pedido foi confirmado
+  if (BILLING_TRIGGER_STATUSES.includes(status)) {
+    trackSaleForBilling(order.franchiseeId).catch(err =>
+      console.error("[Billing] Erro ao atualizar ciclo:", err)
+    );
+  }
 
   return NextResponse.json({ success: true });
 }

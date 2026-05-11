@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { trackSaleForBilling } from "@/lib/billing";
 
 export async function POST(req: Request) {
   try {
@@ -93,6 +94,13 @@ export async function POST(req: Request) {
       where: { id: franchisee.id },
       data: { storeOrderCount: { increment: 1 } }
     });
+
+    // Se auto-aceito, já contabiliza no faturamento imediatamente
+    if (franchisee.autoAcceptOrders) {
+      trackSaleForBilling(franchisee.id).catch(err =>
+        console.error("[Billing] Erro ao atualizar ciclo:", err)
+      );
+    }
 
     return NextResponse.json({
       orderId: order.id,
