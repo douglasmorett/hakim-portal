@@ -1,13 +1,15 @@
 "use client";
 import { useState, useMemo } from "react";
-import { TrendingUp, DollarSign, ShoppingCart, Users, CreditCard, Banknote, Smartphone, ArrowUpRight, ArrowDownRight, Filter, Calendar, Package, Clock, Truck, Store as StoreIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { TrendingUp, DollarSign, ShoppingCart, Users, CreditCard, Banknote, Smartphone, ArrowUpRight, ArrowDownRight, Filter, Calendar, Store as StoreIcon, ChevronDown } from "lucide-react";
 import OnboardingChecklist from "@/components/OnboardingChecklist";
 
 type Order = {
   id: string; totalAmount: number; status: string; deliveryType: string;
   paymentMethod?: string; customerName: string; customerPhone?: string;
-  createdAt: string; items?: any[];
+  createdAt: string; items?: any[]; storeName?: string; storeSlug?: string;
 };
+type StoreOption = { id: string; name: string; slug: string };
 
 const PAYMENT_LABELS: Record<string, { label: string; icon: any; color: string }> = {
   PIX: { label: "Pix", icon: Smartphone, color: "#00BFA5" },
@@ -29,7 +31,8 @@ const STATUS_LABELS: Record<string, { label: string; emoji: string; color: strin
 
 type DateFilter = "hoje" | "ontem" | "semana" | "mes" | "custom";
 
-export default function StoreDashboard({ orders: allOrders, paymentFees = {}, completedOnboardingSteps = [] }: { orders: Order[]; paymentFees?: Record<string, any>; completedOnboardingSteps?: string[] }) {
+export default function StoreDashboard({ orders: allOrders, paymentFees = {}, completedOnboardingSteps = [], isAdmin = false, storeList = [], selectedStoreId = "todas" }: { orders: Order[]; paymentFees?: Record<string, any>; completedOnboardingSteps?: string[]; isAdmin?: boolean; storeList?: StoreOption[]; selectedStoreId?: string; }) {
+  const router = useRouter();
   const [dateFilter, setDateFilter] = useState<DateFilter>("hoje");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -195,8 +198,35 @@ export default function StoreDashboard({ orders: allOrders, paymentFees = {}, co
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "1.25rem 1.5rem", fontFamily: "'Inter', sans-serif" }}>
 
-      {/* ONBOARDING — some se todas as etapas estiverem concluídas */}
-      {completedOnboardingSteps.length < 6 && (
+      {/* SELETOR MULTILOJA — só para ADMIN */}
+      {isAdmin && storeList.length > 1 && (
+        <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #E2E8F0", padding: "1rem 1.25rem", marginBottom: "1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+            <StoreIcon size={16} color="#C62828" />
+            <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#1E293B" }}>Selecionar Loja</span>
+            <span style={{ fontSize: "0.75rem", color: "#94A3B8", marginLeft: "4px" }}>{storeList.length - 1} franquia(s) cadastrada(s)</span>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {storeList.map(s => {
+              const active = s.id === selectedStoreId;
+              return (
+                <button key={s.id} onClick={() => router.push(`/store${s.id === "todas" ? "" : `?loja=${s.id}`}`)}
+                  style={{ padding: "0.45rem 1rem", borderRadius: "20px", fontSize: "0.82rem", fontWeight: active ? 700 : 500, cursor: "pointer", transition: "all 0.15s",
+                    border: active ? "2px solid #C62828" : "1.5px solid #E2E8F0",
+                    background: active ? "#C62828" : "#F8FAFC",
+                    color: active ? "#fff" : "#64748B",
+                    boxShadow: active ? "0 2px 8px #C6282830" : "none"
+                  }}>
+                  {s.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ONBOARDING — some se admin ou todas as etapas concluídas */}
+      {!isAdmin && completedOnboardingSteps.length < 6 && (
         <OnboardingChecklist completedSteps={completedOnboardingSteps} />
       )}
 
@@ -365,7 +395,7 @@ export default function StoreDashboard({ orders: allOrders, paymentFees = {}, co
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #F1F5F9" }}>
-                {["Pedido", "Cliente", "Tipo", "Pagamento", "Status", "Valor", "Hora"].map(h => (
+                {["Pedido", ...(isAdmin && selectedStoreId === "todas" ? ["Loja"] : []), "Cliente", "Tipo", "Pagamento", "Status", "Valor", "Hora"].map(h => (
                   <th key={h} style={{ padding: "0.5rem", textAlign: "left", color: "#94A3B8", fontWeight: 600, fontSize: "0.75rem" }}>{h}</th>
                 ))}
               </tr>
@@ -377,6 +407,13 @@ export default function StoreDashboard({ orders: allOrders, paymentFees = {}, co
                 return (
                   <tr key={o.id} style={{ borderBottom: "1px solid #F8FAFC" }}>
                     <td style={{ padding: "0.5rem", fontWeight: 700 }}>#{o.id.slice(-6).toUpperCase()}</td>
+                    {isAdmin && selectedStoreId === "todas" && (
+                      <td style={{ padding: "0.5rem" }}>
+                        <span style={{ fontSize: "0.75rem", background: "#F1F5F9", padding: "2px 8px", borderRadius: "8px", fontWeight: 600, color: "#475569" }}>
+                          🏪 {o.storeName || "—"}
+                        </span>
+                      </td>
+                    )}
                     <td style={{ padding: "0.5rem" }}>{o.customerName}</td>
                     <td style={{ padding: "0.5rem" }}>{o.deliveryType === "DELIVERY" ? "🛵" : "🏪"}</td>
                     <td style={{ padding: "0.5rem" }}><span style={{ color: pm.color, fontWeight: 600 }}>{pm.label}</span></td>
@@ -387,7 +424,7 @@ export default function StoreDashboard({ orders: allOrders, paymentFees = {}, co
                 );
               })}
               {recentOrders.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: "2rem", textAlign: "center", color: "#94A3B8" }}>Nenhum pedido no período selecionado</td></tr>
+                <tr><td colSpan={isAdmin && selectedStoreId === "todas" ? 8 : 7} style={{ padding: "2rem", textAlign: "center", color: "#94A3B8" }}>Nenhum pedido no período selecionado</td></tr>
               )}
             </tbody>
           </table>
