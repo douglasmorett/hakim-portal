@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseWebhookEvent } from "@/lib/pagarme";
-import { applyOnlinePaymentOffset } from "@/lib/billing";
+import { trackSaleForBilling } from "@/lib/billing";
 
 export async function POST(req: Request) {
   try {
@@ -39,20 +39,11 @@ export async function POST(req: Request) {
 
       console.log(`[Pagar.me] Pedido ${event.orderId} PAGO — status atualizado para ACEITO`);
 
-      // 3. Abate o valor do ciclo mensal do franqueado (Use First, Pay Later)
+      // 3. Atualiza ciclo de faturamento mensal do franqueado
       if (order && order.franchiseeId) {
-        try {
-          await applyOnlinePaymentOffset({
-            franchiseeId: order.franchiseeId,
-            orderId: order.id,
-            paidAmount: order.totalAmount,
-            pagarmeOrderId: order.pagarmeOrderId ?? undefined,
-          });
-          console.log(`[Billing] Abatimento aplicado: R$${order.totalAmount} para franqueado ${order.franchiseeId}`);
-        } catch (billingErr) {
-          // Não falha o webhook por erro de billing — loga e segue
-          console.error("[Billing] Erro ao aplicar abatimento:", billingErr);
-        }
+        trackSaleForBilling(order.franchiseeId).catch(err =>
+          console.error("[Billing] Erro ao atualizar ciclo:", err)
+        );
       }
     }
 
