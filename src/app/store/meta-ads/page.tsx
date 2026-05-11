@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Zap, Facebook, BarChart2, Play, Pause, Settings,
+  Zap, BarChart2, Play, Pause, Settings,
   CheckCircle, AlertCircle, TrendingUp, MousePointer,
   Eye, ShoppingBag, ChevronRight, Activity, PauseCircle
 } from "lucide-react";
@@ -317,3 +317,4 @@ export default function MetaAdsPage() {
     </div>
   );
 }
+
