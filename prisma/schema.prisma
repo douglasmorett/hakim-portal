@@ -50,6 +50,13 @@ model User {
   // === FATURAMENTO: USE FIRST, PAY LATER ===
   planPercent     Float           @default(0)  // % cobrado sobre vendas (ex: 5.0 = 5%)
   billingCycles   FranchiseeBillingCycle[]
+  // === META ADS ===
+  metaFbPageId      String?        // ID da Página do Facebook conectada
+  metaFbAccessToken String?        @db.Text  // Token OAuth do Facebook (longa duração)
+  metaAdAccountId   String?        // act_XXXXXXX — conta de anúncios
+  metaPixelId       String?        // Pixel Meta instalado no cardápio
+  metaAdsEnabled    Boolean        @default(false) // Módulo ativo
+  metaAdsCampaigns  MetaAdsCampaign[]
   orders          Order[]
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]
@@ -413,4 +420,47 @@ model FranchiseeBillingCycle {
   franchisee       User      @relation(fields: [franchiseeId], references: [id])
 
   @@unique([franchiseeId, yearMonth])
+}
+
+// ========== META ADS MODULE ==========
+// Campanhas de tráfego pago gerenciadas automaticamente pelo FireHub.
+// Modelo: R$50/semana de gestão + verba do franqueado (100% vai pro Meta).
+
+model MetaAdsCampaign {
+  id               String    @id @default(cuid())
+  franchiseeId     String
+  franchisee       User      @relation(fields: [franchiseeId], references: [id])
+
+  // IDs da Meta Marketing API
+  metaCampaignId   String?   // Campanha no Meta
+  metaAdSetId      String?   // Conjunto de anúncios
+  metaAdId         String?   // Anúncio ativo
+  metaAdCreativeId String?   // Criativo (imagem + copy)
+
+  // Configuração da campanha
+  status           String    @default("DRAFT")
+  // DRAFT = configurando | ACTIVE = rodando | PAUSED = pausada | ENDED = encerrada
+  weeklyBudget     Float     @default(100)   // Verba semanal em anúncio (R$)
+  radiusKm         Int       @default(3)     // Raio de entrega em km
+  objective        String    @default("LINK_CLICKS") // LINK_CLICKS | CONVERSIONS
+  adCopy           String?   @db.Text        // Texto do anúncio gerado por IA
+  adImageUrl       String?                   // Imagem usada no criativo
+
+  // Métricas (atualizadas periodicamente via cron)
+  spend            Float     @default(0)     // Gasto total acumulado
+  impressions      Int       @default(0)
+  clicks           Int       @default(0)
+  ordersGenerated  Int       @default(0)     // Pedidos rastreados pelo Pixel
+  revenue          Float     @default(0)     // Faturamento atribuído aos anúncios
+
+  // Cobrança de gestão (R$50/semana FireHub)
+  managementFeePaid Float    @default(0)     // Total pago em taxa de gestão
+  lastBilledAt     DateTime?                 // Última cobrança semanal
+
+  // Verba depositada via PIX
+  depositTotal     Float     @default(0)     // Total depositado pelo franqueado
+  depositUsed      Float     @default(0)     // Total enviado ao Meta
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
