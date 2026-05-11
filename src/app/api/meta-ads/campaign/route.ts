@@ -34,10 +34,15 @@ export async function GET() {
     if (user?.metaFbAccessToken) {
       try {
         const live = await getCampaignInsights(campaign.metaCampaignId, user.metaFbAccessToken);
-        metrics = live;
+        metrics = {
+          spend: (live as any).spend,
+          impressions: (live as any).impressions,
+          clicks: (live as any).clicks,
+          ordersGenerated: (live as any).ordersGenerated ?? (live as any).orders ?? 0,
+        };
         await prisma.metaAdsCampaign.update({
           where: { id: campaign.id },
-          data: { ...live, updatedAt: new Date() },
+          data: { ...metrics, updatedAt: new Date() } as any,
         });
       } catch { /* não falha se API tiver offline */ }
     }

@@ -146,7 +146,7 @@ export default function MetaAdsPage() {
       {step === "connect" && (
         <div style={{ background: "#fff", borderRadius: 16, padding: "2rem", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", textAlign: "center", border: "1px solid #E2E8F0" }}>
           <div style={{ width: 64, height: 64, background: "#EBF2FF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
-            <Facebook size={32} color="#1877F2" />
+            <svg width={32} height={32} viewBox="0 0 24 24" fill="#1877F2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
           </div>
           <h2 style={{ fontWeight: 800, fontSize: "1.1rem", margin: "0 0 0.5rem" }}>Conecte sua conta do Facebook</h2>
           <p style={{ color: "#64748B", fontSize: "0.875rem", margin: "0 0 1.5rem", lineHeight: 1.7, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
@@ -163,7 +163,7 @@ export default function MetaAdsPage() {
           </div>
 
           <a href="/api/meta-ads/auth" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 12, background: "#1877F2", color: "#fff", fontWeight: 700, fontSize: "0.95rem", textDecoration: "none" }}>
-            <Facebook size={18} />
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="white"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
             Conectar Facebook
             <ChevronRight size={16} />
           </a>

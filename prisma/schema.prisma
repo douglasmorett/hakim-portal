@@ -66,6 +66,7 @@ model User {
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]
   motoboys        Motoboy[]
+  menuProducts    MenuProduct[]
 }
 
 model Product {
@@ -164,6 +165,7 @@ model PurchaseInvoice {
 
 model MenuProduct {
   id              String              @id @default(cuid())
+  franchiseeId    String?
   name            String
   description     String
   price           Float
@@ -181,6 +183,7 @@ model MenuProduct {
   activeGarcom    Boolean             @default(false)  // Disponível para o garçom (mesa)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
+  franchisee      User?               @relation(fields: [franchiseeId], references: [id])
   orderItems      CustomerOrderItem[]
   comboGroups     ComboGroup[]
   comboGroupItems ComboGroupItem[]
