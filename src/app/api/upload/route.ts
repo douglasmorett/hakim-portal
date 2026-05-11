@@ -10,10 +10,7 @@ export async function POST(req: NextRequest) {
   }
   const role = (session.user as any).role;
   const perms = (session.user as any).permissions || "";
-  
-  if (role !== "ADMIN" && role !== "STAFF") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
+  // Qualquer usuário autenticado pode fazer upload de imagens
 
   const formData = await req.formData();
   const file = formData.get("file") as File;

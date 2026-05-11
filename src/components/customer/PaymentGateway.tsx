@@ -1,166 +1,174 @@
 "use client";
 /**
- * FireHub — Componente de Pagamento Online (Pagar.me)
- * Suporte: PIX, Crédito, Débito, Voucher VR (Alelo, Ticket, Ben, Sodexo)
- * 
- * USO:
- *   <PaymentGateway
- *     orderId="clxxx"
- *     amount={45.90}
- *     onPaid={() => handlePaid()}
- *     onError={(msg) => alert(msg)}
- *   />
- * 
- * IMPORTANTE: Adicionar ao <head> do layout ou page:
- *   <script src="https://assets.pagar.me/pagarme-js/4.10/pagarme.min.js" />
- * O pagarme.js tokeniza o cartão no client, sem dados sensíveis passarem pelo servidor.
+ * FireHub — Componente de Pagamento Online
+ * Gateways: Mercado Pago (PIX + Cartão D+2)
+ * Celcoin: integração futura (standby)
+ *
+ * Fluxo PIX:
+ *   POST /api/payments/pix → qr code → polling /api/payments/status
+ *
+ * Fluxo Cartão:
+ *   MP Brick tokeniza o cartão no cliente → POST /api/payments/card
  */
 import { useState, useEffect, useRef } from "react";
-import { QrCode, CreditCard, Check, X, Loader, RefreshCw, Smartphone } from "lucide-react";
+import { QrCode, CreditCard, Check, X, Loader, RefreshCw } from "lucide-react";
 
-type PayMethod = "pix" | "credit_card" | "debit_card" | "voucher";
-
-const VOUCHER_BRANDS = ["Alelo", "Ticket", "Ben", "Sodexo", "VR"];
+type PayMethod = "pix" | "credit_card";
 
 const PAYMENT_LABELS: Record<PayMethod, string> = {
-  pix: "💰 PIX — Instantâneo D+0",
+  pix:         "💰 PIX — Instantâneo",
   credit_card: "💳 Cartão de Crédito — D+2",
-  debit_card: "💳 Cartão de Débito — D+1",
-  voucher: "🎫 Voucher Refeição/Alimentação — D+1",
 };
 
 export default function PaymentGateway({
   orderId, amount, onPaid, onError, onCancel
 }: {
-  orderId: string;
-  amount: number;
-  onPaid: () => void;
-  onError: (msg: string) => void;
+  orderId:  string;
+  amount:   number;
+  onPaid:   () => void;
+  onError:  (msg: string) => void;
   onCancel: () => void;
 }) {
-  const [method, setMethod] = useState<PayMethod>("pix");
-  const [loading, setLoading] = useState(false);
-  const [pixData, setPixData] = useState<{ qrCode: string; qrCodeUrl: string; expiresAt: string } | null>(null);
-  const [pixPaid, setPixPaid] = useState(false);
+  const [method, setMethod]       = useState<PayMethod>("pix");
+  const [loading, setLoading]     = useState(false);
+  const [pixData, setPixData]     = useState<{ paymentId: string; pixKey: string; qrCodeBase64: string | null; expiresAt: string } | null>(null);
+  const [pixPaid, setPixPaid]     = useState(false);
   const [pixExpired, setPixExpired] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied]       = useState(false);
 
-  // Dados do cartão
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardHolder, setCardHolder] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  const [customerDocument, setCustomerDocument] = useState("");
+  // Dados do cartão (tokenizados via MP Brick)
+  const [cardNumber, setCardNumber]         = useState("");
+  const [cardHolder, setCardHolder]         = useState("");
+  const [cardExpiry, setCardExpiry]         = useState("");
+  const [cardCvv, setCardCvv]               = useState("");
+  const [payerCpf, setPayerCpf]             = useState("");
+  const [installments, setInstallments]     = useState(1);
 
-  // Polling PIX
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  const startPixPolling = () => {
+  // ──────────────────────────── PIX ────────────────────────────
+  const handlePixPay = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/payments/pix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { onError(data.error || "Erro ao gerar PIX"); return; }
+
+      setPixData(data);
+      startPixPolling(data.paymentId);
+
+      // Expiração
+      if (data.expiresAt) {
+        const ms = new Date(data.expiresAt).getTime() - Date.now();
+        if (ms > 0) setTimeout(() => setPixExpired(true), ms);
+      }
+    } catch (e: any) {
+      onError(e.message || "Erro de rede");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startPixPolling = (paymentId?: string) => {
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/pagarme/status?orderId=${orderId}`);
+        const res = await fetch(`/api/payments/status?orderId=${orderId}`);
         if (res.ok) {
           const d = await res.json();
-          if (d.paid) { setPixPaid(true); clearInterval(pollRef.current!); setTimeout(onPaid, 1500); }
-          if (d.failed) { clearInterval(pollRef.current!); onError("Pagamento falhou."); }
+          if (d.paid)   { setPixPaid(true); clearInterval(pollRef.current!); setTimeout(onPaid, 1500); }
+          if (d.failed) { clearInterval(pollRef.current!); onError("PIX expirado ou falhou."); }
         }
       } catch {}
     }, 3000);
   };
 
-  const handlePixPay = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/pagarme/order", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, paymentMethod: "pix" }),
-      });
-      const data = await res.json();
-      if (!res.ok) { onError(data.error || "Erro ao gerar PIX"); return; }
-      setPixData(data.pix);
-      startPixPolling();
-      // Verificar expiração
-      if (data.pix?.expiresAt) {
-        const ms = new Date(data.pix.expiresAt).getTime() - Date.now();
-        if (ms > 0) setTimeout(() => setPixExpired(true), ms);
-      }
-    } catch (e: any) { onError(e.message); }
-    finally { setLoading(false); }
-  };
-
-  const handleCardPay = async () => {
-    setLoading(true);
-    try {
-      // Tokenizar cartão no cliente via pagarme.js (sem passar dados pelo servidor)
-      const pagarme = (window as any).pagarme;
-      if (!pagarme) { onError("Biblioteca de pagamento não carregada. Recarregue a página."); setLoading(false); return; }
-
-      const [expMonth, expYear] = cardExpiry.split("/");
-      const card = await pagarme.client
-        .connect({ encryption_key: process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY || "" })
-        .then((c: any) => c.security.encrypt({
-          card_number: cardNumber.replace(/\s/g, ""),
-          card_holder_name: cardHolder,
-          card_expiration_date: `${expMonth}${expYear}`,
-          card_cvv: cardCvv,
-        }));
-
-      const res = await fetch("/api/pagarme/order", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId, paymentMethod: method, cardToken: card,
-          customerDocument: customerDocument.replace(/\D/g, ""),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) { onError(data.error || "Cartão recusado"); return; }
-      if (data.paid) { setTimeout(onPaid, 800); }
-      else { onError("Pagamento não aprovado. Tente outro cartão."); }
-    } catch (e: any) { onError(e.message || "Erro no cartão"); }
-    finally { setLoading(false); }
-  };
-
   const copyPix = () => {
-    if (pixData?.qrCode) {
-      navigator.clipboard.writeText(pixData.qrCode);
+    if (pixData?.pixKey) {
+      navigator.clipboard.writeText(pixData.pixKey);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const fmtCard = (v: string) => v.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
-  const fmtExpiry = (v: string) => {
-    const d = v.replace(/\D/g, "");
-    return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2, 4)}` : d;
-  };
-  const fmtDoc = (v: string) => {
-    const d = v.replace(/\D/g, "");
-    if (d.length <= 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  // ──────────────────────────── CARTÃO ────────────────────────────
+  const handleCardPay = async () => {
+    if (!cardNumber || !cardHolder || !cardExpiry || !cardCvv || !payerCpf) {
+      onError("Preencha todos os dados do cartão."); return;
+    }
+    setLoading(true);
+    try {
+      // Tokenização via Mercado Pago SDK (carregado no layout)
+      const mp = (window as any).MercadoPago;
+      if (!mp) {
+        onError("Biblioteca Mercado Pago não carregada. Recarregue a página.");
+        setLoading(false); return;
+      }
+
+      const mpInstance = new mp(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || "");
+      const [expMonth, expYear] = cardExpiry.split("/");
+
+      const { token: cardToken, error: tokenError } = await mpInstance.createCardToken({
+        cardNumber:       cardNumber.replace(/\s/g, ""),
+        cardholderName:   cardHolder,
+        cardExpirationMonth: expMonth,
+        cardExpirationYear: `20${expYear}`,
+        securityCode:    cardCvv,
+        identificationType: "CPF",
+        identificationNumber: payerCpf.replace(/\D/g, ""),
+      });
+
+      if (tokenError) { onError("Dados do cartão inválidos. Verifique e tente novamente."); return; }
+
+      const res = await fetch("/api/payments/card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId, cardToken, installments,
+          payerCpf: payerCpf.replace(/\D/g, ""),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { onError(data.error || "Cartão recusado"); return; }
+      if (data.paid) { setTimeout(onPaid, 800); }
+      else { onError("Pagamento não aprovado. Tente outro cartão ou use o PIX."); }
+    } catch (e: any) {
+      onError(e.message || "Erro no cartão");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "12px 14px", borderRadius: "10px",
-    border: "1.5px solid #E2E8F0", fontSize: "0.9rem", outline: "none",
+  // ──────────────────────────── FORMATAÇÃO ────────────────────────────
+  const fmtCard   = (v: string) => v.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
+  const fmtExpiry = (v: string) => { const d = v.replace(/\D/g, ""); return d.length > 2 ? `${d.slice(0,2)}/${d.slice(2,4)}` : d; };
+  const fmtCpf    = (v: string) => { const d = v.replace(/\D/g, ""); return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"); };
+
+  const inp: React.CSSProperties = {
+    width: "100%", padding: "11px 13px", borderRadius: "10px",
+    border: "1.5px solid #E2E8F0", fontSize: "0.88rem", outline: "none",
     fontFamily: "inherit", boxSizing: "border-box",
   };
-  const labelStyle: React.CSSProperties = {
-    fontSize: "0.75rem", fontWeight: 700, color: "#475569",
-    display: "block", marginBottom: "4px"
+  const lbl: React.CSSProperties = {
+    fontSize: "0.72rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px"
   };
 
+  // ──────────────────────────── RENDER ────────────────────────────
   return (
     <div style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
         <div>
-          <h2 style={{ fontWeight: 800, fontSize: "1.1rem", margin: 0 }}>💳 Pagamento Online</h2>
-          <p style={{ fontSize: "0.8rem", color: "#64748B", margin: 0 }}>
-            Total: <strong style={{ color: "#16A34A" }}>R$ {amount.toFixed(2)}</strong>
+          <h2 style={{ fontWeight: 800, fontSize: "1.05rem", margin: 0 }}>💳 Pagamento Online</h2>
+          <p style={{ fontSize: "0.78rem", color: "#64748B", margin: "2px 0 0" }}>
+            Total: <strong style={{ color: "#16A34A" }}>R$ {amount.toFixed(2).replace(".", ",")}</strong>
           </p>
         </div>
         <button onClick={onCancel} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8" }}>
@@ -169,60 +177,75 @@ export default function PaymentGateway({
       </div>
 
       {/* Seleção de método */}
-      {!pixData && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "20px" }}>
-          {(["pix", "credit_card", "debit_card", "voucher"] as PayMethod[]).map(m => (
+      {!pixData && !pixPaid && (
+        <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+          {(["pix", "credit_card"] as PayMethod[]).map(m => (
             <button key={m} onClick={() => setMethod(m)}
               style={{
-                padding: "12px 16px", borderRadius: "12px", border: `2px solid ${method === m ? "#E63946" : "#E2E8F0"}`,
-                background: method === m ? "#FFF1F2" : "#fff", cursor: "pointer", textAlign: "left",
-                fontWeight: method === m ? 700 : 500, fontSize: "0.9rem", fontFamily: "inherit",
-                color: method === m ? "#E63946" : "#475569", transition: "all 0.15s",
+                flex: 1, padding: "12px 8px", borderRadius: "12px",
+                border: `2px solid ${method === m ? "#009EE3" : "#E2E8F0"}`,
+                background: method === m ? "#EFF9FF" : "#fff",
+                cursor: "pointer", textAlign: "center",
+                fontWeight: method === m ? 700 : 500, fontSize: "0.82rem",
+                color: method === m ? "#009EE3" : "#475569",
+                transition: "all 0.15s", fontFamily: "inherit",
               }}>
               {PAYMENT_LABELS[m]}
-              {m === "voucher" && (
-                <span style={{ fontSize: "0.7rem", color: "#64748B", fontWeight: 400, marginLeft: "8px" }}>
-                  ({VOUCHER_BRANDS.join(", ")})
-                </span>
-              )}
             </button>
           ))}
         </div>
       )}
 
-      {/* ===== PIX ===== */}
-      {method === "pix" && !pixData && (
+      {/* ── PIX ── */}
+      {method === "pix" && !pixData && !pixPaid && (
         <button onClick={handlePixPay} disabled={loading}
-          style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg,#00BFA5,#009688)", color: "#fff", fontWeight: 800, fontSize: "1rem", cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit" }}>
-          {loading ? <><Loader size={18} style={{ animation: "spin 1s linear infinite" }} /> Gerando PIX...</> : <><QrCode size={18} /> Gerar QR Code PIX</>}
+          style={{
+            width: "100%", padding: "14px", borderRadius: "12px", border: "none",
+            background: loading ? "#94A3B8" : "linear-gradient(135deg,#00BFA5,#009688)",
+            color: "#fff", fontWeight: 800, fontSize: "1rem",
+            cursor: loading ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit",
+          }}>
+          {loading
+            ? <><Loader size={18} style={{ animation: "spin 1s linear infinite" }} /> Gerando PIX...</>
+            : <><QrCode size={18} /> Gerar QR Code PIX</>}
         </button>
       )}
 
-      {/* PIX QR CODE */}
+      {/* QR CODE */}
       {pixData && !pixPaid && !pixExpired && (
         <div style={{ textAlign: "center" }}>
-          <div style={{ background: "#F0FDF4", border: "2px solid #BBF7D0", borderRadius: "16px", padding: "20px", marginBottom: "16px" }}>
-            <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#16A34A", marginBottom: "12px" }}>
-              📱 Escaneie o QR Code ou copie o código PIX
+          <div style={{ background: "#F0FDF4", border: "2px solid #BBF7D0", borderRadius: "16px", padding: "20px", marginBottom: "12px" }}>
+            <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#16A34A", marginBottom: "12px" }}>
+              📱 Escaneie ou copie o código PIX abaixo
             </p>
-            {/* QR Code via API pública */}
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixData.qrCode)}`}
-              alt="QR Code PIX" style={{ width: 200, height: 200, borderRadius: "8px" }}
-            />
+            {pixData.qrCodeBase64 ? (
+              <img src={`data:image/png;base64,${pixData.qrCodeBase64}`}
+                alt="QR Code PIX" style={{ width: 200, height: 200, borderRadius: "8px" }} />
+            ) : (
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixData.pixKey)}`}
+                alt="QR Code PIX" style={{ width: 200, height: 200, borderRadius: "8px" }} />
+            )}
             <div style={{ marginTop: "12px" }}>
               <button onClick={copyPix}
-                style={{ padding: "10px 20px", borderRadius: "10px", border: "1.5px solid #16A34A", background: copied ? "#16A34A" : "#fff", color: copied ? "#fff" : "#16A34A", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", fontFamily: "inherit" }}>
+                style={{
+                  padding: "10px 20px", borderRadius: "10px",
+                  border: "1.5px solid #16A34A",
+                  background: copied ? "#16A34A" : "#fff",
+                  color: copied ? "#fff" : "#16A34A",
+                  fontWeight: 700, cursor: "pointer",
+                  display: "inline-flex", alignItems: "center", gap: "6px", fontFamily: "inherit",
+                }}>
                 {copied ? <><Check size={14} /> Copiado!</> : "📋 Copiar código PIX"}
               </button>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", color: "#64748B", fontSize: "0.82rem" }}>
-            <Loader size={14} style={{ animation: "spin 2s linear infinite" }} />
-            Aguardando confirmação do pagamento...
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "#64748B", fontSize: "0.8rem" }}>
+            <Loader size={13} style={{ animation: "spin 2s linear infinite" }} />
+            Aguardando confirmação...
           </div>
           {pixData.expiresAt && (
-            <p style={{ fontSize: "0.75rem", color: "#94A3B8", marginTop: "8px" }}>
+            <p style={{ fontSize: "0.72rem", color: "#94A3B8", marginTop: "6px" }}>
               Expira às {new Date(pixData.expiresAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
             </p>
           )}
@@ -243,64 +266,74 @@ export default function PaymentGateway({
         <div style={{ textAlign: "center", padding: "1.5rem" }}>
           <p style={{ fontWeight: 700, color: "#DC2626" }}>⏱️ PIX expirado.</p>
           <button onClick={() => { setPixData(null); setPixExpired(false); }}
-            style={{ padding: "10px 20px", borderRadius: "10px", border: "none", background: "#E63946", color: "#fff", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", fontFamily: "inherit" }}>
+            style={{ padding: "10px 20px", borderRadius: "10px", border: "none", background: "#009688", color: "#fff", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", fontFamily: "inherit" }}>
             <RefreshCw size={14} /> Gerar novo PIX
           </button>
         </div>
       )}
 
-      {/* ===== CARTÃO / VOUCHER ===== */}
-      {(method === "credit_card" || method === "debit_card" || method === "voucher") && !pixData && (
+      {/* ── CARTÃO ── */}
+      {method === "credit_card" && !pixData && (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {method === "voucher" && (
-            <div style={{ padding: "10px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "10px", fontSize: "0.8rem", color: "#92400E" }}>
-              🎫 Aceito: {VOUCHER_BRANDS.join(", ")} — insira os dados do seu cartão de benefício
-            </div>
-          )}
+          <div style={{ padding: "10px 14px", background: "#EFF9FF", border: "1px solid #BAE6FD", borderRadius: "10px", fontSize: "0.78rem", color: "#0369A1", fontWeight: 600 }}>
+            🔒 Dados criptografados pelo Mercado Pago — não armazenados no servidor
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div style={{ gridColumn: "span 2" }}>
-              <label style={labelStyle}>Número do Cartão</label>
-              <input style={inputStyle} value={cardNumber} onChange={e => setCardNumber(fmtCard(e.target.value))}
+              <label style={lbl}>Número do Cartão</label>
+              <input style={inp} value={cardNumber} onChange={e => setCardNumber(fmtCard(e.target.value))}
                 placeholder="0000 0000 0000 0000" maxLength={19} />
             </div>
             <div style={{ gridColumn: "span 2" }}>
-              <label style={labelStyle}>Nome no Cartão</label>
-              <input style={inputStyle} value={cardHolder} onChange={e => setCardHolder(e.target.value.toUpperCase())}
+              <label style={lbl}>Nome no Cartão</label>
+              <input style={inp} value={cardHolder} onChange={e => setCardHolder(e.target.value.toUpperCase())}
                 placeholder="NOME COMO NO CARTÃO" />
             </div>
             <div>
-              <label style={labelStyle}>Validade</label>
-              <input style={inputStyle} value={cardExpiry} onChange={e => setCardExpiry(fmtExpiry(e.target.value))}
+              <label style={lbl}>Validade</label>
+              <input style={inp} value={cardExpiry} onChange={e => setCardExpiry(fmtExpiry(e.target.value))}
                 placeholder="MM/AA" maxLength={5} />
             </div>
             <div>
-              <label style={labelStyle}>CVV</label>
-              <input style={inputStyle} value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, ""))}
+              <label style={lbl}>CVV</label>
+              <input style={inp} value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, ""))}
                 placeholder="123" maxLength={4} type="password" />
             </div>
             <div style={{ gridColumn: "span 2" }}>
-              <label style={labelStyle}>CPF do Titular</label>
-              <input style={inputStyle} value={customerDocument}
-                onChange={e => setCustomerDocument(fmtDoc(e.target.value))}
-                placeholder="000.000.000-00" maxLength={18} />
+              <label style={lbl}>CPF do Titular</label>
+              <input style={inp} value={payerCpf} onChange={e => setPayerCpf(fmtCpf(e.target.value))}
+                placeholder="000.000.000-00" maxLength={14} />
+            </div>
+            <div style={{ gridColumn: "span 2" }}>
+              <label style={lbl}>Parcelas</label>
+              <select style={{ ...inp, cursor: "pointer" }} value={installments} onChange={e => setInstallments(Number(e.target.value))}>
+                {[1,2,3,4,5,6].map(n => (
+                  <option key={n} value={n}>
+                    {n}x de R$ {(amount / n).toFixed(2).replace(".", ",")} {n === 1 ? "(sem juros)" : ""}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div style={{ padding: "10px 14px", background: "#F8FAFC", borderRadius: "8px", fontSize: "0.75rem", color: "#64748B", display: "flex", alignItems: "center", gap: "6px" }}>
-            🔒 Dados criptografados via Pagar.me/Stone — nunca armazenados no servidor
-          </div>
-
-          <button onClick={handleCardPay} disabled={loading || !cardNumber || !cardHolder || !cardExpiry || !cardCvv}
-            style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: loading ? "#94A3B8" : "linear-gradient(135deg,#E63946,#C62828)", color: "#fff", fontWeight: 800, fontSize: "1rem", cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit" }}>
-            {loading ? <><Loader size={18} style={{ animation: "spin 1s linear infinite" }} /> Processando...</> : <><CreditCard size={18} /> Pagar R$ {amount.toFixed(2)}</>}
+          <button onClick={handleCardPay}
+            disabled={loading || !cardNumber || !cardHolder || !cardExpiry || !cardCvv || !payerCpf}
+            style={{
+              width: "100%", padding: "14px", borderRadius: "12px", border: "none",
+              background: loading ? "#94A3B8" : "linear-gradient(135deg,#009EE3,#006EBF)",
+              color: "#fff", fontWeight: 800, fontSize: "1rem",
+              cursor: loading ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit",
+            }}>
+            {loading
+              ? <><Loader size={18} style={{ animation: "spin 1s linear infinite" }} /> Processando...</>
+              : <><CreditCard size={18} /> Pagar R$ {amount.toFixed(2).replace(".", ",")} via Mercado Pago</>}
           </button>
         </div>
       )}
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

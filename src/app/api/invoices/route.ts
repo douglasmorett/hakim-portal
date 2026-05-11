@@ -10,12 +10,9 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
+  // Qualquer usuário autenticado pode inserir notas (FRANCHISEE, ADMIN, STAFF)
   const role = (session.user as any).role;
   const perms = (session.user as any).permissions || "";
-  
-  if (role !== "ADMIN" && role !== "STAFF") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
 
   const { imageUrl, description, category } = await req.json();
 
@@ -169,40 +166,40 @@ export async function GET(req: NextRequest) {
   const perms = (session.user as any).permissions || "";
   const userEmail = session.user?.email;
 
-  const isAdminOrManager = role === "ADMIN" || (role === "STAFF" && perms.includes("invoices"));
+  // Admin vê tudo; demais usuários (FRANCHISEE, STAFF) veem apenas as suas
+  const isAdmin = role === "ADMIN" || (role === "STAFF" && perms.includes("invoices"));
+  const category = req.nextUrl.searchParams.get("category") || undefined;
 
-  const category = req.nextUrl.searchParams.get("category") || "BUSINESS";
-
-  let invoices;
-  
-  if (isAdminOrManager) {
-    invoices = await prisma.purchaseInvoice.findMany({
-      where: { category },
-      orderBy: { createdAt: "desc" }
-    });
-  } else if (role === "STAFF" && userEmail) {
-    invoices = await prisma.purchaseInvoice.findMany({
-      where: { uploadedBy: userEmail, category },
-      orderBy: { createdAt: "desc" }
-    });
-  } else {
-     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
+  const invoices = await prisma.purchaseInvoice.findMany({
+    where: {
+      ...(isAdmin ? {} : { uploadedBy: userEmail! }),
+      ...(category ? { category } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+  });
 
   return NextResponse.json(invoices);
 }
 
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "ADMIN") {
-    return NextResponse.json({ error: "Somente administradores podem excluir notas." }, { status: 403 });
-  }
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  const role = (session.user as any).role;
+  const userEmail = session.user?.email;
 
   try {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: "ID não fornecido." }, { status: 400 });
 
-    await prisma.purchaseInvoice.delete({ where: { id } });
+    // Admin exclui qualquer nota; franqueado só exclui as suas
+    const where: any = { id };
+    if (role !== "ADMIN") where.uploadedBy = userEmail;
+
+    const deleted = await prisma.purchaseInvoice.deleteMany({ where });
+    if (deleted.count === 0) {
+      return NextResponse.json({ error: "Nota não encontrada ou sem permissão." }, { status: 403 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Erro ao excluir nota." }, { status: 500 });

@@ -57,6 +57,11 @@ model User {
   metaPixelId       String?        // Pixel Meta instalado no cardápio
   metaAdsEnabled    Boolean        @default(false) // Módulo ativo
   metaAdsCampaigns  MetaAdsCampaign[]
+  // === GATEWAYS DE PAGAMENTO ===
+  mpSellerId        String?        // ID do vendedor no Mercado Pago Marketplace
+  mpAccessToken     String?  @db.Text // OAuth token do restaurante no MP
+  mpRefreshToken    String?  @db.Text // Refresh token MP
+  celcoinAccountId  String?        // Subconta Celcoin do restaurante (quando disponível)
   // === IFOOD INTEGRATION ===
   ifoodMerchantId   String?        // UUID da loja no iFood
   ifoodAccessToken  String?        @db.Text  // Bearer token (OAuth iFood Merchant API)
@@ -156,6 +161,7 @@ model PurchaseInvoice {
   status          String   @default("PENDING")
   category        String   @default("BUSINESS")
   rejectionReason String?
+  source          String   @default("ai")   // "ai" | "manual"
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   uploadedBy      String
@@ -226,7 +232,7 @@ model CustomerOrder {
   notes            String?
   rating           Int?
   ratingComment    String?
-  // Pagar.me — Pagamento Online
+  // Pagar.me — campos legados (mantidos para compatibilidade com pedidos antigos)
   pagarmeOrderId   String?             // ID do pedido no Pagar.me
   pagarmeChargeId  String?             // ID da cobrança
   pagarmeStatus    String?             // pending | paid | failed | canceled
@@ -236,6 +242,9 @@ model CustomerOrder {
   paymentPaidAt    DateTime?           // Confirmação de pagamento
   cashbackEarned   Float?              // Cashback gerado neste pedido (R$)
   cashbackUsed     Float?              // Cashback resgatado neste pedido (R$)
+  // === GATEWAY UNIFICADO (Mercado Pago / Celcoin) ===
+  gatewayProvider  String?             // mercadopago | celcoin | manual
+  gatewayPaymentId String?             // ID do pagamento no gateway ativo
   // === IFOOD ===
   ifoodOrderId     String?  @unique   // ID do pedido no iFood (idempotência)
   ifoodReference   String?            // Número de exibição do pedido no iFood

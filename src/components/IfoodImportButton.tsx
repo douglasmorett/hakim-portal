@@ -88,7 +88,8 @@ export default function IfoodImportButton() {
         {step === "idle" && (
           <>
             <p style={{ fontSize: "0.82rem", color: "#64748B", margin: "0 0 1rem", lineHeight: 1.6 }}>
-              Copie o link do seu restaurante no iFood (ex: <code style={{ fontSize: "0.75rem", background: "#F1F5F9", padding: "2px 6px", borderRadius: 4 }}>ifood.com.br/delivery/cidade/seu-restaurante/UUID</code>) e importamos categorias, produtos, preços e fotos automaticamente.
+              Se a integração iFood já estiver configurada, clique em <strong>Buscar Cardápio</strong> direto.
+              Caso contrário, cole o link do seu restaurante no iFood para extrair o merchantId.
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input
@@ -96,19 +97,19 @@ export default function IfoodImportButton() {
                 value={ifoodUrl}
                 onChange={e => setIfoodUrl(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handlePreview()}
-                placeholder="https://www.ifood.com.br/delivery/sua-cidade/seu-restaurante/..."
+                placeholder="https://www.ifood.com.br/delivery/cidade/restaurante/UUID (opcional)"
                 style={{ flex: 1, minWidth: 200, padding: "10px 14px", borderRadius: 10, border: "1.5px solid #E2E8F0", fontSize: "0.875rem", outline: "none" }}
               />
               <button
                 onClick={handlePreview}
-                disabled={loading || !ifoodUrl.trim()}
+                disabled={loading}
                 style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: loading ? "#94A3B8" : "#EA1D2C", color: "#fff", fontWeight: 700, fontSize: "0.875rem", cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
               >
                 {loading ? <><Loader size={14} style={{ animation: "spin 0.8s linear infinite" }} /> Buscando...</> : <><ExternalLink size={14} /> Buscar Cardápio</>}
               </button>
             </div>
             <p style={{ fontSize: "0.72rem", color: "#94A3B8", margin: "8px 0 0" }}>
-              🔒 Só lemos dados públicos do iFood. Nada é alterado na sua conta do iFood.
+              🔗 Usa a API oficial do iFood Developer para importar com precisão.
             </p>
           </>
         )}
