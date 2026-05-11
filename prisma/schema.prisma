@@ -57,6 +57,11 @@ model User {
   metaPixelId       String?        // Pixel Meta instalado no cardápio
   metaAdsEnabled    Boolean        @default(false) // Módulo ativo
   metaAdsCampaigns  MetaAdsCampaign[]
+  // === IFOOD INTEGRATION ===
+  ifoodMerchantId   String?        // UUID da loja no iFood
+  ifoodAccessToken  String?        @db.Text  // Bearer token (OAuth iFood Merchant API)
+  ifoodClientId     String?        // Client ID do app cadastrado no iFood Developer
+  ifoodConnected    Boolean        @default(false) // Módulo iFood ativo
   orders          Order[]
   customerOrders  CustomerOrder[]
   storeReviews    StoreReview[]
@@ -228,6 +233,9 @@ model CustomerOrder {
   paymentPaidAt    DateTime?           // Confirmação de pagamento
   cashbackEarned   Float?              // Cashback gerado neste pedido (R$)
   cashbackUsed     Float?              // Cashback resgatado neste pedido (R$)
+  // === IFOOD ===
+  ifoodOrderId     String?  @unique   // ID do pedido no iFood (idempotência)
+  ifoodReference   String?            // Número de exibição do pedido no iFood
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   franchisee       User                @relation(fields: [franchiseeId], references: [id])

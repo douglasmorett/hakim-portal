@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import MenuProductManager from "@/components/admin/MenuProductManager";
+import IfoodImportButton from "@/components/IfoodImportButton";
 
 export default async function StoreCardapioPage() {
   const session = await getServerSession(authOptions);
@@ -51,6 +52,10 @@ export default async function StoreCardapioPage() {
           📊 Cadastrar CMV em Massa
         </a>
       </div>
+
+      {/* IMPORTAR DO IFOOD */}
+      <IfoodImportButton />
+
       <MenuProductManager products={products} availableItems={availableItems} />
     </div>
   );
