@@ -173,11 +173,12 @@ export default function StoreTopNav({
             </a>
           )}
 
-          {/* Ver Loja */}
+          {/* Ver Loja - oculto em telas muito pequenas */}
           {storeUrl && (
             <a
               href={storeUrl}
               target="_blank"
+              className="nav-view-store"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "0.38rem 0.65rem", borderRadius: 8,
@@ -243,10 +244,11 @@ export default function StoreTopNav({
       <style>{`
         @media (max-width: 520px) {
           .nav-user-label { display: none !important; }
+          .nav-view-store { display: none !important; }
         }
-        @media (max-width: 400px) {
-          .nav-user-label { display: none !important; }
-        }
+        /* Nav bar scroll sem scrollbar visível */
+        .store-nav-inner::-webkit-scrollbar { display: none; }
+        .store-nav-inner { scrollbar-width: none; }
       `}</style>
     </>
   );

@@ -129,13 +129,27 @@ export default function FireHubLanding() {
         .fh-mockup-img { width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
         @media(max-width: 900px) {
           .fh-hero-grid { grid-template-columns: 1fr; gap: 30px; padding-top: 80px; }
-          .fh-hero h1 { font-size: 2rem; }
+          .fh-hero h1 { font-size: 2.2rem; }
           .fh-features-grid, .fh-plans-grid { grid-template-columns: 1fr; }
           .fh-steps { grid-template-columns: 1fr 1fr; }
           .fh-stats { grid-template-columns: 1fr 1fr; }
           .fh-plan.popular { transform: none; }
           .fh-nav-links { display: none; }
           .fh-hero-grid > div:last-child { order: -1; }
+          .fh-nav-btn-mobile { display: inline-block !important; }
+        }
+        @media(max-width: 520px) {
+          .fh-hero h1 { font-size: 1.75rem; }
+          .fh-hero p { font-size: 0.95rem; }
+          .fh-steps { grid-template-columns: 1fr; }
+          .fh-section { padding: 50px 0; }
+          .fh-container { padding: 0 14px; }
+          .fh-hero-grid { padding-top: 70px; }
+          .fh-section-title h2 { font-size: 1.6rem; }
+          .fh-form-card { padding: 20px; }
+          .fh-cta-btn { font-size: 0.88rem; padding: 13px 18px; }
+          .fh-stat h3 { font-size: 1.8rem; }
+          .fh-nav { padding: 10px 14px; }
         }
       `}</style>
 
@@ -147,7 +161,7 @@ export default function FireHubLanding() {
             <div style={{ fontSize: "1.4rem", fontWeight: 800, letterSpacing: "-0.5px", lineHeight: 1 }}>
               <span style={{ color: "#FF4500" }}>FIRE</span><span style={{ color: "#C0C0C0" }}>HUB</span>
             </div>
-            <div style={{ fontSize: "0.45rem", color: "rgba(255,255,255,0.6)", letterSpacing: "1.5px", textTransform: "uppercase" as const, marginTop: "1px" }}>Sistema Centralizado de Pedidos & Estoque</div>
+            <div style={{ fontSize: "0.45rem", color: "rgba(255,255,255,0.6)", letterSpacing: "1.5px", textTransform: "uppercase" as const, marginTop: "1px" }}>Sistema Centralizado de Pedidos &amp; Estoque</div>
           </div>
         </div>
         <div className="fh-nav-links">
@@ -157,6 +171,10 @@ export default function FireHubLanding() {
           <a href="#faq">FAQ</a>
           <a href="/firehub/login" className="fh-nav-btn">Área do Cliente</a>
         </div>
+        {/* Botão de login visível só em mobile quando nav-links some */}
+        <a href="/firehub/login" className="fh-nav-btn fh-nav-btn-mobile" style={{ display: "none", fontSize: "0.78rem", padding: "7px 14px" }}>
+          Entrar
+        </a>
       </nav>
 
       {/* HERO */}
