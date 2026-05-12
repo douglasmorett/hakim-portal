@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createAsaasPayment } from "@/lib/asaas";
 
 export async function POST(req: Request) {
   try {
@@ -62,14 +63,38 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         totalAmount: finalTotal,
-        status: "EMERGENCIA_PENDENTE", // Status interno
+        status: "EMERGENCIA_PENDENTE",
         isEmergency: true,
         emergencyStatus: "PENDING_APPROVAL",
         items: { create: itemsWithPrice }
       }
     });
 
-    return NextResponse.json({ success: true, orderId: order.id });
+    // ── Gerar boleto Asaas automaticamente ──────────────────────────────────
+    let boletoUrl: string | null = null;
+    const shortId = order.id.slice(-6).toUpperCase();
+
+    const asaasResult = await createAsaasPayment({
+      userName: user.name || user.email || "",
+      userEmail: user.email || "",
+      cpfCnpj: user.cpfCnpj || "",
+      totalAmount: finalTotal,
+      orderId: order.id,
+      description: `Pedido #${shortId} — Hakim Congelados (EMERGÊNCIA)`
+    });
+
+    if (asaasResult) {
+      boletoUrl = asaasResult.boletoUrl;
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          boletoUrl: asaasResult.boletoUrl,
+          asaasPaymentId: asaasResult.paymentId
+        }
+      });
+    }
+
+    return NextResponse.json({ success: true, orderId: order.id, boletoUrl });
 
   } catch (error: any) {
     console.error("Erro na emergência:", error);
