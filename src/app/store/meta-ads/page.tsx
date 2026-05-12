@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import {
   Zap, BarChart2, Play, Pause, Settings,
   CheckCircle, AlertCircle, TrendingUp, MousePointer,
-  Eye, ShoppingBag, ChevronRight, Activity, PauseCircle
+  Eye, ShoppingBag, ChevronRight, Activity, PauseCircle,
+  ExternalLink, Info
 } from "lucide-react";
 
 type Campaign = {
@@ -13,16 +14,14 @@ type Campaign = {
   createdAt: string;
 };
 
+type PageStep = "loading" | "needs-setup" | "connect" | "setup" | "dashboard";
+
 const fmtR = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function MetaAdsPage() {
   const [campaign, setCampaign]   = useState<Campaign | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [loading, setLoading]     = useState(true);
-  const [step, setStep]           = useState<"loading" | "connect" | "setup" | "dashboard">("loading");
-
-  // form
+  const [step, setStep]           = useState<PageStep>("loading");
   const [weeklyBudget, setWeeklyBudget] = useState(100);
   const [radiusKm, setRadiusKm]         = useState(3);
   const [adCopy, setAdCopy]             = useState("");
@@ -30,32 +29,59 @@ export default function MetaAdsPage() {
   const [toggling, setToggling]         = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("connected") === "true") setConnected(true);
+    let cancelled = false;
 
-    fetch("/api/meta-ads/campaign")
-      .then(r => r.json())
-      .then(d => {
-        if (d.campaign) {
-          setCampaign(d.campaign);
-          setConnected(true);
-          setStep("dashboard");
-        } else {
-          // verifica se tem facebook conectado
-          fetch("/api/store-settings")
-            .then(r => r.json())
-            .then(s => {
-              if (s.metaAdsEnabled && s.metaFbPageId) {
-                setConnected(true);
-                setStep("setup");
-              } else {
-                setStep("connect");
-              }
-            });
+    // Timeout de segurança — nunca fica travado >10s
+    const timeout = setTimeout(() => {
+      if (!cancelled) setStep("connect");
+    }, 10_000);
+
+    (async () => {
+      try {
+        // 1. Verifica campanha existente
+        const r1 = await fetch("/api/meta-ads/campaign");
+        if (!r1.ok) {
+          // 4xx/5xx sem JSON — mostra tela de conexão
+          clearTimeout(timeout);
+          if (!cancelled) setStep("connect");
+          return;
         }
-      })
-      .catch(() => setStep("connect"))
-      .finally(() => setLoading(false));
+
+        let d: any = {};
+        try { d = await r1.json(); } catch { /* body não-JSON */ }
+
+        if (d.campaign) {
+          clearTimeout(timeout);
+          if (!cancelled) { setCampaign(d.campaign); setStep("dashboard"); }
+          return;
+        }
+
+        // 2. Sem campanha — verifica se Facebook já está conectado
+        try {
+          const r2 = await fetch("/api/store-settings");
+          const s = r2.ok ? await r2.json().catch(() => ({})) : {};
+          clearTimeout(timeout);
+          if (!cancelled) {
+            if (s.metaAdsEnabled && s.metaFbPageId) {
+              setStep("setup");
+            } else if (d.needsSetup) {
+              // API indicou que META_APP_ID não está configurado
+              setStep("needs-setup");
+            } else {
+              setStep("connect");
+            }
+          }
+        } catch {
+          clearTimeout(timeout);
+          if (!cancelled) setStep("connect");
+        }
+      } catch {
+        clearTimeout(timeout);
+        if (!cancelled) setStep("connect");
+      }
+    })();
+
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, []);
 
   async function handleCreateCampaign() {
@@ -68,6 +94,7 @@ export default function MetaAdsPage() {
       });
       const d = await r.json();
       if (d.campaign) { setCampaign(d.campaign); setStep("dashboard"); }
+      else alert(d.error || "Erro ao criar campanha.");
     } finally { setCreating(false); }
   }
 
@@ -75,28 +102,111 @@ export default function MetaAdsPage() {
     if (!campaign) return;
     setToggling(true);
     const action = campaign.status === "ACTIVE" ? "pause" : "resume";
-    await fetch("/api/meta-ads/campaign", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    setCampaign(c => c ? { ...c, status: action === "pause" ? "PAUSED" : "ACTIVE" } : c);
-    setToggling(false);
+    try {
+      await fetch("/api/meta-ads/campaign", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      setCampaign(c => c ? { ...c, status: action === "pause" ? "PAUSED" : "ACTIVE" } : c);
+    } finally { setToggling(false); }
   }
 
   const roi = campaign && campaign.spend > 0
-    ? (campaign.revenue / campaign.spend).toFixed(1)
-    : "—";
+    ? (campaign.revenue / campaign.spend).toFixed(1) : "—";
   const cpp = campaign && campaign.ordersGenerated > 0
-    ? fmtR(campaign.spend / campaign.ordersGenerated)
-    : "—";
+    ? fmtR(campaign.spend / campaign.ordersGenerated) : "—";
 
-  if (loading || step === "loading") {
+  // ─── HEADER comum ─────────────────────────────────────────────────────────
+  const Header = () => (
+    <div style={{ background: "linear-gradient(135deg,#1877F2,#0052CC)", borderRadius: 20, padding: "1.75rem", color: "#fff", marginBottom: "1.5rem", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: -20, right: -20, width: 120, height: 120, background: "rgba(255,255,255,0.05)", borderRadius: "50%" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+        <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 12, padding: 8 }}>
+          <Zap size={22} />
+        </div>
+        <div>
+          <h1 style={{ margin: 0, fontWeight: 900, fontSize: "1.25rem" }}>Tráfego Pago com IA</h1>
+          <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.8 }}>Meta Ads • Facebook &amp; Instagram</p>
+        </div>
+        {campaign && (
+          <div style={{ marginLeft: "auto", background: campaign.status === "ACTIVE" ? "#16A34A" : "#475569", borderRadius: 20, padding: "4px 12px", fontSize: "0.75rem", fontWeight: 700 }}>
+            {campaign.status === "ACTIVE" ? "🟢 Ativo" : "⏸ Pausado"}
+          </div>
+        )}
+      </div>
+      <p style={{ margin: 0, fontSize: "0.85rem", opacity: 0.85, lineHeight: 1.6 }}>
+        Anúncios criados automaticamente por IA no Facebook e Instagram — direcionando clientes direto pro seu cardápio.
+      </p>
+      <div style={{ display: "flex", gap: 12, marginTop: "1rem", flexWrap: "wrap" }}>
+        {[
+          { label: "Taxa de gestão", value: "R$50/semana" },
+          { label: "Verba mínima", value: "R$100/semana" },
+          { label: "100% da verba", value: "vai pro Meta" },
+        ].map((item, i) => (
+          <div key={i} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "6px 12px", fontSize: "0.75rem" }}>
+            <span style={{ opacity: 0.75 }}>{item.label}: </span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ─── LOADING ───────────────────────────────────────────────────────────────
+  if (step === "loading") {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: 40, height: 40, border: "3px solid #E2E8F0", borderTopColor: "#1877F2", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
-          <p style={{ color: "#64748B", fontSize: "0.875rem" }}>Carregando...</p>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "1.5rem 1rem" }}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <Header />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ width: 40, height: 40, border: "3px solid #E2E8F0", borderTopColor: "#1877F2", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
+            <p style={{ color: "#64748B", fontSize: "0.875rem" }}>Verificando configuração...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── NEEDS SETUP (sem META_APP_ID configurado) ─────────────────────────────
+  if (step === "needs-setup") {
+    return (
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "1.5rem 1rem" }}>
+        <Header />
+        <div style={{ background: "#fff", borderRadius: 16, padding: "2rem", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #FEF3C7" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1rem" }}>
+            <AlertCircle size={24} color="#D97706" />
+            <h2 style={{ margin: 0, fontWeight: 800, fontSize: "1.1rem", color: "#92400E" }}>Configuração necessária</h2>
+          </div>
+          <p style={{ color: "#64748B", fontSize: "0.9rem", lineHeight: 1.7, marginBottom: "1.5rem" }}>
+            Para ativar os anúncios do Facebook e Instagram, você precisa criar um <strong>App no Meta for Developers</strong> e configurar as variáveis de ambiente no Vercel.
+          </p>
+          <div style={{ background: "#FFF7ED", borderRadius: 12, padding: "1.25rem", marginBottom: "1.5rem", border: "1px solid #FED7AA" }}>
+            <p style={{ fontWeight: 700, fontSize: "0.85rem", margin: "0 0 12px", color: "#92400E" }}>📋 Passos para ativar:</p>
+            {[
+              { n: "1", text: "Acesse developers.facebook.com e crie um App do tipo Business", link: "https://developers.facebook.com/apps/" },
+              { n: "2", text: "Solicite acesso à Marketing API nas configurações do app" },
+              { n: "3", text: 'No painel Vercel → Settings → Environment Variables, adicione: META_APP_ID e META_APP_SECRET' },
+              { n: "4", text: "Faça um novo deploy e volte aqui para conectar sua página do Facebook" },
+            ].map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#D97706", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "0.72rem", flexShrink: 0, marginTop: 2 }}>{s.n}</div>
+                <div style={{ fontSize: "0.85rem", color: "#78350F" }}>
+                  {s.text}
+                  {s.link && <> — <a href={s.link} target="_blank" rel="noopener noreferrer" style={{ color: "#1877F2", textDecoration: "underline" }}>Abrir <ExternalLink size={10} style={{ display: "inline" }} /></a></>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <a
+            href="https://vercel.com/dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 10, background: "#1877F2", color: "#fff", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none" }}
+          >
+            Abrir Painel Vercel <ExternalLink size={14} />
+          </a>
         </div>
       </div>
     );
@@ -105,42 +215,7 @@ export default function MetaAdsPage() {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "1.5rem 1rem", fontFamily: "Inter, sans-serif" }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }`}</style>
-
-      {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #1877F2, #0052CC)", borderRadius: 20, padding: "1.75rem", color: "#fff", marginBottom: "1.5rem", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -20, right: -20, width: 120, height: 120, background: "rgba(255,255,255,0.05)", borderRadius: "50%" }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 12, padding: 8 }}>
-            <Zap size={22} />
-          </div>
-          <div>
-            <h1 style={{ margin: 0, fontWeight: 900, fontSize: "1.25rem" }}>Tráfego Pago com IA</h1>
-            <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.8 }}>Meta Ads • Facebook & Instagram</p>
-          </div>
-          {campaign && (
-            <div style={{ marginLeft: "auto", background: campaign.status === "ACTIVE" ? "#16A34A" : "#475569", borderRadius: 20, padding: "4px 12px", fontSize: "0.75rem", fontWeight: 700 }}>
-              {campaign.status === "ACTIVE" ? "🟢 Ativo" : "⏸ Pausado"}
-            </div>
-          )}
-        </div>
-        <p style={{ margin: 0, fontSize: "0.85rem", opacity: 0.85, lineHeight: 1.6 }}>
-          Anúncios criados automaticamente por IA no Facebook e Instagram — direcionando clientes direto pro seu cardápio.
-        </p>
-
-        {/* Preço */}
-        <div style={{ display: "flex", gap: 12, marginTop: "1rem", flexWrap: "wrap" }}>
-          {[
-            { label: "Taxa de gestão", value: "R$50/semana" },
-            { label: "Verba mínima", value: "R$100/semana" },
-            { label: "100% da verba", value: "vai pro Meta" },
-          ].map((item, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "6px 12px", fontSize: "0.75rem" }}>
-              <span style={{ opacity: 0.75 }}>{item.label}: </span>
-              <strong>{item.value}</strong>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Header />
 
       {/* ===== PASSO 1: CONECTAR FACEBOOK ===== */}
       {step === "connect" && (
@@ -216,7 +291,7 @@ export default function MetaAdsPage() {
             <label style={{ fontWeight: 700, fontSize: "0.875rem", display: "block", marginBottom: 8 }}>
               ✍️ Texto do anúncio (opcional — IA gera automaticamente)
             </label>
-            <textarea value={adCopy} onChange={e => setAdCopy(e.target.value)} rows={3} placeholder="Ex: 🍔 Delivery mais saboroso da região! Peça agora e receba em casa. Clique no link!" style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: "0.875rem", resize: "vertical", boxSizing: "border-box" }} />
+            <textarea value={adCopy} onChange={e => setAdCopy(e.target.value)} rows={3} placeholder="Ex: 🍔 Delivery mais saboroso da região! Peça agora e receba em casa. Clique no link!" style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: "0.875rem", resize: "vertical", boxSizing: "border-box" as const }} />
           </div>
 
           {/* Resumo de custo */}
@@ -271,7 +346,7 @@ export default function MetaAdsPage() {
           </div>
 
           {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.75rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem" }}>
             {[
               { icon: <BarChart2 size={18} color="#1877F2" />, label: "Investido", value: fmtR(campaign.spend), sub: "últimos 30 dias", bg: "#EBF2FF" },
               { icon: <Eye size={18} color="#7C3AED" />, label: "Impressões", value: campaign.impressions.toLocaleString("pt-BR"), sub: "visualizações", bg: "#F3F0FF" },
@@ -291,7 +366,6 @@ export default function MetaAdsPage() {
             ))}
           </div>
 
-          {/* Copy do anúncio */}
           {campaign.adCopy && (
             <div style={{ background: "#fff", borderRadius: 14, padding: "1.25rem", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
               <p style={{ fontWeight: 700, fontSize: "0.875rem", margin: "0 0 8px" }}>📢 Anúncio ativo</p>
@@ -301,7 +375,6 @@ export default function MetaAdsPage() {
             </div>
           )}
 
-          {/* Info de cobrança */}
           <div style={{ background: "linear-gradient(135deg,#0F172A,#1E293B)", borderRadius: 14, padding: "1.25rem", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <div>
               <p style={{ margin: 0, fontWeight: 700, fontSize: "0.875rem" }}>💳 Próxima cobrança de gestão</p>
@@ -317,4 +390,3 @@ export default function MetaAdsPage() {
     </div>
   );
 }
-

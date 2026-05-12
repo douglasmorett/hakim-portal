@@ -14,6 +14,11 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   const franchiseeId = (session.user as any).id;
 
+  // Indica se a integração Meta ainda não foi configurada no Vercel
+  if (!process.env.META_APP_ID) {
+    return NextResponse.json({ campaign: null, needsSetup: true });
+  }
+
   const campaign = await prisma.metaAdsCampaign.findFirst({
     where: { franchiseeId },
     orderBy: { createdAt: "desc" },

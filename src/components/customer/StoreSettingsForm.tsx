@@ -21,8 +21,11 @@ function SectionSaveBtn({ dirty, saving, onSave, label = "Salvar alterações" }
   );
 }
 
-export default function StoreSettingsForm({ user }: { user: any }) {
+export default function StoreSettingsForm({ user, initialTab }: { user: any; initialTab?: string }) {
   const router = useRouter();
+  // Tab ativo — determina qual seção mostrar (undefined = mostra tudo)
+  const tab = initialTab ?? "all";
+  const show = (t: string) => tab === "all" || tab === t;
   const [storeName, setStoreName] = useState(user.storeName || "");
   const [storePhone, setStorePhone] = useState(user.storePhone || "");
   const [storeAddress, setStoreAddress] = useState(user.storeAddress || "");
@@ -179,26 +182,26 @@ export default function StoreSettingsForm({ user }: { user: any }) {
   return (
     <div style={{ maxWidth: "700px" }}>
       {/* LINK DA LOJA */}
-      <div className="card mb-4" style={{ background: "linear-gradient(135deg, #FFF4E5, #FEF3C7)", border: "1.5px solid #F59E0B" }}>
+      {show("info") && <div className="card mb-4" style={{ background: "linear-gradient(135deg, #FFF4E5, #FEF3C7)", border: "1.5px solid #F59E0B" }}>
         <p className="font-bold" style={{ marginBottom: "0.5rem" }}>🔗 Link da sua Loja</p>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <code style={{ flex: 1, padding: "0.5rem", backgroundColor: "white", borderRadius: "8px", fontSize: "0.8rem", wordBreak: "break-all" }}>{storeUrl}</code>
           <button onClick={() => { navigator.clipboard.writeText(storeUrl); alert("Copiado!"); }} className="btn btn-outline" style={{ padding: "0.5rem" }}><Copy size={16} /></button>
           <a href={storeUrl} target="_blank" className="btn btn-primary" style={{ padding: "0.5rem" }}><ExternalLink size={16} /></a>
         </div>
-      </div>
+      </div>}
 
       {/* IMAGENS */}
-      <div className="card mb-4">
+      {show("info") && <div className="card mb-4">
         <h3 className="font-bold mb-4">🖼️ Imagens da Loja</h3>
         <div style={{ display: "flex", gap: "1rem" }}>
           <UploadBox label="Logo" value={storeLogo} type="logo" uploading={uploadingLogo} />
           <UploadBox label="Banner / Capa" value={storeBanner} type="banner" uploading={uploadingBanner} />
         </div>
-      </div>
+      </div>}
 
       {/* INFO */}
-      <div className="card mb-4">
+      {show("info") && <div className="card mb-4">
         <h3 className="font-bold mb-4">📋 Informações da Loja</h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
           <div className="input-group"><label>Nome da Loja</label><input className="input-field" value={storeName} onChange={e => { setStoreName(e.target.value); setDirtyInfo(true); }} /></div>
@@ -210,10 +213,10 @@ export default function StoreSettingsForm({ user }: { user: any }) {
           <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>🛵 Somente Delivery</span>
         </label>
         <SectionSaveBtn dirty={dirtyInfo} saving={savingInfo} onSave={saveInfo} label="Salvar Informações" />
-      </div>
+      </div>}
 
       {/* HORÁRIOS */}
-      <div className="card mb-4">
+      {show("hours") && <div className="card mb-4">
         <h3 className="font-bold mb-4">⏰ Horário de Funcionamento</h3>
         <p style={{ fontSize: "0.78rem", color: "#64748B", marginBottom: "0.75rem" }}>Configure múltiplos turnos por dia (ex: Almoço e Jantar)</p>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -280,10 +283,10 @@ export default function StoreSettingsForm({ user }: { user: any }) {
           ))}
         </div>
         <SectionSaveBtn dirty={dirtyHours} saving={savingHours} onSave={saveHours} label="Salvar Horários" />
-      </div>
+      </div>}
 
       {/* AGENDAR PAUSA */}
-      <div className="card mb-4" style={{ border: pauseActive ? "1.5px solid #FCA5A5" : "1.5px solid #E2E8F0", background: pauseActive ? "#FFF5F5" : "#fff" }}>
+      {show("hours") && <div className="card mb-4" style={{ border: pauseActive ? "1.5px solid #FCA5A5" : "1.5px solid #E2E8F0", background: pauseActive ? "#FFF5F5" : "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <Calendar size={18} color={pauseActive ? "#DC2626" : "#64748B"} />
@@ -340,10 +343,10 @@ export default function StoreSettingsForm({ user }: { user: any }) {
           </div>
         )}
         <SectionSaveBtn dirty={dirtyPause} saving={savingPause} onSave={savePause} label="Salvar Pausa" />
-      </div>
+      </div>}
 
       {/* CUPONS */}
-      <div className="card mb-4">
+      {show("coupons") && <div className="card mb-4">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h3 className="font-bold" style={{ margin: 0 }}>🏷️ Cupons de Desconto</h3>
           <button onClick={addCoupon} className="btn btn-outline" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}><Plus size={14} /> Novo Cupom</button>
@@ -370,10 +373,10 @@ export default function StoreSettingsForm({ user }: { user: any }) {
           </div>
         )}
         <SectionSaveBtn dirty={dirtyCoupons} saving={savingCoupons} onSave={saveCoupons} label="Salvar Cupons" />
-      </div>
+      </div>}
 
       {/* TAXAS DE PAGAMENTO */}
-      <div className="card mb-4">
+      {show("payment") && <div className="card mb-4">
         <h3 className="font-bold mb-4">💳 Formas de Pagamento & Taxas</h3>
         <p style={{ fontSize: "0.78rem", color: "#64748B", marginBottom: "1rem" }}>Configure quais formas você aceita e a taxa de cada uma. Usado para calcular seu lucro líquido.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -517,10 +520,10 @@ export default function StoreSettingsForm({ user }: { user: any }) {
           </div>
         )}
         <SectionSaveBtn dirty={dirtyPayment} saving={savingPayment} onSave={savePayment} label="Salvar Formas de Pagamento" />
-      </div>
+      </div>}
 
       {/* ===== DELIVERY ZONES - MAP ===== */}
-      <div style={{ marginTop: "1.5rem" }}>
+      {show("delivery") && <div style={{ marginTop: "1.5rem" }}>
         <DeliveryZoneMap
           initialAddress={storeAddress}
           initialLatLng={(user.storeLatLng as any) || null}
@@ -540,11 +543,14 @@ export default function StoreSettingsForm({ user }: { user: any }) {
             router.refresh();
           }}
         />
-      </div>
+      </div>}
 
-      <button onClick={handleSave} disabled={loading} className="btn btn-primary" style={{ width: "100%", marginTop: "1rem" }}>
-        <Save size={16} style={{ marginRight: "6px" }} /> {loading ? "Salvando..." : "Salvar Tudo"}
-      </button>
+      {/* Salvar Tudo — só mostra quando modo "all" (sem aba específica) */}
+      {tab === "all" && (
+        <button onClick={handleSave} disabled={loading} className="btn btn-primary" style={{ width: "100%", marginTop: "1rem" }}>
+          <Save size={16} style={{ marginRight: "6px" }} /> {loading ? "Salvando..." : "Salvar Tudo"}
+        </button>
+      )}
     </div>
   );
 }
