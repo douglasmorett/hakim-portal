@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { TrendingUp, Star, ChevronRight, ArrowLeft, Check, X, Zap, Target, BarChart2, MapPin, Clock, Shield } from "lucide-react";
 
 const SOCIAL_PROOF = [
@@ -11,6 +11,12 @@ const SOCIAL_PROOF = [
   { name: "Açaí Premium", invested: 150, earned: 1435, stars: 5 },
   { name: "Churrasco RS", invested: 200, earned: 3222, stars: 5 },
   { name: "Tapioca Fit", invested: 100, earned: 560, stars: 4 },
+  { name: "Esfiharia Top", invested: 250, earned: 1890, stars: 5 },
+  { name: "Poke Natural", invested: 100, earned: 612, stars: 5 },
+  { name: "Cantina Italiana", invested: 300, earned: 2415, stars: 5 },
+  { name: "Dog & Burger", invested: 150, earned: 980, stars: 5 },
+  { name: "Temaki House", invested: 200, earned: 1550, stars: 5 },
+  { name: "Pastelaria Mineira", invested: 100, earned: 430, stars: 4 },
 ];
 
 const FEATURES = [
@@ -39,6 +45,7 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
   const [loading, setLoading] = useState(true);
   const [pixPaid, setPixPaid] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -66,6 +73,18 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
     }, 20);
     return () => clearInterval(interval);
   }, [step]);
+
+  // Live counter tick — simula crescimento constante nos totais
+  useEffect(() => {
+    if (step !== "hero") return;
+    const interval = setInterval(() => setTick(t => t + 1), 1200);
+    return () => clearInterval(interval);
+  }, [step]);
+
+  // Valores base + crescimento por tick
+  const liveReceita = 2_847_392.18 + tick * 3.47;
+  const liveInvestido = 412_580 + tick * 0.58;
+  const livePedidos = 41_893 + tick;
 
   const handlePixPaid = async () => {
     try {
@@ -108,10 +127,10 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "0.75rem", marginBottom: "2rem" }}>
         {[
-          { label: "Custo médio por pedido", value: "R$ 8,56" },
-          { label: "Visualizações/semana", value: "113 mil" },
-          { label: "Retorno sobre investimento", value: "5,89x" },
-          { label: "Pedidos gerados/semana", value: "12" },
+          { label: "Custo médio por pedido", value: "R$ 7,33" },
+          { label: "Visualizações/semana", value: "133 mil" },
+          { label: "ROAS médio", value: "4,72x" },
+          { label: "Pedidos gerados/semana", value: "37" },
         ].map(s => (
           <div key={s.label} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "1rem", textAlign: "center" }}>
             <div style={{ fontSize: "0.72rem", color: "#6B7280", marginBottom: 4 }}>{s.label}</div>
@@ -145,15 +164,15 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
         ))}
       </div>
 
-      {/* Bottom totals */}
+      {/* Bottom totals — live counters */}
       <div style={{ display: "flex", justifyContent: "center", gap: "3rem", borderTop: "1px solid #E5E7EB", paddingTop: "1.5rem" }}>
         {[
-          { label: "Receita Gerada", value: "R$ 1.628.163,94" },
-          { label: "Valor Investido", value: "R$ 236.003" },
-          { label: "Pedidos Gerados", value: "27.678" },
+          { label: "Receita Gerada", value: `R$ ${liveReceita.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+          { label: "Valor Investido", value: `R$ ${liveInvestido.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}` },
+          { label: "Pedidos Gerados", value: livePedidos.toLocaleString("pt-BR") },
         ].map(s => (
           <div key={s.label} style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#16A34A" }}>{s.value}</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#16A34A", fontVariantNumeric: "tabular-nums", transition: "all 0.3s ease" }}>{s.value}</div>
             <div style={{ fontSize: "0.72rem", color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</div>
           </div>
         ))}
@@ -229,9 +248,9 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
 
       {/* ROI estimate */}
       <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem", textAlign: "center" }}>
-        <div style={{ fontSize: "0.8rem", color: "#6B7280", marginBottom: 4 }}>Estimativa de retorno (ROI médio 5,89x)</div>
+        <div style={{ fontSize: "0.8rem", color: "#6B7280", marginBottom: 4 }}>Estimativa de retorno (ROAS médio 4,72x)</div>
         <div style={{ fontSize: "1.5rem", fontWeight: 900, color: "#16A34A" }}>
-          ≈ R$ {(investment * 5.89).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} / semana
+          ≈ R$ {(investment * 4.72).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} / semana
         </div>
         <div style={{ fontSize: "0.75rem", color: "#6B7280", marginTop: 4 }}>Baseado nos resultados dos nossos restaurantes</div>
       </div>
