@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: "/store/venda-presencial", label: "PDV", icon: ShoppingBag },
   { href: "/store/cardapio", label: "Cardápio", icon: UtensilsCrossed },
   { href: "/store/financeiro", label: "Financeiro", icon: BarChart2 },
-  { href: "/store/meta-ads", label: "Meta Ads", icon: Zap, badge: "IA" },
+  { href: "/store/meta-ads", label: "Tráfego Pago", icon: Zap, badge: "IA" },
   { href: "/store/motoboys", label: "Motoboys", icon: Bike },
   { href: "/store/minha-loja", label: "Minha Loja", icon: Store },
   { href: "/store/profile", label: "Perfil", icon: Users },

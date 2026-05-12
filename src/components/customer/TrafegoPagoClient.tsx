@@ -1,0 +1,377 @@
+"use client";
+import { useState, useEffect, useRef } from "react";
+import { TrendingUp, Star, ChevronRight, ArrowLeft, Check, X, Zap, Target, BarChart2, MapPin, Clock, Shield } from "lucide-react";
+
+const SOCIAL_PROOF = [
+  { name: "Burger Carioca", invested: 150, earned: 847, stars: 5 },
+  { name: "Pizza do Bairro", invested: 200, earned: 1230, stars: 5 },
+  { name: "Sushi Express", invested: 100, earned: 480, stars: 5 },
+  { name: "Frango & Cia", invested: 150, earned: 720, stars: 5 },
+  { name: "Lanches Top", invested: 100, earned: 394, stars: 5 },
+  { name: "Açaí Premium", invested: 150, earned: 1435, stars: 5 },
+  { name: "Churrasco RS", invested: 200, earned: 3222, stars: 5 },
+  { name: "Tapioca Fit", invested: 100, earned: 560, stars: 4 },
+];
+
+const FEATURES = [
+  { icon: Zap, label: "100% automático", desc: "IA cria e otimiza os anúncios" },
+  { icon: Target, label: "Só sua cidade", desc: "Raio de entrega exato" },
+  { icon: BarChart2, label: "Painel em tempo real", desc: "ROI, pedidos e investimento" },
+  { icon: MapPin, label: "Seus criativos", desc: "Fotos do seu cardápio" },
+  { icon: Clock, label: "Otimização contínua", desc: "IA melhora toda semana" },
+  { icon: Shield, label: "Sem surpresas", desc: "Você define o valor" },
+];
+
+const PIX_KEY = "financeiro@grupohakim.com.br";
+
+type Step = "hero" | "method" | "invest" | "pix" | "commitment" | "dashboard";
+
+interface Campaign {
+  id: string; weeklyBudget: number; status: string;
+  spent?: number; impressions?: number; clicks?: number; orders?: number;
+}
+
+export default function TrafegoPagoPage({ user }: { user: any }) {
+  const [step, setStep] = useState<Step>("hero");
+  const [investment, setInvestment] = useState(100);
+  const [agreed, setAgreed] = useState(false);
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pixPaid, setPixPaid] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetch("/api/meta-ads/campaign")
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d?.campaign) { setCampaign(d.campaign); setStep("dashboard"); }
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }, 500);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Auto scroll social proof
+  useEffect(() => {
+    if (step !== "hero") return;
+    const el = scrollRef.current;
+    if (!el) return;
+    let pos = 0;
+    const interval = setInterval(() => {
+      pos += 1;
+      if (pos >= el.scrollWidth / 2) pos = 0;
+      el.scrollLeft = pos;
+    }, 20);
+    return () => clearInterval(interval);
+  }, [step]);
+
+  const handlePixPaid = async () => {
+    try {
+      await fetch("/api/meta-ads/campaign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weeklyBudget: investment, status: "pending_payment" }),
+      });
+      setCampaign({ id: "new", weeklyBudget: investment, status: "active" });
+      setStep("dashboard");
+    } catch { alert("Erro ao registrar pagamento. Contate o suporte."); }
+  };
+
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ width: 48, height: 48, border: "4px solid #E5E7EB", borderTopColor: "#2563EB", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+        <p style={{ color: "#6B7280" }}>Carregando...</p>
+      </div>
+    </div>
+  );
+
+  /* ─── HERO ─── */
+  if (step === "hero") return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 1rem 4rem" }}>
+      {/* Badge */}
+      <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+        <span style={{ background: "#EF4444", color: "#fff", fontSize: "0.7rem", fontWeight: 800, padding: "4px 12px", borderRadius: 99, letterSpacing: 1 }}>TRÁFEGO PAGO + FIREHUB</span>
+      </div>
+
+      {/* Hero title */}
+      <h1 style={{ textAlign: "center", fontSize: "clamp(1.6rem,4vw,2.5rem)", fontWeight: 900, lineHeight: 1.2, marginBottom: "1rem" }}>
+        Anúncios que trazem pedidos<br />direto pro seu cardápio
+      </h1>
+      <p style={{ textAlign: "center", color: "#6B7280", fontSize: "1rem", marginBottom: "2rem", lineHeight: 1.6 }}>
+        O FireHub cria, publica e otimiza seus anúncios no <strong>Facebook</strong> e<br />
+        <strong>Instagram</strong> automaticamente. Você só recebe os pedidos.
+      </p>
+
+      {/* Stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "0.75rem", marginBottom: "2rem" }}>
+        {[
+          { label: "Custo médio por pedido", value: "R$ 8,56" },
+          { label: "Visualizações/semana", value: "113 mil" },
+          { label: "Retorno sobre investimento", value: "5,89x" },
+          { label: "Pedidos gerados/semana", value: "12" },
+        ].map(s => (
+          <div key={s.label} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "1rem", textAlign: "center" }}>
+            <div style={{ fontSize: "0.72rem", color: "#6B7280", marginBottom: 4 }}>{s.label}</div>
+            <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#111" }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+        <button onClick={() => setStep("method")}
+          style={{ background: "#EF4444", color: "#fff", border: "none", padding: "16px 40px", borderRadius: 12, fontSize: "1.1rem", fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          Ativar para meu restaurante <ChevronRight size={20} />
+        </button>
+        <p style={{ color: "#9CA3AF", fontSize: "0.8rem", marginTop: 8 }}>Configuração em menos de 5 minutos</p>
+      </div>
+
+      {/* Social proof scroll */}
+      <div ref={scrollRef} style={{ display: "flex", gap: "0.75rem", overflowX: "hidden", marginBottom: "2rem", userSelect: "none" }}>
+        {[...SOCIAL_PROOF, ...SOCIAL_PROOF].map((r, i) => (
+          <div key={i} style={{ flexShrink: 0, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "0.85rem 1rem", minWidth: 200 }}>
+            <div style={{ display: "flex", gap: 2, marginBottom: 6 }}>
+              {Array(r.stars).fill(0).map((_, j) => <Star key={j} size={12} fill="#F59E0B" color="#F59E0B" />)}
+            </div>
+            <div style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: 4 }}>{r.name}</div>
+            <div style={{ fontSize: "0.78rem", color: "#6B7280" }}>
+              Investiu <strong>R${r.invested}</strong> — Faturou{" "}
+              <span style={{ color: "#16A34A", fontWeight: 800 }}>R${r.earned.toLocaleString("pt-BR")}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom totals */}
+      <div style={{ display: "flex", justifyContent: "center", gap: "3rem", borderTop: "1px solid #E5E7EB", paddingTop: "1.5rem" }}>
+        {[
+          { label: "Receita Gerada", value: "R$ 1.628.163,94" },
+          { label: "Valor Investido", value: "R$ 236.003" },
+          { label: "Pedidos Gerados", value: "27.678" },
+        ].map(s => (
+          <div key={s.label} style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#16A34A" }}>{s.value}</div>
+            <div style={{ fontSize: "0.72rem", color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  /* ─── METHOD ─── */
+  if (step === "method") return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "0 1rem 4rem" }}>
+      <button onClick={() => setStep("hero")} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "#6B7280", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+        <ArrowLeft size={16} /> Voltar
+      </button>
+      <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
+        <span style={{ background: "#EF4444", color: "#fff", fontSize: "0.7rem", fontWeight: 800, padding: "4px 12px", borderRadius: 99 }}>TRÁFEGO PAGO + FIREHUB</span>
+      </div>
+      <h2 style={{ textAlign: "center", fontSize: "1.8rem", fontWeight: 900, marginBottom: "0.5rem" }}>Como deseja configurar?</h2>
+      <p style={{ textAlign: "center", color: "#6B7280", marginBottom: "2rem" }}>Escolha a modalidade que funciona melhor pra você.</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
+        {[
+          { title: "Configuração Acompanhada", desc: "Um especialista FireHub configura com você via WhatsApp", href: `https://wa.me/5511999999999?text=Quero+ativar+o+Tráfego+Pago` },
+          { title: "Configurar Sozinho", desc: "Configure no seu ritmo, passo a passo em menos de 5 minutos", action: () => setStep("invest") },
+        ].map((opt, i) => (
+          <div key={i} onClick={() => opt.action ? opt.action() : window.open(opt.href, "_blank")}
+            style={{ border: "1.5px solid #E5E7EB", borderRadius: 14, padding: "1.25rem", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", transition: "border-color 0.2s" }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = "#EF4444")}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = "#E5E7EB")}>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: "1rem", marginBottom: 4 }}>{opt.title}</div>
+              <div style={{ fontSize: "0.82rem", color: "#6B7280" }}>{opt.desc}</div>
+            </div>
+            <ChevronRight size={18} color="#9CA3AF" style={{ flexShrink: 0, marginLeft: 8 }} />
+          </div>
+        ))}
+      </div>
+
+      {/* Features grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "0.5rem" }}>
+        {FEATURES.map(f => (
+          <div key={f.label} style={{ background: "#F9FAFB", borderRadius: 10, padding: "0.6rem 0.75rem", display: "flex", alignItems: "center", gap: 8 }}>
+            <f.icon size={15} color="#EF4444" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: "0.78rem", fontWeight: 700 }}>{f.label}</div>
+              <div style={{ fontSize: "0.7rem", color: "#6B7280" }}>{f.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  /* ─── INVEST ─── */
+  if (step === "invest") return (
+    <div style={{ maxWidth: 500, margin: "0 auto", padding: "0 1rem 4rem" }}>
+      <button onClick={() => setStep("method")} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "#6B7280", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+        <ArrowLeft size={16} /> Voltar
+      </button>
+      <h2 style={{ fontSize: "1.4rem", fontWeight: 900, marginBottom: "0.25rem" }}>Investimento semanal</h2>
+      <p style={{ color: "#6B7280", marginBottom: "2.5rem" }}>Quanto você quer investir por semana no Facebook?</p>
+
+      <div style={{ background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "2rem", textAlign: "center", marginBottom: "1.5rem" }}>
+        <div style={{ marginBottom: "0.25rem", color: "#6B7280", fontSize: "0.85rem" }}>Investimento semanal</div>
+        <div style={{ fontSize: "3rem", fontWeight: 900, color: "#111", marginBottom: "1.5rem" }}>
+          R$ <span>{investment}</span>
+        </div>
+        <input type="range" min={50} max={2000} step={50} value={investment} onChange={e => setInvestment(Number(e.target.value))}
+          style={{ width: "100%", accentColor: "#EF4444", height: 6, cursor: "pointer" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#9CA3AF", marginTop: 6 }}>
+          <span>R$ 50</span><span>R$ 2.000</span>
+        </div>
+      </div>
+
+      {/* ROI estimate */}
+      <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem", textAlign: "center" }}>
+        <div style={{ fontSize: "0.8rem", color: "#6B7280", marginBottom: 4 }}>Estimativa de retorno (ROI médio 5,89x)</div>
+        <div style={{ fontSize: "1.5rem", fontWeight: 900, color: "#16A34A" }}>
+          ≈ R$ {(investment * 5.89).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} / semana
+        </div>
+        <div style={{ fontSize: "0.75rem", color: "#6B7280", marginTop: 4 }}>Baseado nos resultados dos nossos restaurantes</div>
+      </div>
+
+      <button onClick={() => setStep("commitment")}
+        style={{ width: "100%", background: "#EF4444", color: "#fff", border: "none", padding: "14px", borderRadius: 12, fontSize: "1rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        Confirmar R$ {investment}/semana <ChevronRight size={18} />
+      </button>
+    </div>
+  );
+
+  /* ─── COMMITMENT ─── */
+  if (step === "commitment") return (
+    <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 1rem 4rem" }}>
+      <button onClick={() => setStep("invest")} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "#6B7280", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+        <ArrowLeft size={16} /> Voltar
+      </button>
+      <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+        <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>🚀</div>
+        <h2 style={{ fontSize: "1.6rem", fontWeight: 900, marginBottom: "0.5rem" }}>Quase lá!</h2>
+        <p style={{ color: "#6B7280" }}>Leia com atenção antes de ativar.</p>
+      </div>
+
+      <div style={{ background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "1.5rem", marginBottom: "1.5rem" }}>
+        <label style={{ display: "flex", gap: "0.75rem", cursor: "pointer" }}>
+          <div onClick={() => setAgreed(!agreed)}
+            style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${agreed ? "#EF4444" : "#D1D5DB"}`, background: agreed ? "#EF4444" : "#fff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", marginTop: 2 }}>
+            {agreed && <Check size={13} color="#fff" />}
+          </div>
+          <span style={{ fontSize: "0.9rem", lineHeight: 1.6 }}>
+            Entendo que os primeiros dias são de aprendizado e vou usar por pelo menos <strong>30 dias</strong> para avaliar os resultados
+          </span>
+        </label>
+      </div>
+
+      <div style={{ background: "#FEF9C3", border: "1px solid #FDE68A", borderRadius: 12, padding: "0.85rem 1rem", fontSize: "0.82rem", color: "#92400E", marginBottom: "1.5rem" }}>
+        💡 A IA precisa de alguns dias para otimizar seus anúncios. Os melhores resultados aparecem na 2ª e 3ª semana.
+      </div>
+
+      <button onClick={() => setStep("pix")} disabled={!agreed}
+        style={{ width: "100%", background: agreed ? "#EF4444" : "#E5E7EB", color: agreed ? "#fff" : "#9CA3AF", border: "none", padding: "14px", borderRadius: 12, fontSize: "1rem", fontWeight: 800, cursor: agreed ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+        Continuar para pagamento →
+      </button>
+    </div>
+  );
+
+  /* ─── PIX ─── */
+  if (step === "pix") return (
+    <div style={{ maxWidth: 440, margin: "0 auto", padding: "0 1rem 4rem" }}>
+      <button onClick={() => setStep("commitment")} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "#6B7280", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+        <ArrowLeft size={16} /> Voltar
+      </button>
+      <h2 style={{ fontSize: "1.4rem", fontWeight: 900, marginBottom: "0.25rem" }}>Depósito Inicial</h2>
+
+      <div style={{ background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "1.5rem", textAlign: "center" }}>
+        <div style={{ marginBottom: "1rem" }}>
+          <span style={{ fontSize: "1.5rem" }}>🚀</span>
+          <h3 style={{ fontWeight: 900, fontSize: "1.1rem", margin: "0.5rem 0 0.25rem" }}>Está na hora de aumentar seus pedidos!</h3>
+          <p style={{ fontSize: "0.82rem", color: "#6B7280" }}>
+            Deposite <strong>R$ {investment},00</strong> e seus anúncios rodam por <span style={{ background: "#DCFCE7", color: "#166534", fontWeight: 800, padding: "1px 8px", borderRadius: 6 }}>até 7 DIAS</span>
+          </p>
+        </div>
+
+        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "0.6rem", marginBottom: "1rem", fontSize: "0.82rem", color: "#166534", fontWeight: 600 }}>
+          ✅ Sem custos extras! Você só recebe os pedidos
+        </div>
+
+        {/* QR Code placeholder */}
+        <div style={{ background: "#F9FAFB", border: "1.5px dashed #D1D5DB", borderRadius: 12, padding: "1.5rem", marginBottom: "1rem" }}>
+          <div style={{ fontSize: "4rem", marginBottom: 8 }}>📱</div>
+          <div style={{ fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 }}>Pague via PIX</div>
+          <div style={{ fontFamily: "monospace", fontSize: "0.85rem", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 12px", wordBreak: "break-all", color: "#374151" }}>
+            {PIX_KEY}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: "#6B7280", marginTop: 8 }}>Valor: R$ {investment},00 — Hakim Grupo</div>
+        </div>
+
+        <div style={{ fontSize: "0.72rem", color: "#6B7280", marginBottom: "1rem" }}>
+          Escaneie com o app do seu banco ou copie a chave Pix acima.<br />
+          O pagamento será confirmado em até 1 hora útil.
+        </div>
+
+        <button onClick={handlePixPaid}
+          style={{ width: "100%", background: "#EF4444", color: "#fff", border: "none", padding: "14px", borderRadius: 12, fontSize: "1rem", fontWeight: 800, cursor: "pointer", marginBottom: 8 }}>
+          Já paguei, verificar agora
+        </button>
+        <div style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
+          🔒 100% do valor vai pra tráfego pago — Sem gastos extras
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ─── DASHBOARD ─── */
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 1rem 4rem" }}>
+      {/* Header */}
+      <div style={{ background: "linear-gradient(135deg,#EF4444,#DC2626)", borderRadius: 16, padding: "1.5rem", color: "#fff", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <Zap size={20} />
+              <h2 style={{ margin: 0, fontWeight: 900, fontSize: "1.2rem" }}>Tráfego Pago Ativo 🔥</h2>
+            </div>
+            <p style={{ margin: 0, fontSize: "0.85rem", opacity: 0.85 }}>
+              Anúncios rodando no Facebook & Instagram — R$ {campaign?.weeklyBudget ?? investment}/semana
+            </p>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 10, padding: "6px 14px", fontSize: "0.8rem", fontWeight: 700 }}>
+            ✅ Ativo
+          </div>
+        </div>
+      </div>
+
+      {/* KPI cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
+        {[
+          { label: "Gasto esta semana", value: `R$ ${campaign?.spent ?? 0}`, sub: `de R$ ${campaign?.weeklyBudget ?? investment}`, color: "#3B82F6" },
+          { label: "Impressões", value: (campaign?.impressions ?? 0).toLocaleString("pt-BR"), sub: "visualizações totais", color: "#8B5CF6" },
+          { label: "Cliques no cardápio", value: campaign?.clicks ?? 0, sub: "pessoas interessadas", color: "#F59E0B" },
+          { label: "Pedidos gerados", value: campaign?.orders ?? 0, sub: "via tráfego pago", color: "#10B981" },
+          { label: "ROI estimado", value: campaign?.orders ? `${((campaign.orders * 45) / (campaign.spent ?? 1)).toFixed(1)}x` : "—", sub: "retorno sobre investimento", color: "#EF4444" },
+        ].map(k => (
+          <div key={k.label} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 14, padding: "1.1rem" }}>
+            <div style={{ fontSize: "0.72rem", color: "#6B7280", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{k.label}</div>
+            <div style={{ fontSize: "1.6rem", fontWeight: 900, color: k.color, lineHeight: 1 }}>{k.value}</div>
+            <div style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 4 }}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Info about sync */}
+      <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 12, padding: "1rem", fontSize: "0.85rem", color: "#92400E" }}>
+        <strong>📊 Métricas atualizadas:</strong> As métricas de campanhas são sincronizadas diariamente com o Facebook. Para ver relatórios detalhados em tempo real, acesse o gerenciador de anúncios pelo botão abaixo.
+        <br /><br />
+        <button onClick={() => window.open("https://wa.me/5511999999999?text=Quero+ver+métricas+do+meu+tráfego+pago", "_blank")}
+          style={{ background: "#EF4444", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}>
+          💬 Falar com especialista
+        </button>
+      </div>
+    </div>
+  );
+}
