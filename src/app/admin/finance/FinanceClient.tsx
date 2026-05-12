@@ -25,24 +25,23 @@ export default function FinanceClient({ businessPayables, personalPayables, canS
   const [mode, setMode] = useState<"BUSINESS" | "PERSONAL">("BUSINESS");
 
   const payables = mode === "BUSINESS" ? businessPayables : personalPayables;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
-  const todayPayables = payables.filter(p => {
-    const d = new Date(p.dueDate); d.setHours(0, 0, 0, 0);
-    return d.getTime() === today.getTime();
-  });
-  const overduePayables = payables.filter(p => {
-    const d = new Date(p.dueDate); d.setHours(0, 0, 0, 0);
-    return d.getTime() < today.getTime();
-  });
-  const futurePayables = payables.filter(p => {
-    const d = new Date(p.dueDate); d.setHours(0, 0, 0, 0);
-    return d.getTime() > today.getTime();
-  });
+  // ── Data de hoje no fuso Brasil (UTC-3) ─────────────────────────────────
+  // Intl.DateTimeFormat garante que "hoje" seja o dia certo em São Paulo,
+  // independente do fuso do servidor. Retorna YYYY-MM-DD (formato 'en-CA').
+  const todayBR = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+
+  // dueDate vem como "2026-05-12T00:00:00.000Z" — basta pegar os 10 primeiros
+  // chars para comparar sem deslocar o dia pelo fuso.
+  const ds = (d: string) => d.slice(0, 10);
+
+  const todayPayables   = payables.filter(p => p.status === "PENDING" && ds(p.dueDate) === todayBR);
+  const overduePayables = payables.filter(p => p.status === "PENDING" && ds(p.dueDate) < todayBR);
+  const futurePayables  = payables.filter(p => p.status === "PENDING" && ds(p.dueDate) > todayBR);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  // Exibe a data sem converter fuso: pega YYYY-MM-DD e formata manualmente
+  const formatDate = (d: string) => { const [y,m,day] = d.slice(0,10).split("-"); return `${day}/${m}/${y}`; };
 
   const renderTable = (list: Payable[], title: string, color: string) => (
     <div className="card mb-8">

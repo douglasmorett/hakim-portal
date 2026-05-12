@@ -134,7 +134,7 @@ REGRAS:
 ${systemContext}`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-1.5-pro",
       contents: [
         { role: "user", parts: [{ text: systemPrompt }] },
         { role: "model", parts: [{ text: "Entendido! Sou o Hakim IA, assistente administrativo do Portal Hakim. Estou com todos os dados do sistema carregados e pronto para ajudar. O que precisa?" }] },
