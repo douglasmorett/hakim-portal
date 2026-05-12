@@ -28,9 +28,8 @@ const FEATURES = [
   { icon: Shield, label: "Sem surpresas", desc: "Você define o valor" },
 ];
 
-const PIX_KEY = "financeiro@firehubfood.com.br";
 
-type Step = "hero" | "method" | "invest" | "pix" | "commitment" | "dashboard";
+type Step = "hero" | "method" | "invest" | "connect" | "commitment" | "dashboard";
 
 interface Campaign {
   id: string; weeklyBudget: number; status: string;
@@ -86,16 +85,12 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
   const liveInvestido = 412_580 + tick * 0.58;
   const livePedidos = 41_893 + tick;
 
-  const handlePixPaid = async () => {
-    try {
-      await fetch("/api/meta-ads/campaign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weeklyBudget: investment, status: "pending_payment" }),
-      });
-      setCampaign({ id: "new", weeklyBudget: investment, status: "active" });
-      setStep("dashboard");
-    } catch { alert("Erro ao registrar pagamento. Contate o suporte."); }
+  const handleConnectFacebook = () => {
+    // Redireciona para OAuth do Facebook com permissões de ads_management
+    const appId = "YOUR_META_APP_ID"; // será env var
+    const redirectUri = encodeURIComponent(window.location.origin + "/api/meta-ads/callback");
+    const scope = "ads_management,ads_read,pages_show_list,pages_read_engagement,business_management";
+    window.location.href = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&state=${investment}`;
   };
 
   if (loading) return (
@@ -293,56 +288,70 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
         💡 A IA precisa de alguns dias para otimizar seus anúncios. Os melhores resultados aparecem na 2ª e 3ª semana.
       </div>
 
-      <button onClick={() => setStep("pix")} disabled={!agreed}
+      <button onClick={() => setStep("connect")} disabled={!agreed}
         style={{ width: "100%", background: agreed ? "#EF4444" : "#E5E7EB", color: agreed ? "#fff" : "#9CA3AF", border: "none", padding: "14px", borderRadius: 12, fontSize: "1rem", fontWeight: 800, cursor: agreed ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
-        Continuar para pagamento →
+        Conectar meu Facebook →
       </button>
     </div>
   );
 
-  /* ─── PIX ─── */
-  if (step === "pix") return (
-    <div style={{ maxWidth: 440, margin: "0 auto", padding: "0 1rem 4rem" }}>
+  /* ─── CONNECT FACEBOOK ─── */
+  if (step === "connect") return (
+    <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 1rem 4rem" }}>
       <button onClick={() => setStep("commitment")} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "#6B7280", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
         <ArrowLeft size={16} /> Voltar
       </button>
-      <h2 style={{ fontSize: "1.4rem", fontWeight: 900, marginBottom: "0.25rem" }}>Depósito Inicial</h2>
+      <h2 style={{ fontSize: "1.4rem", fontWeight: 900, marginBottom: "0.25rem" }}>Conectar Facebook</h2>
+      <p style={{ color: "#6B7280", marginBottom: "1.5rem", fontSize: "0.9rem" }}>Conecte sua página do Facebook para que a IA crie os anúncios na <strong>sua conta</strong>.</p>
 
-      <div style={{ background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "1.5rem", textAlign: "center" }}>
-        <div style={{ marginBottom: "1rem" }}>
-          <span style={{ fontSize: "1.5rem" }}>🚀</span>
-          <h3 style={{ fontWeight: 900, fontSize: "1.1rem", margin: "0.5rem 0 0.25rem" }}>Está na hora de aumentar seus pedidos!</h3>
-          <p style={{ fontSize: "0.82rem", color: "#6B7280" }}>
-            Deposite <strong>R$ {investment},00</strong> e seus anúncios rodam por <span style={{ background: "#DCFCE7", color: "#166534", fontWeight: 800, padding: "1px 8px", borderRadius: 6 }}>até 7 DIAS</span>
-          </p>
+      <div style={{ background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "1.5rem" }}>
+        {/* Steps visual */}
+        <div style={{ marginBottom: "1.5rem" }}>
+          {[
+            { n: "1", title: "Conecte sua página", desc: "Clique no botão abaixo e faça login no Facebook" },
+            { n: "2", title: "Autorize o FireHub", desc: "Permita que a IA gerencie seus anúncios" },
+            { n: "3", title: "Defina o orçamento", desc: `R$ ${investment}/semana — cobrado pelo Meta direto na sua conta` },
+          ].map((s, i) => (
+            <div key={i} style={{ display: "flex", gap: "0.75rem", marginBottom: i < 2 ? "1rem" : 0 }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#EF4444", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 800, flexShrink: 0 }}>
+                {s.n}
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{s.title}</div>
+                <div style={{ fontSize: "0.78rem", color: "#6B7280" }}>{s.desc}</div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "0.6rem", marginBottom: "1rem", fontSize: "0.82rem", color: "#166534", fontWeight: 600 }}>
-          ✅ Sem custos extras! Você só recebe os pedidos
+        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "0.6rem 0.85rem", marginBottom: "1rem", fontSize: "0.82rem", color: "#166534", fontWeight: 600 }}>
+          ✅ O pagamento é feito direto pela sua conta do Meta — você tem controle total
         </div>
 
-        {/* QR Code placeholder */}
-        <div style={{ background: "#F9FAFB", border: "1.5px dashed #D1D5DB", borderRadius: 12, padding: "1.5rem", marginBottom: "1rem" }}>
-          <div style={{ fontSize: "4rem", marginBottom: 8 }}>📱</div>
-          <div style={{ fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 }}>Pague via PIX</div>
-          <div style={{ fontFamily: "monospace", fontSize: "0.85rem", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 12px", wordBreak: "break-all", color: "#374151" }}>
-            {PIX_KEY}
-          </div>
-          <div style={{ fontSize: "0.75rem", color: "#6B7280", marginTop: 8 }}>Valor: R$ {investment},00 — FireHub</div>
-        </div>
-
-        <div style={{ fontSize: "0.72rem", color: "#6B7280", marginBottom: "1rem" }}>
-          Escaneie com o app do seu banco ou copie a chave Pix acima.<br />
-          O pagamento será confirmado em até 1 hora útil.
-        </div>
-
-        <button onClick={handlePixPaid}
-          style={{ width: "100%", background: "#EF4444", color: "#fff", border: "none", padding: "14px", borderRadius: 12, fontSize: "1rem", fontWeight: 800, cursor: "pointer", marginBottom: 8 }}>
-          Já paguei, verificar agora
+        <button onClick={handleConnectFacebook}
+          style={{ width: "100%", background: "#1877F2", color: "#fff", border: "none", padding: "14px", borderRadius: 12, fontSize: "1rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: "0.75rem" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          Conectar com Facebook
         </button>
-        <div style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
-          🔒 100% do valor vai pra tráfego pago — Sem gastos extras
+
+        <div style={{ fontSize: "0.72rem", color: "#9CA3AF", textAlign: "center" }}>
+          🔒 Seus dados são seguros. O FireHub nunca publica nada sem sua autorização.
         </div>
+      </div>
+
+      {/* FAQ */}
+      <div style={{ marginTop: "1.5rem", background: "#F9FAFB", borderRadius: 12, padding: "1rem" }}>
+        <div style={{ fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.75rem" }}>Perguntas frequentes</div>
+        {[
+          { q: "Quem paga os anúncios?", a: "Você. O valor é cobrado diretamente pela Meta na sua conta de anúncios. Quando o orçamento acaba, os anúncios param automaticamente." },
+          { q: "Preciso ter uma página no Facebook?", a: "Sim, sua página do Facebook é onde os anúncios aparecem. Se não tiver, crie uma em 2 minutos." },
+          { q: "Posso pausar a qualquer momento?", a: "Sim! Você pode pausar ou cancelar direto pelo painel, sem multas." },
+        ].map((faq, i) => (
+          <div key={i} style={{ marginBottom: i < 2 ? "0.75rem" : 0 }}>
+            <div style={{ fontWeight: 600, fontSize: "0.82rem", color: "#374151" }}>{faq.q}</div>
+            <div style={{ fontSize: "0.78rem", color: "#6B7280", lineHeight: 1.5 }}>{faq.a}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
