@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import TrafegoPagoClient from "@/components/customer/TrafegoPagoClient";
 
 export const metadata = { title: "Tráfego Pago — FireHub" };
@@ -12,7 +12,7 @@ export default async function TrafegoPagoPage() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, storeName: true, storeSlug: true },
+    select: { id: true, storeName: true, slug: true },
   });
   if (!user) redirect("/login");
 

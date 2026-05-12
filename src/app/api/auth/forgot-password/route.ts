@@ -9,11 +9,11 @@ import { Resend } from "resend";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.NEXTAUTH_URL || "https://hakim-portal.vercel.app";
 
 // ── POST /api/auth/forgot-password ────────────────────────────────
 export async function POST(req: NextRequest) {
+  const resend = new Resend(process.env.RESEND_API_KEY || "placeholder");
   const { email, newPassword, token } = await req.json();
 
   // FLUXO 1 — Solicitar recuperação de senha
