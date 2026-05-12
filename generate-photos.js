@@ -5,7 +5,7 @@ const { GoogleGenAI } = require('@google/genai');
 require('dotenv').config({ path: '.env.local' });
 
 const prisma = new PrismaClient();
-const ai = new GoogleGenAI({ apiKey: 'AIzaSyDdfsUv9UPZOpTKyGtQfZxRmesYqlNKyZQ' });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
 async function generateAndUploadImage(id, name) {
