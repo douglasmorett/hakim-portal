@@ -28,7 +28,7 @@ const FEATURES = [
   { icon: Shield, label: "Sem surpresas", desc: "Você define o valor" },
 ];
 
-const PIX_KEY = "financeiro@grupohakim.com.br";
+const PIX_KEY = "financeiro@firehubfood.com.br";
 
 type Step = "hero" | "method" | "invest" | "pix" | "commitment" | "dashboard";
 
@@ -239,10 +239,10 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
         <div style={{ fontSize: "3rem", fontWeight: 900, color: "#111", marginBottom: "1.5rem" }}>
           R$ <span>{investment}</span>
         </div>
-        <input type="range" min={50} max={2000} step={50} value={investment} onChange={e => setInvestment(Number(e.target.value))}
+        <input type="range" min={100} max={2000} step={50} value={investment} onChange={e => setInvestment(Number(e.target.value))}
           style={{ width: "100%", accentColor: "#EF4444", height: 6, cursor: "pointer" }} />
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#9CA3AF", marginTop: 6 }}>
-          <span>R$ 50</span><span>R$ 2.000</span>
+          <span>R$ 100</span><span>R$ 2.000</span>
         </div>
       </div>
 
@@ -253,6 +253,9 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
           ≈ R$ {(investment * 4.72).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} / semana
         </div>
         <div style={{ fontSize: "0.75rem", color: "#6B7280", marginTop: 4 }}>Baseado nos resultados dos nossos restaurantes</div>
+        <div style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 8, lineHeight: 1.5, borderTop: "1px solid #BBF7D0", paddingTop: 8 }}>
+          ⚠️ Essa métrica varia de acordo com a <strong>qualidade das suas fotos</strong>, <strong>preço</strong> e <strong>posicionamento na cidade</strong>. Avalie seus resultados mensalmente.
+        </div>
       </div>
 
       <button onClick={() => setStep("commitment")}
@@ -325,7 +328,7 @@ export default function TrafegoPagoPage({ user }: { user: any }) {
           <div style={{ fontFamily: "monospace", fontSize: "0.85rem", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 12px", wordBreak: "break-all", color: "#374151" }}>
             {PIX_KEY}
           </div>
-          <div style={{ fontSize: "0.75rem", color: "#6B7280", marginTop: 8 }}>Valor: R$ {investment},00 — Hakim Grupo</div>
+          <div style={{ fontSize: "0.75rem", color: "#6B7280", marginTop: 8 }}>Valor: R$ {investment},00 — FireHub</div>
         </div>
 
         <div style={{ fontSize: "0.72rem", color: "#6B7280", marginBottom: "1rem" }}>
