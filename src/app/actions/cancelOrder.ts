@@ -56,7 +56,11 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
   if (order.asaasPaymentId) {
     const asaasKey = process.env.ASAAS_API_KEY;
     if (asaasKey) {
-      const res = await fetch(`https://api.asaas.com/v3/payments/${order.asaasPaymentId}`, {
+      const ASAAS_URL = asaasKey.startsWith("$aact_prod")
+        ? "https://api.asaas.com/v3"
+        : "https://sandbox.asaas.com/v3";
+
+      const res = await fetch(`${ASAAS_URL}/payments/${order.asaasPaymentId}`, {
         method: "DELETE",
         headers: {
           "access_token": asaasKey,

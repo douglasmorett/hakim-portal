@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createAsaasPayment } from "@/lib/asaas";
 
 export async function approveEmergencyOrder(orderId: string) {
   const session = await getServerSession(authOptions);
@@ -15,66 +16,23 @@ export async function approveEmergencyOrder(orderId: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { user: true } });
   if (!order) throw new Error("Pedido não encontrado");
 
-  // INTEGRAÇÃO ASAAS para gerar boleto após aprovação
-  const asaasKey = process.env.ASAAS_API_KEY;
-  const ASAAS_URL = asaasKey?.startsWith("$aact_prod") 
-    ? "https://api.asaas.com/v3" 
-    : "https://sandbox.asaas.com/v3";
+  // Gerar boleto Asaas automaticamente após aprovação
+  const shortId = order.id.slice(-6).toUpperCase();
+  let boletoUrl: string | null = null;
+  let asaasPaymentId: string | null = null;
 
-  let boletoUrl = null;
-  let asaasPaymentId = null;
+  const asaasResult = await createAsaasPayment({
+    userName: order.user.name || order.user.email || "",
+    userEmail: order.user.email || "",
+    cpfCnpj: order.user.cpfCnpj || "",
+    totalAmount: order.totalAmount,
+    orderId: order.id,
+    description: `Pedido de Emergência #${shortId} — Hakim Congelados`
+  });
 
-  if (asaasKey) {
-    let asaasCustomerId = null;
-    if (order.user.cpfCnpj) {
-      const searchRes = await fetch(`${ASAAS_URL}/customers?cpfCnpj=${order.user.cpfCnpj}`, {
-        headers: { "access_token": asaasKey }
-      });
-      const searchData = await searchRes.json();
-      if (searchRes.ok && searchData.data && searchData.data.length > 0) {
-        asaasCustomerId = searchData.data[0].id;
-      }
-    }
-
-    if (!asaasCustomerId) {
-      const customerRes = await fetch(`${ASAAS_URL}/customers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "access_token": asaasKey },
-        body: JSON.stringify({
-          name: order.user.name,
-          email: order.user.email,
-          cpfCnpj: order.user.cpfCnpj || ""
-        })
-      });
-      const customerData = await customerRes.json();
-      asaasCustomerId = customerData.id;
-    }
-
-    if (asaasCustomerId) {
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 10); // 10 dias úteis? ou normais? Igual ao normal
-
-      const paymentRes = await fetch(`${ASAAS_URL}/payments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "access_token": asaasKey },
-        body: JSON.stringify({
-          customer: asaasCustomerId,
-          billingType: "BOLETO",
-          value: order.totalAmount,
-          dueDate: dueDate.toISOString().split("T")[0],
-          description: `Pedido de Emergência #${order.id.slice(-6).toUpperCase()} - Hakim B2B`,
-          externalReference: order.id
-        })
-      });
-
-      const paymentData = await paymentRes.json();
-      if (paymentRes.ok) {
-        boletoUrl = paymentData.bankSlipUrl || paymentData.invoiceUrl;
-        asaasPaymentId = paymentData.id;
-      } else {
-        console.error("Erro ao gerar boleto Asaas na emergência:", paymentData);
-      }
-    }
+  if (asaasResult) {
+    boletoUrl = asaasResult.boletoUrl;
+    asaasPaymentId = asaasResult.paymentId;
   }
 
   await prisma.order.update({

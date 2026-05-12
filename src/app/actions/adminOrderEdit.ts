@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { createAsaasPayment } from "@/lib/asaas";
 
 export async function adminUpdateOrderItems(orderId: string, items: { productId: string, quantity: number, price?: number }[]) {
   const session = await getServerSession(authOptions);
@@ -74,54 +75,32 @@ export async function adminUpdateOrderItems(orderId: string, items: { productId:
         ? "https://api.asaas.com/v3" 
         : "https://sandbox.asaas.com/v3";
       
-      // 1. Fetch old payment to get customer ID
-      const oldPaymentRes = await fetch(`${ASAAS_URL}/payments/${order.asaasPaymentId}`, {
-        headers: { "access_token": asaasKey }
-      });
-      if (!oldPaymentRes.ok) throw new Error("Erro ao buscar pagamento antigo no Asaas");
-      const oldPaymentData = await oldPaymentRes.json();
-      const customerId = oldPaymentData.customer;
-
-      // 2. Delete old payment
+      // 1. Delete old payment
       await fetch(`${ASAAS_URL}/payments/${order.asaasPaymentId}`, {
         method: "DELETE",
         headers: { "access_token": asaasKey }
       });
 
-      // 3. Create new payment
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 10);
-
-      const res = await fetch(`${ASAAS_URL}/payments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "access_token": asaasKey },
-        body: JSON.stringify({ 
-          customer: customerId,
-          billingType: "BOLETO",
-          value: newTotal,
-          dueDate: dueDate.toISOString().split("T")[0],
-          description: `Pedido #${order.id.slice(-6).toUpperCase()} - Hakim B2B (Editado)`,
-          externalReference: order.id
-        })
+      // 2. Create new payment using shared function
+      const shortId = order.id.slice(-6).toUpperCase();
+      const asaasResult = await createAsaasPayment({
+        userName: order.user.name || order.user.email || "",
+        userEmail: order.user.email || "",
+        cpfCnpj: order.user.cpfCnpj || "",
+        totalAmount: newTotal,
+        orderId: order.id,
+        description: `Pedido #${shortId} — Hakim Congelados (Editado)`
       });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error("Failed to create new Asaas charge:", errorData);
-        throw new Error("Erro ao gerar novo boleto no Asaas. Verifique o painel do Asaas.");
+
+      if (asaasResult) {
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { 
+            boletoUrl: asaasResult.boletoUrl, 
+            asaasPaymentId: asaasResult.paymentId 
+          }
+        });
       }
-
-      const paymentData = await res.json();
-      const realBoletoUrl = paymentData.bankSlipUrl || paymentData.invoiceUrl;
-
-      // 4. Update order with new boleto
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { 
-          boletoUrl: realBoletoUrl, 
-          asaasPaymentId: paymentData.id 
-        }
-      });
     }
   }
 

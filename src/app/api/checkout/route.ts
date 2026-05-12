@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkAsaasOverdue, createAsaasPayment } from "@/lib/asaas";
 
 export async function POST(req: Request) {
   try {
@@ -41,7 +42,6 @@ export async function POST(req: Request) {
     }
 
     // ── Verifica inadimplência ───────────────────────────────────────────────
-    const { checkAsaasOverdue } = await import("@/lib/asaas");
     if (user.cpfCnpj) {
       const isBlocked = await checkAsaasOverdue(user.cpfCnpj);
       if (isBlocked) {
@@ -62,98 +62,29 @@ export async function POST(req: Request) {
       }
     });
 
-    // ── Integração Asaas ─────────────────────────────────────────────────────
-    const asaasKey = process.env.ASAAS_API_KEY;
+    // ── Gerar boleto Asaas automaticamente ──────────────────────────────────
+    let boletoUrl: string | null = null;
+    const shortId = order.id.slice(-6).toUpperCase();
 
-    if (!asaasKey) {
-      console.warn("ASAAS_API_KEY não configurada — pedido criado sem boleto.");
-      return NextResponse.json({ success: true, orderId: order.id, boletoUrl: null });
-    }
+    const asaasResult = await createAsaasPayment({
+      userName: user.name || user.email || "",
+      userEmail: user.email || "",
+      cpfCnpj: user.cpfCnpj || "",
+      totalAmount: calculatedTotal,
+      orderId: order.id,
+      description: `Pedido #${shortId} — Hakim Congelados`
+    });
 
-    // URL correta baseada no prefixo da chave
-    const ASAAS_BASE = asaasKey.startsWith("$aact_prod")
-      ? "https://api.asaas.com/v3"
-      : "https://sandbox.asaas.com/v3";
-
-    // 1. Busca ou cria cliente no Asaas
-    let asaasCustomerId: string | null = null;
-
-    if (user.cpfCnpj) {
-      const searchRes = await fetch(
-        `${ASAAS_BASE}/customers?cpfCnpj=${encodeURIComponent(user.cpfCnpj)}`,
-        { headers: { access_token: asaasKey } }
-      );
-      if (searchRes.ok) {
-        const searchData = await searchRes.json();
-        if (searchData.data?.length > 0) {
-          asaasCustomerId = searchData.data[0].id;
+    if (asaasResult) {
+      boletoUrl = asaasResult.boletoUrl;
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          boletoUrl: asaasResult.boletoUrl,
+          asaasPaymentId: asaasResult.paymentId
         }
-      }
-    }
-
-    if (!asaasCustomerId) {
-      const customerRes = await fetch(`${ASAAS_BASE}/customers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", access_token: asaasKey },
-        body: JSON.stringify({
-          name: user.name || user.email,
-          email: user.email,
-          cpfCnpj: user.cpfCnpj || ""
-        })
       });
-      const customerData = await customerRes.json();
-      if (!customerRes.ok) {
-        console.error("Erro criar cliente Asaas:", JSON.stringify(customerData));
-        throw new Error(
-          "Erro ao cadastrar cliente no Asaas: " +
-          (customerData.errors?.[0]?.description || "Verifique o CPF/CNPJ cadastrado")
-        );
-      }
-      asaasCustomerId = customerData.id;
     }
-
-    if (!asaasCustomerId) {
-      throw new Error("Não foi possível obter Customer ID no Asaas.");
-    }
-
-    // 2. Cria cobrança (boleto) com vencimento em 10 dias
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 10);
-
-    const paymentRes = await fetch(`${ASAAS_BASE}/payments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", access_token: asaasKey },
-      body: JSON.stringify({
-        customer: asaasCustomerId,
-        billingType: "BOLETO",
-        value: calculatedTotal,
-        dueDate: dueDate.toISOString().split("T")[0],
-        description: `Pedido #${order.id.slice(-6).toUpperCase()} — Hakim Congelados`,
-        externalReference: order.id
-      })
-    });
-
-    const paymentData = await paymentRes.json();
-
-    if (!paymentRes.ok) {
-      console.error("Erro Asaas payment:", JSON.stringify(paymentData));
-      throw new Error(
-        "Erro Asaas: " + (paymentData.errors?.[0]?.description || "Falha ao gerar cobrança")
-      );
-    }
-
-    console.log(
-      `[Asaas] payment=${paymentData.id} invoiceUrl=${paymentData.invoiceUrl} bankSlipUrl=${paymentData.bankSlipUrl}`
-    );
-
-    // invoiceUrl = link público da fatura (sempre disponível imediatamente)
-    // bankSlipUrl = PDF do boleto (pode demorar alguns segundos para ficar disponível)
-    const boletoUrl = paymentData.invoiceUrl || paymentData.bankSlipUrl || null;
-
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { boletoUrl, asaasPaymentId: paymentData.id }
-    });
 
     return NextResponse.json({ success: true, orderId: order.id, boletoUrl });
 
