@@ -227,7 +227,19 @@ export default function FireHubLoginPage() {
           Suporte via WhatsApp
         </a>
 
-        <a href="/firehub" className="fhl-back">← Voltar para o site</a>
+        <div style={{ borderTop: "1px solid #E5E7EB", marginTop: "20px", paddingTop: "20px", textAlign: "center" }}>
+          <p style={{ fontSize: "0.85rem", color: "#6B7280", marginBottom: "10px" }}>Não tem conta ainda?</p>
+          <a href="https://www.firehubfood.com.br/cadastro" style={{
+            display: "inline-flex", alignItems: "center", gap: "6px",
+            padding: "10px 24px", background: "#FEF2F2", color: "#DC2626",
+            borderRadius: "10px", fontWeight: 700, fontSize: "0.88rem",
+            textDecoration: "none", border: "1.5px solid #FECACA",
+          }}>
+            🔥 Teste grátis por 15 dias
+          </a>
+        </div>
+
+        <a href="https://www.firehubfood.com.br" className="fhl-back">← Voltar para o site</a>
       </div>
     </div>
   );
