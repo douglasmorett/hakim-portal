@@ -41,8 +41,7 @@ export default async function AdminSidebar() {
         padding: "0 1rem"
       }} className="mobile-topbar">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: "#EF4444", fontWeight: 900, fontSize: "1.1rem" }}>FIRE</span>
-          <span style={{ color: "var(--text-primary)", fontWeight: 900, fontSize: "1.1rem" }}>HUB</span>
+          <span style={{ color: "#EF4444", fontWeight: 900, fontSize: "1.1rem" }}>HAKIM</span>
         </div>
       </div>
 
@@ -72,13 +71,12 @@ export default async function AdminSidebar() {
               <circle cx="50" cy="60" r="6" fill="#FFD700"/>
             </svg>
             <div>
-              <span style={{ color: "#EF4444", fontWeight: 900, fontSize: "1.3rem" }}>FIRE</span>
-              <span style={{ color: "var(--text-primary)", fontWeight: 900, fontSize: "1.3rem" }}>HUB</span>
+              <span style={{ color: "#EF4444", fontWeight: 900, fontSize: "1.3rem" }}>HAKIM</span>
             </div>
           </div>
           <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{session?.user?.name}</p>
           <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", opacity: 0.6 }}>
-            {role === "ADMIN" ? "Super Admin" : isFranchisee ? "Minha Loja" : "Equipe"}
+            {role === "ADMIN" ? "Administrador" : isFranchisee ? "Franqueado" : "Equipe"}
           </p>
         </div>
 

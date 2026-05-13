@@ -1,5 +1,4 @@
 import AdminSidebar from "@/components/AdminSidebar";
-import MultiStoreSelector from "@/components/MultiStoreSelector";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -16,19 +15,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "var(--bg-color)" }}>
       <AdminSidebar />
       <main className="admin-main" style={{ marginLeft: "250px", flex: 1, display: "flex", flexDirection: "column" }}>
-        {/* Top bar com Multilojas */}
+        {/* Top bar */}
         <div style={{
           padding: "12px 2rem",
           borderBottom: "1px solid var(--border-color)",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           background: "var(--surface)",
           position: "sticky",
           top: 0,
           zIndex: 100,
         }}>
-          <MultiStoreSelector />
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
               padding: "6px 14px",
