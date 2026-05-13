@@ -36,7 +36,18 @@ export default function LoginPage() {
     <div className="flex justify-center items-center" style={{ minHeight: "100vh" }}>
       <div className="card" style={{ maxWidth: "400px", width: "100%" }}>
         <div className="text-center mb-4 flex flex-col items-center">
-          <img src="/logo.png" alt="Hakim Logo" style={{ height: "100px", marginBottom: "0.5rem" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <svg width="48" height="48" viewBox="0 0 100 100" fill="none">
+              <circle cx="50" cy="50" r="48" fill="#1E293B" stroke="#EF4444" strokeWidth="3"/>
+              <path d="M50 15C45 30 30 40 30 55C30 68 39 80 50 85C61 80 70 68 70 55C70 40 55 30 50 15Z" fill="#EF4444"/>
+              <path d="M50 35C47 45 40 50 40 58C40 65 44 72 50 75C56 72 60 65 60 58C60 50 53 45 50 35Z" fill="#FF8C00"/>
+              <circle cx="50" cy="60" r="6" fill="#FFD700"/>
+            </svg>
+            <div>
+              <span style={{ color: "#EF4444", fontWeight: 900, fontSize: "1.6rem" }}>FIRE</span>
+              <span style={{ fontWeight: 900, fontSize: "1.6rem" }}>HUB</span>
+            </div>
+          </div>
           <p className="text-muted" style={{ fontWeight: 500 }}>Faça login para continuar</p>
         </div>
 
