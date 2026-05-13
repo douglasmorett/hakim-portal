@@ -15,9 +15,9 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, phone, businessName, storeName } = await req.json();
+    const { name, email, password, phone, storeName, cnpj, cpf, city } = await req.json();
 
-    // Validações
+    // Validações básicas
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: "Nome, e-mail e senha são obrigatórios." },
@@ -32,9 +32,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar se já existe
-    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
-    if (existing) {
+    if (!cnpj) {
+      return NextResponse.json(
+        { error: "O CNPJ da empresa é obrigatório." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Normalizar CNPJ (somente números)
+    const cnpjClean = cnpj.replace(/\D/g, "");
+    if (cnpjClean.length !== 14) {
+      return NextResponse.json(
+        { error: "CNPJ inválido." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // 1. Verificar se o CNPJ já está cadastrado (bloqueio principal — não importa o email)
+    const existingByCnpj = await prisma.user.findFirst({
+      where: { cpfCnpj: cnpjClean },
+    });
+    if (existingByCnpj) {
+      return NextResponse.json(
+        { error: "Este CNPJ já possui uma conta cadastrada no FireHub. Faça login ou entre em contato com o suporte." },
+        { status: 409, headers: corsHeaders }
+      );
+    }
+
+    // 2. Verificar se o email já existe
+    const existingByEmail = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    if (existingByEmail) {
       return NextResponse.json(
         { error: "Este e-mail já está cadastrado. Tente fazer login." },
         { status: 409, headers: corsHeaders }
@@ -42,14 +71,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Gerar slug único a partir do nome do restaurante
-    const storeNameFinal = storeName || businessName || name;
+    const storeNameFinal = storeName || name;
     const baseSlug = storeNameFinal
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    
+
     let slug = baseSlug;
     let attempt = 0;
     while (await prisma.user.findUnique({ where: { slug } })) {
@@ -69,6 +98,8 @@ export async function POST(req: NextRequest) {
         role: "FRANCHISEE",
         storeName: storeNameFinal,
         storePhone: phone || null,
+        city: city || null,
+        cpfCnpj: cnpjClean,
         slug,
         permissions: "",
         isFranqueadoHakim: false,
