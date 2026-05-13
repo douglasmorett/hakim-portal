@@ -4,29 +4,29 @@
  * Regras:
  *  - Faturamento = 0 no mês        → R$0 (sem cobrança)
  *  - Faturamento > 0               → mínimo de R$50/mês
- *  - Faturamento < R$20.000/mês    → 2% do faturamento (mín R$50)
- *  - Faturamento ≥ R$20.000/mês    → R$400 fixo (teto máximo)
+ *  - Faturamento < R$40.000/mês    → 1% do faturamento (mín R$50)
+ *  - Faturamento ≥ R$40.000/mês    → R$400 fixo (teto máximo)
  *  - Apenas pedidos FireHub contam (iFood, 99Food, Rappi = fora)
  *  - 1ª cobrança: após trial de 15 dias
  *  - Abatimento automático dos pagamentos online recebidos
  *  - Se saldo insuficiente: gera link boleto/PIX dia 1 do mês seguinte
  *
- * ✅ Diferencial: Concorrência cobra 4% — FireHub cobra apenas 2%
+ * ✅ Diferencial: Concorrência cobra 4% — FireHub cobra apenas 1%
  *    mantendo piso de R$50 e teto de R$400.
  */
 
 export const FIREHUB_PLAN = {
-  PERCENT_RATE: 2,          // 2% sobre o faturamento
+  PERCENT_RATE: 1,          // 1% sobre o faturamento
   MIN_MONTHLY: 50,          // Mínimo R$50/mês
   MAX_MONTHLY: 400,         // Teto R$400/mês
-  THRESHOLD: 20000,         // A partir de R$20.000, vai pro teto fixo
+  THRESHOLD: 40000,         // A partir de R$40.000, vai pro teto fixo
   TRIAL_DAYS: 15,           // Dias de trial gratuito
   PIX_RATE: 0.005,          // 0,5% por transação PIX
   PIX_FIXED: 0.40,          // R$0,40 fixo por transação PIX
   CREDIT_RATE: 0.0399,      // 3,99% cartão crédito (spread MDR)
   DEBIT_RATE: 0.0149,       // 1,49% débito
   VOUCHER_RATE: 0.0249,     // 2,49% voucher VR
-  SPLIT_PLATFORM: 0.02,     // 2% do faturamento = mensalidade via split
+  SPLIT_PLATFORM: 0.01,     // 1% do faturamento = mensalidade via split
 };
 
 /**
@@ -54,7 +54,7 @@ export function calcMensalidade(faturamentoMes: number): {
     mensalidade = FIREHUB_PLAN.MAX_MONTHLY; // R$400 fixo
     modelo = "fixo";
   } else {
-    // 2% do faturamento, com mínimo de R$50
+    // 1% do faturamento, com mínimo de R$50
     mensalidade = Math.max(
       FIREHUB_PLAN.MIN_MONTHLY,
       faturamentoMes * (FIREHUB_PLAN.PERCENT_RATE / 100)

@@ -93,7 +93,24 @@ export default function LoginPage() {
             <LogIn size={18} style={{ marginRight: "0.5rem" }} />
             {loading ? "Entrando..." : "Entrar"}
           </button>
+
+          <p style={{ textAlign: "center", marginTop: "12px", fontSize: "0.82rem", color: "#9CA3AF" }}>
+            <a href="/esqueci-senha" style={{ color: "#6B7280", textDecoration: "none" }}>Esqueceu sua senha?</a>
+          </p>
         </form>
+
+        <div style={{ borderTop: "1px solid #E5E7EB", marginTop: "20px", paddingTop: "20px", textAlign: "center" }}>
+          <p style={{ fontSize: "0.85rem", color: "#6B7280", marginBottom: "10px" }}>Não tem conta ainda?</p>
+          <a href="https://www.firehubfood.com.br/cadastro" style={{
+            display: "inline-flex", alignItems: "center", gap: "6px",
+            padding: "10px 24px", background: "#FEF2F2", color: "#EF4444",
+            borderRadius: "10px", fontWeight: 700, fontSize: "0.88rem",
+            textDecoration: "none", border: "1.5px solid #FECACA",
+            transition: "all .2s",
+          }}>
+            🔥 Teste grátis por 15 dias
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@
  * Motor de faturamento "Use First, Pay Later" — 100% automático.
  *
  * Regra:
- *   Taxa = 2% do faturamento mensal do franqueado
+ *   Taxa = 1% do faturamento mensal do franqueado
  *   Mínimo: R$50 · Máximo: R$400
  *
  * Fluxo:
@@ -48,7 +48,7 @@ async function ensureCycle(franchiseeId: string, yearMonth: string) {
     data: {
       franchiseeId,
       yearMonth,
-      planPercent: user?.planPercent ?? 2, // default 2%
+      planPercent: user?.planPercent ?? 1, // default 1%
       status: "OPEN",
     },
   });
@@ -181,7 +181,7 @@ export async function closeBillingCycle(franchiseeId: string, yearMonth: string)
           billingType: "BOLETO",
           value: amountPending,
           dueDate: due,
-          description: `FireHub ${yearMonth} — Taxa de plataforma (2% · mín R$50 · máx R$400)`,
+          description: `FireHub ${yearMonth} — Taxa de plataforma (1% · mín R$50 · máx R$400)`,
           externalReference: `billing:${cycle.id}`,
         }),
       });
