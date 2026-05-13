@@ -17,7 +17,7 @@ const SUGGESTIONS = [
 
 export default function AiChatClient() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", content: "Olá! Sou o **Hakim IA**, seu assistente administrativo inteligente. 🤖\n\nTenho acesso a todos os dados do sistema — pedidos, notas fiscais, contas a pagar, franqueados, produtos e muito mais.\n\nComo posso te ajudar?" }
+    { role: "ai", content: "Olá! Sou o **FireHub IA**, seu assistente administrativo inteligente. 🤖\n\nTenho acesso a todos os dados do sistema — pedidos, notas fiscais, contas a pagar, franqueados, produtos e muito mais.\n\nComo posso te ajudar?" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -106,7 +106,7 @@ export default function AiChatClient() {
             <Sparkles size={24} color="white" />
           </div>
           <div>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: 0 }}>Hakim IA</h1>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", margin: 0 }}>FireHub IA</h1>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>
               Assistente administrativo • Gemini 2.5 Pro
             </p>

@@ -105,7 +105,7 @@ export default function StoreOrdersDashboard({ user, orders: initialOrders, isFr
 
   const storeName = user.storeName || user.name;
   const storeStatus = isStoreOpen(user.storeHours as any);
-  const storeUrl = user.slug ? `https://hakim-portal.vercel.app/loja/${user.slug}` : null;
+  const storeUrl = user.slug ? `/loja/${user.slug}` : null;
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);

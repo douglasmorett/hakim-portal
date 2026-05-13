@@ -28,7 +28,7 @@ export default function StoreTopNav({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const isCompras = pathname?.startsWith("/store/compras");
-  const storeUrl = userSlug ? `https://hakim-portal.vercel.app/loja/${userSlug}` : null;
+  const storeUrl = userSlug ? `/loja/${userSlug}` : null;
 
   const [storeOpen, setStoreOpen] = useState(initialStoreOpen);
   const [cashOpen, setCashOpen] = useState(initialCashOpen);

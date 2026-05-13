@@ -39,7 +39,7 @@ export default function FranchiseeForm({ availableCities }: { availableCities: s
             required 
             type="text" 
             className="input" 
-            placeholder="Ex: Hakim Rio das Ostras"
+            placeholder="Ex: Pizzaria do João"
             value={formData.name}
             onChange={e => setFormData({...formData, name: e.target.value})}
           />
@@ -50,7 +50,7 @@ export default function FranchiseeForm({ availableCities }: { availableCities: s
             required 
             type="email" 
             className="input" 
-            placeholder="franquia@hakim.com.br"
+            placeholder="contato@email.com"
             value={formData.email}
             onChange={e => setFormData({...formData, email: e.target.value})}
           />

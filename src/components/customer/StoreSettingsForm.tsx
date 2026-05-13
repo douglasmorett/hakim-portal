@@ -87,7 +87,7 @@ export default function StoreSettingsForm({ user, initialTab }: { user: any; ini
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
-  const storeUrl = `https://hakim-portal.vercel.app/loja/${user.slug}`;
+  const storeUrl = `${window.location.origin}/loja/${user.slug}`;
   // Delivery zones
   const [deliveryZoneType, setDeliveryZoneType] = useState<string>(user.deliveryZoneType || "");
   const [deliveryZones, setDeliveryZones] = useState<any[]>(user.deliveryZones || []);
