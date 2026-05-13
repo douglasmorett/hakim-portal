@@ -109,16 +109,6 @@ export default async function AdminSidebar() {
           {/* ===== GESTÃO ===== */}
           <p style={{ fontSize: ".65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, padding: "12px 12px 4px", margin: 0 }}>Gestão</p>
 
-          {(role === "ADMIN" || isFranchisee) && (
-            <Link href="/admin/estoque" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
-              <Warehouse size={18} style={{ marginRight: "10px" }} /> Estoque
-            </Link>
-          )}
-          {(role === "ADMIN" || isFranchisee) && (
-            <Link href="/admin/cmv" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
-              <Calculator size={18} style={{ marginRight: "10px" }} /> CMV
-            </Link>
-          )}
           {can("invoices") && (
             <Link href="/admin/invoices" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
               <Receipt size={18} style={{ marginRight: "10px" }} /> Notas de Compras

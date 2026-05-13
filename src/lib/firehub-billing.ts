@@ -3,30 +3,30 @@
  * 
  * Regras:
  *  - Faturamento = 0 no mês        → R$0 (sem cobrança)
- *  - Faturamento > 0               → mínimo de R$60/mês
- *  - Faturamento < R$13.333/mês    → 3% do faturamento (mín R$60)
- *  - Faturamento ≥ R$13.333/mês    → R$400 fixo (teto máximo)
+ *  - Faturamento > 0               → mínimo de R$50/mês
+ *  - Faturamento < R$20.000/mês    → 2% do faturamento (mín R$50)
+ *  - Faturamento ≥ R$20.000/mês    → R$400 fixo (teto máximo)
  *  - Apenas pedidos FireHub contam (iFood, 99Food, Rappi = fora)
  *  - 1ª cobrança: após trial de 15 dias
- *  - Débito automático do saldo online (Pagar.me)
- *  - Se saldo insuficiente: dívida acumula para o próximo mês
+ *  - Abatimento automático dos pagamentos online recebidos
+ *  - Se saldo insuficiente: gera link boleto/PIX dia 1 do mês seguinte
  *
- * ✅ Diferencial: Concorrência cobra 4% — FireHub cobra apenas 3%
- *    mantendo piso de R$60 e teto de R$300.
+ * ✅ Diferencial: Concorrência cobra 4% — FireHub cobra apenas 2%
+ *    mantendo piso de R$50 e teto de R$400.
  */
 
 export const FIREHUB_PLAN = {
-  PERCENT_RATE: 3,          // 3% sobre o faturamento
-  MIN_MONTHLY: 60,          // Mínimo R$60/mês
-  MAX_MONTHLY: 400,         // Teto R$400/mês (3% × R$13.333)
-  THRESHOLD: 13334,         // A partir de R$13.334, vai pro teto fixo
+  PERCENT_RATE: 2,          // 2% sobre o faturamento
+  MIN_MONTHLY: 50,          // Mínimo R$50/mês
+  MAX_MONTHLY: 400,         // Teto R$400/mês
+  THRESHOLD: 20000,         // A partir de R$20.000, vai pro teto fixo
   TRIAL_DAYS: 15,           // Dias de trial gratuito
   PIX_RATE: 0.005,          // 0,5% por transação PIX
   PIX_FIXED: 0.40,          // R$0,40 fixo por transação PIX
   CREDIT_RATE: 0.0399,      // 3,99% cartão crédito (spread MDR)
   DEBIT_RATE: 0.0149,       // 1,49% débito
   VOUCHER_RATE: 0.0249,     // 2,49% voucher VR
-  SPLIT_PLATFORM: 0.03,     // 3% do faturamento = mensalidade via split
+  SPLIT_PLATFORM: 0.02,     // 2% do faturamento = mensalidade via split
 };
 
 /**
@@ -54,7 +54,7 @@ export function calcMensalidade(faturamentoMes: number): {
     mensalidade = FIREHUB_PLAN.MAX_MONTHLY; // R$400 fixo
     modelo = "fixo";
   } else {
-    // 3% do faturamento, com mínimo de R$60
+    // 2% do faturamento, com mínimo de R$50
     mensalidade = Math.max(
       FIREHUB_PLAN.MIN_MONTHLY,
       faturamentoMes * (FIREHUB_PLAN.PERCENT_RATE / 100)
