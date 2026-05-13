@@ -2,36 +2,48 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
+// CORS headers for cross-origin requests from firehubfood.com.br
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, phone, businessName } = await req.json();
+    const { name, email, password, phone, businessName, storeName } = await req.json();
 
     // Validações
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: "Nome, e-mail e senha são obrigatórios." },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     if (password.length < 6) {
       return NextResponse.json(
         { error: "A senha deve ter no mínimo 6 caracteres." },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     // Verificar se já existe
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (existing) {
       return NextResponse.json(
         { error: "Este e-mail já está cadastrado. Tente fazer login." },
-        { status: 409 }
+        { status: 409, headers: corsHeaders }
       );
     }
 
     // Gerar slug único a partir do nome do restaurante
-    const baseSlug = (businessName || name)
+    const storeNameFinal = storeName || businessName || name;
+    const baseSlug = storeNameFinal
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -55,7 +67,7 @@ export async function POST(req: NextRequest) {
         email: email.toLowerCase().trim(),
         password: hashedPassword,
         role: "FRANCHISEE",
-        storeName: businessName || name,
+        storeName: storeNameFinal,
         storePhone: phone || null,
         slug,
         permissions: "",
@@ -65,7 +77,23 @@ export async function POST(req: NextRequest) {
         autoAcceptOrders: false,
         storeAlertSound: "bell",
         storeOrderCount: 0,
-        planPercent: 0,
+        planPercent: 2,
+        storeHours: {
+          seg: { open: "09:00", close: "22:00", active: true },
+          ter: { open: "09:00", close: "22:00", active: true },
+          qua: { open: "09:00", close: "22:00", active: true },
+          qui: { open: "09:00", close: "22:00", active: true },
+          sex: { open: "09:00", close: "23:00", active: true },
+          sab: { open: "09:00", close: "23:00", active: true },
+          dom: { open: "09:00", close: "22:00", active: true },
+        },
+        paymentFees: {
+          pix: true,
+          credit: true,
+          debit: true,
+          cash: true,
+          voucher: false,
+        },
       },
     });
 
@@ -74,12 +102,14 @@ export async function POST(req: NextRequest) {
       message: "Conta criada com sucesso!",
       userId: user.id,
       slug: user.slug,
-    });
-  } catch (error: any) {
+      email: user.email,
+      storeName: user.storeName,
+    }, { headers: corsHeaders });
+  } catch (error: unknown) {
     console.error("Register error:", error);
     return NextResponse.json(
       { error: "Erro interno ao criar conta. Tente novamente." },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
