@@ -290,58 +290,74 @@ export function PayViaPixButton({ id, pixKey, pixKeyName, supplierName, value }:
   );
 }
 
-// ─── Dar Baixa manual ────────────────────────────────────────────────────────
+// ─── Dar Baixa manual ─────────────────────────────────────────────────────────────────
 export function MarkPaidButton({ id }: { id: string }) {
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"idle" | "confirm" | "loading">("idle");
 
-  const handlePaid = async () => {
-    if (!window.confirm("Confirmar baixa manual desta conta?")) return;
-    setLoading(true);
+  const handleConfirm = async () => {
+    setStep("loading");
     try {
       const res = await fetch("/api/admin/mark-paid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
+      if (res.ok) { window.location.reload(); return; }
       const data = await res.json();
-      if (!res.ok) { alert("Erro: " + (data.error || "Falha ao dar baixa.")); setLoading(false); return; }
-      window.location.reload();
+      alert("Erro: " + (data.error || "Falha ao dar baixa."));
+      setStep("idle");
     } catch {
-      alert("Erro de conexão. Tente novamente.");
-      setLoading(false);
+      alert("Erro de conexão.");
+      setStep("idle");
     }
   };
 
+  if (step === "confirm") return (
+    <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+      <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Confirmar?</span>
+      <button onClick={handleConfirm} style={{ padding: "2px 8px", fontSize: "0.8rem", background: "var(--success)", color: "#fff", border: "none", borderRadius: 5, fontWeight: 700, cursor: "pointer" }}>Sim</button>
+      <button onClick={() => setStep("idle")} style={{ padding: "2px 8px", fontSize: "0.8rem", background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border-color)", borderRadius: 5, cursor: "pointer" }}>Não</button>
+    </span>
+  );
+
   return (
-    <button onClick={handlePaid} disabled={loading} className="btn"
+    <button onClick={() => setStep("confirm")} disabled={step === "loading"} className="btn"
       style={{ padding: "0.25rem 0.6rem", fontSize: "0.85rem", backgroundColor: "var(--success)", color: "white", fontWeight: 700, borderRadius: 6 }}>
-      {loading ? "Salvando..." : "✓ Dar Baixa"}
+      {step === "loading" ? "Salvando..." : "✓ Dar Baixa"}
     </button>
   );
 }
 
 // ─── Excluir ─────────────────────────────────────────────────────────────────
 export function DeletePayableButton({ id }: { id: string }) {
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"idle" | "confirm" | "loading">("idle");
 
-  const handleDelete = async () => {
-    if (!window.confirm("Excluir este registro permanentemente?")) return;
-    setLoading(true);
+  const handleConfirm = async () => {
+    setStep("loading");
     try {
       const res = await fetch(`/api/admin/mark-paid?id=${id}`, { method: "DELETE" });
+      if (res.ok) { window.location.reload(); return; }
       const data = await res.json();
-      if (!res.ok) { alert("Erro: " + (data.error || "Falha ao excluir.")); setLoading(false); return; }
-      window.location.reload();
+      alert("Erro: " + (data.error || "Falha ao excluir."));
+      setStep("idle");
     } catch {
-      alert("Erro de conexão. Tente novamente.");
-      setLoading(false);
+      alert("Erro de conexão.");
+      setStep("idle");
     }
   };
 
+  if (step === "confirm") return (
+    <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+      <span style={{ fontSize: "0.78rem", color: "#EF4444" }}>Excluir?</span>
+      <button onClick={handleConfirm} style={{ padding: "2px 8px", fontSize: "0.8rem", background: "#EF4444", color: "#fff", border: "none", borderRadius: 5, fontWeight: 700, cursor: "pointer" }}>Sim</button>
+      <button onClick={() => setStep("idle")} style={{ padding: "2px 8px", fontSize: "0.8rem", background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border-color)", borderRadius: 5, cursor: "pointer" }}>Não</button>
+    </span>
+  );
+
   return (
-    <button onClick={handleDelete} disabled={loading} className="btn btn-outline"
+    <button onClick={() => setStep("confirm")} disabled={step === "loading"} className="btn btn-outline"
       style={{ padding: "0.25rem 0.6rem", fontSize: "0.85rem", color: "var(--danger)", fontWeight: 700, borderRadius: 6 }}>
-      {loading ? "..." : "Excluir"}
+      {step === "loading" ? "..." : "Excluir"}
     </button>
   );
 }
