@@ -144,11 +144,7 @@ export default async function AdminSidebar() {
               <DollarSign size={18} style={{ marginRight: "10px" }} /> Contas a Pagar
             </Link>
           )}
-          {role === "ADMIN" && (
-            <Link href="/admin/gestao-financeira" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none", borderLeft: "3px solid #DC2626", background: "rgba(220,38,38,0.06)" }}>
-              <BarChart3 size={18} style={{ marginRight: "10px", color: "#DC2626" }} /> Gestão Financeira
-            </Link>
-          )}
+
 
           {/* ===== FERRAMENTAS ===== */}
           <p style={{ fontSize: ".65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, padding: "12px 12px 4px", margin: 0 }}>Ferramentas</p>
