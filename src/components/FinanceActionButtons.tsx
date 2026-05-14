@@ -290,47 +290,57 @@ export function PayViaPixButton({ id, pixKey, pixKeyName, supplierName, value }:
   );
 }
 
-// ─── Dar Baixa manual ─────────────────────────────────────────────────────────
+// ─── Dar Baixa manual ────────────────────────────────────────────────────────
 export function MarkPaidButton({ id }: { id: string }) {
   const [loading, setLoading] = useState(false);
 
   const handlePaid = async () => {
-    if (!confirm("Confirmar baixa manual deste boleto?")) return;
+    if (!window.confirm("Confirmar baixa manual desta conta?")) return;
     setLoading(true);
     try {
-      await markPayableAsPaid(id);
+      const res = await fetch("/api/admin/mark-paid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert("Erro: " + (data.error || "Falha ao dar baixa.")); setLoading(false); return; }
       window.location.reload();
     } catch {
-      alert("Erro ao dar baixa.");
+      alert("Erro de conexão. Tente novamente.");
       setLoading(false);
     }
   };
 
   return (
-    <button onClick={handlePaid} disabled={loading} className="btn" style={{ padding: "0.25rem 0.5rem", fontSize: "0.85rem", backgroundColor: "var(--success)", color: "white" }}>
-      {loading ? "Salvando..." : "Dar Baixa"}
+    <button onClick={handlePaid} disabled={loading} className="btn"
+      style={{ padding: "0.25rem 0.6rem", fontSize: "0.85rem", backgroundColor: "var(--success)", color: "white", fontWeight: 700, borderRadius: 6 }}>
+      {loading ? "Salvando..." : "✓ Dar Baixa"}
     </button>
   );
 }
 
-// ─── Excluir ──────────────────────────────────────────────────────────────────
+// ─── Excluir ─────────────────────────────────────────────────────────────────
 export function DeletePayableButton({ id }: { id: string }) {
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm("Excluir este registro?")) return;
+    if (!window.confirm("Excluir este registro permanentemente?")) return;
     setLoading(true);
     try {
-      await deletePayable(id);
+      const res = await fetch(`/api/admin/mark-paid?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) { alert("Erro: " + (data.error || "Falha ao excluir.")); setLoading(false); return; }
       window.location.reload();
     } catch {
-      alert("Erro ao excluir.");
+      alert("Erro de conexão. Tente novamente.");
       setLoading(false);
     }
   };
 
   return (
-    <button onClick={handleDelete} disabled={loading} className="btn btn-outline" style={{ padding: "0.25rem 0.5rem", fontSize: "0.85rem", color: "var(--danger)" }}>
+    <button onClick={handleDelete} disabled={loading} className="btn btn-outline"
+      style={{ padding: "0.25rem 0.6rem", fontSize: "0.85rem", color: "var(--danger)", fontWeight: 700, borderRadius: 6 }}>
       {loading ? "..." : "Excluir"}
     </button>
   );
