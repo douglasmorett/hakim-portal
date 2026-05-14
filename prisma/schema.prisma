@@ -139,15 +139,40 @@ model RouteSchedule {
 model Payable {
   id           String    @id @default(cuid())
   supplierName String
-  barcode      String?
+  barcode      String?   // Código de barras (boleto)
+  pixKey       String?   // Chave PIX (para cartão de crédito)
+  pixKeyType   String?   // CPF | CNPJ | EMAIL | PHONE | RANDOM
+  pixKeyName   String?   // Nome do titular/banco
+  paymentType  String    @default("BOLETO") // BOLETO | CREDIT_CARD | PIX | MANUAL
+  creditCardId String?   // Referência ao cartão cadastrado
   receivedDate DateTime
   dueDate      DateTime
   value        Float
   status       String    @default("PENDING")
   category     String    @default("BUSINESS")
   paidDate     DateTime?
+  asaasPayId   String?   // ID do pagamento no Asaas (após pagar)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  creditCard   CreditCard? @relation(fields: [creditCardId], references: [id])
+}
+
+// Cartões de crédito cadastrados — pagamento via PIX para a conta do cartão
+model CreditCard {
+  id           String    @id @default(cuid())
+  name         String    // "Santander Visa" / "Itaú Black"
+  lastDigits   String?   // "1234"
+  bankName     String?   // "Santander"
+  limit        Float?    // Limite total do cartão
+  closingDay   Int?      // Dia de fechamento da fatura
+  dueDay       Int?      // Dia de vencimento da fatura
+  pixKey       String    // Chave PIX para pagar a fatura
+  pixKeyType   String    @default("CPF") // CPF | CNPJ | EMAIL | PHONE | RANDOM
+  active       Boolean   @default(true)
+  color        String?   // Cor para exibição (#4F46E5)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  payables     Payable[]
 }
 
 model PurchaseInvoice {
