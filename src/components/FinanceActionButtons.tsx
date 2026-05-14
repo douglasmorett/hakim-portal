@@ -3,6 +3,71 @@
 import { useState } from "react";
 import { markPayableAsPaid, deletePayable } from "@/app/actions/finance";
 
+// ─── Pagar via Asaas (debita do saldo Asaas) ─────────────────────────────────
+export function PayViaAsaasButton({ id, barcode, supplierName, value }: {
+  id: string;
+  barcode: string | null;
+  supplierName: string;
+  value: number;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  // Só exibe se tiver código de barras
+  if (!barcode) return null;
+
+  const fmtVal = `R$ ${value.toFixed(2).replace(".", ",")}`;
+
+  const handlePay = async () => {
+    if (!confirm(`⚠️ Confirmar pagamento de ${fmtVal} para "${supplierName}" via Asaas?\n\nO valor será debitado do saldo da sua conta Asaas.`)) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/pay-via-asaas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payableId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`❌ Erro: ${data.error || "Falha no pagamento."}`);
+        return;
+      }
+      setDone(true);
+      alert(`✅ ${data.message}`);
+      window.location.reload();
+    } catch {
+      alert("❌ Erro de conexão. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handlePay}
+      disabled={loading || done}
+      className="btn"
+      title="Pagar este boleto usando o saldo da sua conta Asaas"
+      style={{
+        padding: "0.25rem 0.6rem",
+        fontSize: "0.82rem",
+        background: done
+          ? "var(--success)"
+          : "linear-gradient(135deg, #7C3AED, #6D28D9)",
+        color: "white",
+        border: "none",
+        borderRadius: 6,
+        cursor: loading ? "wait" : "pointer",
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+        boxShadow: "0 2px 8px rgba(124,58,237,0.3)",
+      }}
+    >
+      {loading ? "Pagando..." : done ? "✅ Pago" : "💳 Pagar via Asaas"}
+    </button>
+  );
+}
+
 export function MarkPaidButton({ id }: { id: string }) {
   const [loading, setLoading] = useState(false);
 

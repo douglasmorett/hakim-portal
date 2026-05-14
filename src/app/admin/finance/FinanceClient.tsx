@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import FinanceForm from "@/components/FinanceForm";
-import { MarkPaidButton, DeletePayableButton, BarcodeDisplay } from "@/components/FinanceActionButtons";
+import { MarkPaidButton, DeletePayableButton, BarcodeDisplay, PayViaAsaasButton } from "@/components/FinanceActionButtons";
 
 interface Payable {
   id: string;
@@ -19,9 +19,10 @@ interface Props {
   businessPayables: Payable[];
   personalPayables: Payable[];
   canSeePersonal: boolean;
+  isAdmin: boolean;
 }
 
-export default function FinanceClient({ businessPayables, personalPayables, canSeePersonal }: Props) {
+export default function FinanceClient({ businessPayables, personalPayables, canSeePersonal, isAdmin }: Props) {
   const [mode, setMode] = useState<"BUSINESS" | "PERSONAL">("BUSINESS");
 
   const payables = mode === "BUSINESS" ? businessPayables : personalPayables;
@@ -67,7 +68,15 @@ export default function FinanceClient({ businessPayables, personalPayables, canS
                   <td style={{ padding: "0.5rem", color: "var(--danger)" }}>{formatCurrency(item.value)}</td>
                   <td style={{ padding: "0.5rem" }}>{formatDate(item.dueDate)}</td>
                   <td style={{ padding: "0.5rem" }}><BarcodeDisplay barcode={item.barcode} /></td>
-                  <td style={{ padding: "0.5rem", display: "flex", gap: "0.5rem" }}>
+                  <td style={{ padding: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                    {isAdmin && (
+                      <PayViaAsaasButton
+                        id={item.id}
+                        barcode={item.barcode}
+                        supplierName={item.supplierName}
+                        value={item.value}
+                      />
+                    )}
                     <MarkPaidButton id={item.id} />
                     <DeletePayableButton id={item.id} />
                   </td>

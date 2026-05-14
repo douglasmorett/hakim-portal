@@ -11,8 +11,10 @@ export default async function AdminFinancePage() {
   const userEmail = (session?.user?.email || "").toLowerCase();
   const userRole = (session?.user as any)?.role || "";
 
+  const isAdmin = userRole === "ADMIN";
+
   // Só ADMINs e a Elis podem ver o módulo pessoal
-  const canSeePersonal = userRole === "ADMIN" || PERSONAL_ALLOWED_EMAILS.includes(userEmail);
+  const canSeePersonal = isAdmin || PERSONAL_ALLOWED_EMAILS.includes(userEmail);
 
   // Buscar contas empresariais
   const businessPayables = await prisma.payable.findMany({
@@ -21,7 +23,7 @@ export default async function AdminFinancePage() {
   });
 
   // Buscar contas pessoais (só se o usuário tiver permissão)
-  const personalPayables = canSeePersonal 
+  const personalPayables = canSeePersonal
     ? await prisma.payable.findMany({
         where: { status: "PENDING", category: "PERSONAL" },
         orderBy: { dueDate: "asc" }
@@ -33,6 +35,7 @@ export default async function AdminFinancePage() {
       businessPayables={JSON.parse(JSON.stringify(businessPayables))}
       personalPayables={JSON.parse(JSON.stringify(personalPayables))}
       canSeePersonal={canSeePersonal}
+      isAdmin={isAdmin}
     />
   );
 }
