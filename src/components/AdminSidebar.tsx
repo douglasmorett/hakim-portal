@@ -81,6 +81,17 @@ export default async function AdminSidebar() {
         </div>
 
         <nav style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px", flex: 1, overflowY: "auto" }}>
+
+          {/* ===== MENU SIMPLIFICADO PARA FRANCHISEE ===== */}
+          {isFranchisee ? (
+            <>
+              <p style={{ fontSize: ".65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, padding: "8px 12px 4px", margin: 0 }}>Minha Conta</p>
+              <Link href="/admin/meus-pedidos" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none", background: "linear-gradient(135deg, rgba(239,68,68,0.10), rgba(220,38,38,0.05))", borderLeft: "3px solid #EF4444" }}>
+                <ShoppingCart size={18} style={{ marginRight: "10px", color: "#EF4444" }} /> Meus Pedidos
+              </Link>
+            </>
+          ) : (
+            <>
           
           {/* ===== OPERAÇÃO ===== */}
           <p style={{ fontSize: ".65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, padding: "8px 12px 4px", margin: 0 }}>Operação</p>
@@ -170,6 +181,8 @@ export default async function AdminSidebar() {
               <Link href="/admin/lojistas" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none", background: "rgba(220,38,38,0.06)", borderLeft: "3px solid #DC2626" }}>
                 <Store size={18} style={{ marginRight: "10px", color: "#DC2626" }} /> Painel de Lojistas
               </Link>
+            </>
+          )}
             </>
           )}
         </nav>
