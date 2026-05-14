@@ -146,19 +146,6 @@ export default async function AdminSidebar() {
           )}
 
 
-          {/* ===== FERRAMENTAS ===== */}
-          <p style={{ fontSize: ".65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, padding: "12px 12px 4px", margin: 0 }}>Ferramentas</p>
-
-          {(role === "ADMIN" || isFranchisee) && (
-            <Link href="/admin/checklist" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none", background: "linear-gradient(135deg, rgba(234,179,8,0.08), rgba(249,115,22,0.08))", borderLeft: "3px solid #F59E0B" }}>
-              <ClipboardCheck size={18} style={{ marginRight: "10px", color: "#F59E0B" }} /> Checklist IA
-            </Link>
-          )}
-          {role === "ADMIN" && (
-            <Link href="/admin/ai-chat" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none", background: "linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1))", borderLeft: "3px solid #667eea" }}>
-              <Sparkles size={18} style={{ marginRight: "10px", color: "#667eea" }} /> FireHub IA
-            </Link>
-          )}
 
           {/* ===== ADMIN ===== */}
           {role === "ADMIN" && (
