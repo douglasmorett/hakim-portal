@@ -299,16 +299,16 @@ export function MarkPaidButton({ id }: { id: string }) {
     setLoading(true);
     try {
       await markPayableAsPaid(id);
+      window.location.reload();
     } catch {
       alert("Erro ao dar baixa.");
-    } finally {
       setLoading(false);
     }
   };
 
   return (
     <button onClick={handlePaid} disabled={loading} className="btn" style={{ padding: "0.25rem 0.5rem", fontSize: "0.85rem", backgroundColor: "var(--success)", color: "white" }}>
-      {loading ? "..." : "Dar Baixa"}
+      {loading ? "Salvando..." : "Dar Baixa"}
     </button>
   );
 }
@@ -322,16 +322,16 @@ export function DeletePayableButton({ id }: { id: string }) {
     setLoading(true);
     try {
       await deletePayable(id);
+      window.location.reload();
     } catch {
       alert("Erro ao excluir.");
-    } finally {
       setLoading(false);
     }
   };
 
   return (
     <button onClick={handleDelete} disabled={loading} className="btn btn-outline" style={{ padding: "0.25rem 0.5rem", fontSize: "0.85rem", color: "var(--danger)" }}>
-      Excluir
+      {loading ? "..." : "Excluir"}
     </button>
   );
 }
