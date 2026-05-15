@@ -66,7 +66,12 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
         body: JSON.stringify({ imageUrl, description, category }),
       });
       const aiData = await aiRes.json();
-      if (!aiRes.ok) throw new Error(aiData.error || "A IA rejeitou a nota fiscal.");
+      if (!aiRes.ok) {
+        if (aiData.error === "NAO_LEU_VALOR") {
+          throw new Error("📷 " + aiData.message);
+        }
+        throw new Error(aiData.message || aiData.error || "A IA rejeitou a nota fiscal.");
+      }
 
       setSuccess(`✅ Nota salva! Valor lido: R$ ${aiData.invoice?.aiValue?.toFixed(2) ?? "–"}`);
       setDescription("");

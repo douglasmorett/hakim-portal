@@ -94,6 +94,17 @@ Se não conseguir ler algum campo, use null.`
       }
     }
 
+    // ❌ Se não conseguiu ler o valor, não salva — pede nova foto
+    if (!aiValue || aiValue <= 0) {
+      return NextResponse.json(
+        {
+          error: "NAO_LEU_VALOR",
+          message: "Não consegui ler o valor da nota. Por favor, tire outra foto com melhor iluminação e foco no valor total.",
+        },
+        { status: 422 }
+      );
+    }
+
     const invoice = await (prisma as any).purchaseInvoice.create({
       data: {
         uploadedBy: session.user.email,
