@@ -88,7 +88,7 @@ export default function LabelsClient({ products }: { products: any[] }) {
     // Cria iframe invisível
     const iframe = document.createElement("iframe");
     iframe.id = "label-print-frame";
-    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:none;visibility:hidden;";
+    iframe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:110mm;height:160mm;border:none;";
     document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow?.document;
