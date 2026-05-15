@@ -100,14 +100,14 @@ export default function LabelsClient({ products }: { products: any[] }) {
 <head>
 <meta charset="utf-8"/>
 <style>
-  @page { size: 150mm 100mm; margin: 0; }
+  @page { size: 100mm 150mm portrait; margin: 0; }
   * { box-sizing: border-box; max-width: 100%; word-break: break-word; overflow-wrap: break-word; }
   body { margin: 0; padding: 0; background: #fff; font-family: Arial, Helvetica, sans-serif; }
-  .print-area { display: block !important; width: 150mm; }
+  .print-area { display: block !important; width: 100mm; }
   .label-page {
-    width: 150mm;
-    height: 100mm;
-    padding: 4mm;
+    width: 100mm;
+    height: 150mm;
+    padding: 3mm;
     overflow: hidden;
     background: white;
     page-break-after: always;
@@ -118,13 +118,6 @@ export default function LabelsClient({ products }: { products: any[] }) {
     height: 100%;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-  }
-  .conservation-row {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    font-size: 9px;
   }
 </style>
 </head>
