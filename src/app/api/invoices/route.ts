@@ -49,9 +49,9 @@ export async function POST(req: NextRequest) {
         const base64 = Buffer.from(imgBuffer).toString("base64");
         const mimeType = imgResponse.headers.get("content-type") || "image/jpeg";
 
-        // Usando gemini-2.0-flash para melhor leitura de notas fiscais
+        // Usando gemini-1.5-pro para melhor leitura de notas fiscais
         const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
