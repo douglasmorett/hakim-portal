@@ -379,10 +379,21 @@ export default function LabelsClient({ products }: { products: any[] }) {
             margin: 0;
           }
 
-          /* Esconde TUDO da página */
-          body > * { display: none !important; }
+          /* Esconde admin chrome e formulário */
+          #admin-sidebar, #admin-topbar, .no-print,
+          header, nav, footer { display: none !important; }
 
-          /* Mostra só a print-area como overlay de página inteira */
+          /* Reset de todos os containers */
+          html, body, #__next, .admin-main, main {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+            background: white !important;
+          }
+
+          /* Print-area ocupa a página toda */
           .print-area {
             display: block !important;
             position: fixed !important;
