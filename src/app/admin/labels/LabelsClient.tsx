@@ -78,65 +78,7 @@ export default function LabelsClient({ products }: { products: any[] }) {
   }, [selectedProductId, fabDate]);
 
   const handlePrint = () => {
-    const printArea = document.querySelector<HTMLElement>(".print-area");
-    if (!printArea) return;
-
-    // Remove iframe anterior se existir
-    const old = document.getElementById("label-print-frame");
-    // Abre popup de impressão
-    const printWindow = window.open('', 'label-print', 'width=600,height=400');
-    if (!printWindow) { alert('Permita popups para imprimir.'); return; }
-
-    printWindow.document.open();
-    printWindow.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<style>
-  @page { size: 152.4mm 101.6mm; margin: 0; }
-  html, body {
-    margin: 0; padding: 0;
-    width: 152.4mm; height: 101.6mm;
-    overflow: hidden;
-    background: #fff;
-    font-family: Arial, Helvetica, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  .print-area {
-    display: block !important;
-    width: 152.4mm;
-    height: 101.6mm;
-  }
-  .label-page {
-    width: 152.4mm;
-    height: 101.6mm;
-    padding: 3mm;
-    overflow: hidden;
-    background: white;
-    color: black;
-  }
-  .label-content {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-</style>
-</head>
-<body>
-${printArea.innerHTML}
-</body>
-</html>`);
-    printWindow.document.close();
-
-    // Aguarda renderizar e imprime
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-      }, 300);
-    };
+    window.print();
   };
 
 
@@ -433,64 +375,45 @@ ${printArea.innerHTML}
 
         @media print {
           @page {
-            size: 100mm 150mm;
+            size: 152.4mm 101.6mm;
             margin: 0;
           }
-          body { margin: 0; padding: 0; background: #fff; }
-          .no-print { display: none !important; }
-          #admin-sidebar { display: none !important; }
-          #admin-topbar { display: none !important; }
-          .admin-main {
-            margin: 0 !important;
-            padding: 0 !important;
-            display: block !important;
-          }
-          /* Remove padding do wrapper interno do conteúdo */
-          .admin-main > div:not(.print-area):not(.labels-container) {
-            display: none !important;
-          }
-          .labels-container > .no-print { display: none !important; }
 
+          /* Esconde TUDO da página */
+          body > * { display: none !important; }
+
+          /* Mostra só a print-area como overlay de página inteira */
           .print-area {
-            display: block;
-            width: 100mm;
-            overflow: hidden;
+            display: block !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 152.4mm !important;
+            height: 101.6mm !important;
+            z-index: 999999 !important;
+            background: white !important;
           }
 
           .label-page {
-            width: 100mm;
-            height: 150mm;
-            padding: 4mm;
-            box-sizing: border-box;
-            overflow: hidden;
-            background: white;
-            page-break-after: always;
-            color: black;
-            font-family: Arial, Helvetica, sans-serif;
+            width: 152.4mm !important;
+            height: 101.6mm !important;
+            padding: 3mm !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            background: white !important;
+            color: black !important;
+            font-family: Arial, Helvetica, sans-serif !important;
           }
 
-          /* Nenhum filho estoura 100mm */
           .label-page * {
             box-sizing: border-box;
-            max-width: 100%;
-            word-break: break-word;
-            overflow-wrap: break-word;
           }
 
           .label-content {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-          }
-
-          /* Linha de conservação em coluna para não estourar */
-          .conservation-row {
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-            font-size: 9px !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
         }
       `}</style>
