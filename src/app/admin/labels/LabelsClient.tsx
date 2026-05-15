@@ -78,52 +78,34 @@ export default function LabelsClient({ products }: { products: any[] }) {
   }, [selectedProductId, fabDate]);
 
   const handlePrint = () => {
-    const printArea = document.querySelector(".print-area");
-    if (!printArea) return;
+    // Pega todos os elementos que precisam ser escondidos
+    const sidebar  = document.querySelector<HTMLElement>("#admin-sidebar");
+    const topbar   = document.querySelector<HTMLElement>("#admin-topbar");
+    const noPrints = document.querySelectorAll<HTMLElement>(".no-print");
+    const adminMain = document.querySelector<HTMLElement>(".admin-main");
+    const contentWrap = adminMain?.querySelector<HTMLElement>(":scope > div:not(.labels-container)");
+    const printArea  = document.querySelector<HTMLElement>(".print-area");
 
-    const popup = window.open("", "_blank", "width=420,height=650,toolbar=0,menubar=0,scrollbars=0");
-    if (!popup) { alert("Permita pop-ups para imprimir."); return; }
+    // --- Esconde UI ---
+    if (sidebar)  sidebar.style.display  = "none";
+    if (topbar)   topbar.style.display   = "none";
+    if (adminMain) { adminMain.style.marginLeft = "0"; adminMain.style.padding = "0"; }
+    if (contentWrap) contentWrap.style.display = "none";
+    noPrints.forEach(el => (el.style.display = "none"));
 
-    popup.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<style>
-  @page { size: 100mm 150mm; margin: 0; }
-  * { box-sizing: border-box; max-width: 100%; word-break: break-word; overflow-wrap: break-word; }
-  body { margin: 0; padding: 0; background: #fff; font-family: Arial, Helvetica, sans-serif; }
-  .print-area { display: block; width: 100mm; }
-  .label-page {
-    width: 100mm;
-    height: 150mm;
-    padding: 4mm;
-    overflow: hidden;
-    background: white;
-    page-break-after: always;
-    color: black;
-  }
-  .label-content {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .conservation-row {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    font-size: 9px;
-  }
-</style>
-</head>
-<body>
-${printArea.innerHTML}
-</body>
-</html>`);
-    popup.document.close();
-    popup.focus();
-    setTimeout(() => { popup.print(); popup.close(); }, 300);
+    // --- Mostra só a etiqueta ---
+    if (printArea) printArea.style.display = "block";
+
+    // --- Imprime ---
+    window.print();
+
+    // --- Restaura tudo ---
+    if (sidebar)  sidebar.style.display  = "";
+    if (topbar)   topbar.style.display   = "";
+    if (adminMain) { adminMain.style.marginLeft = ""; adminMain.style.padding = ""; }
+    if (contentWrap) contentWrap.style.display = "";
+    noPrints.forEach(el => (el.style.display = ""));
+    if (printArea) printArea.style.display = "";
   };
 
   const handleSaveConfig = async () => {
