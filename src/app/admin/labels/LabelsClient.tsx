@@ -375,7 +375,6 @@ export default function LabelsClient({ products }: { products: any[] }) {
 
         @media print {
           @page {
-            size: 152.4mm 101.6mm;
             margin: 0;
           }
 
@@ -388,26 +387,28 @@ export default function LabelsClient({ products }: { products: any[] }) {
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
-            height: auto !important;
+            height: 100% !important;
             overflow: visible !important;
             background: white !important;
           }
 
-          /* Print-area ocupa a página toda */
+          /* Print-area preenche a página inteira */
           .print-area {
             display: block !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            width: 152.4mm !important;
-            height: 101.6mm !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
             z-index: 999999 !important;
             background: white !important;
           }
 
           .label-page {
-            width: 152.4mm !important;
-            height: 101.6mm !important;
+            width: 100% !important;
+            height: 100% !important;
             padding: 3mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
