@@ -510,3 +510,18 @@ model MetaAdsCampaign {
   updatedAt        DateTime  @updatedAt
 }
 
+model Invoice {
+  id              String    @id @default(cuid())
+  uploadedBy      String                          // email do usuário que registrou
+  description     String                          // o que foi comprado
+  supplier        String?                         // fornecedor
+  category        String    @default("BUSINESS")  // BUSINESS | PERSONAL
+  expenseCategory String?                         // Matéria-prima, Aluguel, etc.
+  imageUrl        String?   @db.Text              // URL da foto da nota
+  aiValue         Float?                          // valor extraído pela IA (ou manual)
+  aiCategory      String?                         // categoria sugerida pela IA
+  invoiceDate     DateTime?                       // data da nota fiscal
+  source          String    @default("ai")        // "ai" | "manual"
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
