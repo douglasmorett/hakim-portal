@@ -19,16 +19,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Valor inválido" }, { status: 400 });
     }
 
-    const invoice = await (prisma as any).invoice.create({
+    // Concatena fornecedor na descrição (como o formato antigo fazia)
+    let fullDesc = description.trim();
+    if (supplier?.trim()) {
+      fullDesc += ` — Fornecedor: ${supplier.trim()}`;
+    }
+
+    const invoice = await (prisma as any).purchaseInvoice.create({
       data: {
         uploadedBy:      session.user.email,
-        description:     description.trim(),
-        supplier:        supplier?.trim() || null,
+        description:     fullDesc,
         category:        category || "BUSINESS",
-        expenseCategory: expenseCategory || "Outros",
+        imageUrl:        "",
         aiValue:         parsedValue,
+        aiCategory:      expenseCategory || "Outros",
         invoiceDate:     date ? new Date(date) : new Date(),
         source:          "manual",
+        status:          "APPROVED",
       },
     });
 
