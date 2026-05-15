@@ -78,44 +78,68 @@ export default function LabelsClient({ products }: { products: any[] }) {
   }, [selectedProductId, fabDate]);
 
   const handlePrint = () => {
-    // Todos os elementos de UI que devem sumir na impressão
-    const sidebar    = document.querySelector<HTMLElement>("#admin-sidebar");
-    const topbar     = document.querySelector<HTMLElement>("#admin-topbar");
-    const mobileBar  = document.querySelector<HTMLElement>(".mobile-topbar");
-    const noPrints   = document.querySelectorAll<HTMLElement>(".no-print");
-    const adminMain  = document.querySelector<HTMLElement>(".admin-main");
-    const contentDiv = adminMain?.querySelector<HTMLElement>(":scope > div:not(.labels-container)");
-    const printArea  = document.querySelector<HTMLElement>(".print-area");
+    const printArea = document.querySelector<HTMLElement>(".print-area");
+    if (!printArea) return;
 
-    const hide = () => {
-      if (sidebar)   sidebar.style.display   = "none";
-      if (topbar)    topbar.style.display    = "none";
-      if (mobileBar) mobileBar.style.display = "none";
-      if (adminMain) { adminMain.style.marginLeft = "0"; adminMain.style.padding = "0"; }
-      if (contentDiv) contentDiv.style.display = "none";
-      noPrints.forEach(el => (el.style.display = "none"));
-      if (printArea) printArea.style.display = "block";
+    // Remove iframe anterior se existir
+    const old = document.getElementById("label-print-frame");
+    if (old) old.remove();
+
+    // Cria iframe invisível
+    const iframe = document.createElement("iframe");
+    iframe.id = "label-print-frame";
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:none;visibility:hidden;";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { size: 100mm 150mm; margin: 0; }
+  * { box-sizing: border-box; max-width: 100%; word-break: break-word; overflow-wrap: break-word; }
+  body { margin: 0; padding: 0; background: #fff; font-family: Arial, Helvetica, sans-serif; }
+  .print-area { display: block !important; width: 100mm; }
+  .label-page {
+    width: 100mm;
+    height: 150mm;
+    padding: 4mm;
+    overflow: hidden;
+    background: white;
+    page-break-after: always;
+    color: black;
+  }
+  .label-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .conservation-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 9px;
+  }
+</style>
+</head>
+<body>
+${printArea.innerHTML}
+</body>
+</html>`);
+    doc.close();
+
+    // Aguarda carregar e imprime
+    iframe.onload = () => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => iframe.remove(), 1000);
     };
-
-    const restore = () => {
-      if (sidebar)   sidebar.style.display   = "";
-      if (topbar)    topbar.style.display    = "";
-      if (mobileBar) mobileBar.style.display = "";
-      if (adminMain) { adminMain.style.marginLeft = ""; adminMain.style.padding = ""; }
-      if (contentDiv) contentDiv.style.display = "";
-      noPrints.forEach(el => (el.style.display = ""));
-      if (printArea) printArea.style.display = "";
-    };
-
-    hide();
-
-    // Aguarda 2 frames para o browser repintar antes de capturar o print
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.addEventListener("afterprint", restore, { once: true });
-        window.print();
-      });
-    });
   };
 
   const handleSaveConfig = async () => {
