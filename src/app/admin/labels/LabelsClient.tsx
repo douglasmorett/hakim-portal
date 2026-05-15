@@ -78,34 +78,44 @@ export default function LabelsClient({ products }: { products: any[] }) {
   }, [selectedProductId, fabDate]);
 
   const handlePrint = () => {
-    // Pega todos os elementos que precisam ser escondidos
-    const sidebar  = document.querySelector<HTMLElement>("#admin-sidebar");
-    const topbar   = document.querySelector<HTMLElement>("#admin-topbar");
-    const noPrints = document.querySelectorAll<HTMLElement>(".no-print");
-    const adminMain = document.querySelector<HTMLElement>(".admin-main");
-    const contentWrap = adminMain?.querySelector<HTMLElement>(":scope > div:not(.labels-container)");
+    // Todos os elementos de UI que devem sumir na impressão
+    const sidebar    = document.querySelector<HTMLElement>("#admin-sidebar");
+    const topbar     = document.querySelector<HTMLElement>("#admin-topbar");
+    const mobileBar  = document.querySelector<HTMLElement>(".mobile-topbar");
+    const noPrints   = document.querySelectorAll<HTMLElement>(".no-print");
+    const adminMain  = document.querySelector<HTMLElement>(".admin-main");
+    const contentDiv = adminMain?.querySelector<HTMLElement>(":scope > div:not(.labels-container)");
     const printArea  = document.querySelector<HTMLElement>(".print-area");
 
-    // --- Esconde UI ---
-    if (sidebar)  sidebar.style.display  = "none";
-    if (topbar)   topbar.style.display   = "none";
-    if (adminMain) { adminMain.style.marginLeft = "0"; adminMain.style.padding = "0"; }
-    if (contentWrap) contentWrap.style.display = "none";
-    noPrints.forEach(el => (el.style.display = "none"));
+    const hide = () => {
+      if (sidebar)   sidebar.style.display   = "none";
+      if (topbar)    topbar.style.display    = "none";
+      if (mobileBar) mobileBar.style.display = "none";
+      if (adminMain) { adminMain.style.marginLeft = "0"; adminMain.style.padding = "0"; }
+      if (contentDiv) contentDiv.style.display = "none";
+      noPrints.forEach(el => (el.style.display = "none"));
+      if (printArea) printArea.style.display = "block";
+    };
 
-    // --- Mostra só a etiqueta ---
-    if (printArea) printArea.style.display = "block";
+    const restore = () => {
+      if (sidebar)   sidebar.style.display   = "";
+      if (topbar)    topbar.style.display    = "";
+      if (mobileBar) mobileBar.style.display = "";
+      if (adminMain) { adminMain.style.marginLeft = ""; adminMain.style.padding = ""; }
+      if (contentDiv) contentDiv.style.display = "";
+      noPrints.forEach(el => (el.style.display = ""));
+      if (printArea) printArea.style.display = "";
+    };
 
-    // --- Imprime ---
-    window.print();
+    hide();
 
-    // --- Restaura tudo ---
-    if (sidebar)  sidebar.style.display  = "";
-    if (topbar)   topbar.style.display   = "";
-    if (adminMain) { adminMain.style.marginLeft = ""; adminMain.style.padding = ""; }
-    if (contentWrap) contentWrap.style.display = "";
-    noPrints.forEach(el => (el.style.display = ""));
-    if (printArea) printArea.style.display = "";
+    // Aguarda 2 frames para o browser repintar antes de capturar o print
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.addEventListener("afterprint", restore, { once: true });
+        window.print();
+      });
+    });
   };
 
   const handleSaveConfig = async () => {
