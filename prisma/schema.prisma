@@ -510,20 +510,3 @@ model MetaAdsCampaign {
   updatedAt        DateTime  @updatedAt
 }
 
-model PurchaseInvoice {
-  id              String    @id @default(cuid())
-  uploadedBy      String                          // email do usuário que registrou
-  description     String                          // o que foi comprado
-  category        String    @default("BUSINESS")  // BUSINESS | PERSONAL
-  imageUrl        String    @db.Text              // URL da foto da nota (ou "" para manual)
-  aiValue         Float?                          // valor extraído pela IA (ou manual)
-  aiCategory      String?                         // categoria sugerida pela IA
-  aiRawText       String?   @db.Text              // texto bruto extraído pela IA
-  status          String    @default("APPROVED")  // APPROVED | REJECTED
-  rejectionReason String?                         // motivo de rejeição
-  invoiceDate     DateTime?                       // data da nota fiscal
-  source          String    @default("ai")        // "ai" | "manual"
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-}
-
