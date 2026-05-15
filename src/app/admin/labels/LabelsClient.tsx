@@ -100,13 +100,13 @@ export default function LabelsClient({ products }: { products: any[] }) {
 <head>
 <meta charset="utf-8"/>
 <style>
-  @page { size: 100mm 150mm; margin: 0; }
+  @page { size: 150mm 100mm; margin: 0; }
   * { box-sizing: border-box; max-width: 100%; word-break: break-word; overflow-wrap: break-word; }
   body { margin: 0; padding: 0; background: #fff; font-family: Arial, Helvetica, sans-serif; }
-  .print-area { display: block !important; width: 100mm; }
+  .print-area { display: block !important; width: 150mm; }
   .label-page {
-    width: 100mm;
-    height: 150mm;
+    width: 150mm;
+    height: 100mm;
     padding: 4mm;
     overflow: hidden;
     background: white;
@@ -324,74 +324,69 @@ ${printArea.innerHTML}
           <div className="label-page">
             <div className="label-content">
 
-              {/* ── LINHA 1: Alerta RDC + Nome + Peso ── */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "3px" }}>
-                <h2 style={{ fontSize: "11px", fontWeight: "900", textTransform: "uppercase", margin: 0, flex: 1, paddingRight: "4px" }}>
-                  {selectedProduct.name} — {config.weightStr}
+              {/* ── TÍTULO + ALERTA ── */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "5px", borderBottom: "2px solid black", paddingBottom: "4px" }}>
+                <h2 style={{ fontSize: "13px", fontWeight: "900", textTransform: "uppercase", margin: 0, flex: 1, paddingRight: "6px", lineHeight: "1.2" }}>
+                  {selectedProduct.name}<br/>
+                  <span style={{ fontSize: "11px", fontWeight: "700" }}>{config.weightStr}</span>
                 </h2>
                 {(config.highSugar || config.highSodium || config.highFat) && (
-                  <div style={{ border: "1.5px solid black", borderRadius: "4px", padding: "2px 3px", display: "flex", alignItems: "center", flexShrink: 0 }}>
-                    <AlertTriangle size={12} color="black" style={{ marginRight: "3px" }} />
-                    <div style={{ fontWeight: "900", fontSize: "8px", lineHeight: "1.1" }}>
+                  <div style={{ border: "2px solid black", borderRadius: "4px", padding: "3px 5px", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                    <AlertTriangle size={14} color="black" style={{ marginRight: "4px" }} />
+                    <div style={{ fontWeight: "900", fontSize: "9px", lineHeight: "1.2" }}>
                       ALTO EM<br/>
-                      {config.highSugar  && <span style={{ backgroundColor:"black", color:"white", padding:"0 2px", display:"inline-block" }}>AÇÚCAR</span>}
-                      {config.highSodium && <span style={{ backgroundColor:"black", color:"white", padding:"0 2px", display:"inline-block" }}>SÓDIO</span>}
-                      {config.highFat    && <span style={{ backgroundColor:"black", color:"white", padding:"0 2px", display:"inline-block" }}>GORDURA</span>}
+                      {config.highSugar  && <span style={{ backgroundColor:"black", color:"white", padding:"0 3px", display:"inline-block" }}>AÇÚCAR</span>}
+                      {config.highSodium && <span style={{ backgroundColor:"black", color:"white", padding:"0 3px", display:"inline-block" }}>SÓDIO</span>}
+                      {config.highFat    && <span style={{ backgroundColor:"black", color:"white", padding:"0 3px", display:"inline-block" }}>GORDURA</span>}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* ── LAYOUT 2 COLUNAS ── */}
-              <div style={{ display: "flex", gap: "4px", flex: 1, overflow: "hidden" }}>
+              {/* ── CORPO: 2 COLUNAS que crescem para preencher o papel ── */}
+              <div style={{ display: "flex", gap: "6px", flex: 1 }}>
 
-                {/* COLUNA ESQUERDA: Preparo + Conservação + Transgênico + Fab/Val */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", fontSize: "8px", lineHeight: "1.25" }}>
+                {/* COLUNA ESQUERDA */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
 
                   {config.preparation && (
-                    <div style={{ marginBottom: "4px" }}>
-                      <strong style={{ fontSize: "8px" }}>MODO DE PREPARO:</strong><br/>
-                      {config.preparation.split('\n').map((line:string, i:number) => <span key={i}>{line}<br/></span>)}
+                    <div style={{ fontSize: "9px", lineHeight: "1.35", marginBottom: "5px" }}>
+                      <strong style={{ fontSize: "9px" }}>MODO DE PREPARO:</strong><br/>
+                      {config.preparation.split('\n').map((line: string, i: number) => <span key={i}>{line}<br/></span>)}
                     </div>
                   )}
 
-                  <div style={{ borderTop: "1px solid black", borderBottom: "1px solid black", padding: "2px 0", marginBottom: "4px", fontSize: "7.5px" }}>
-                    <strong style={{ display: "block", textAlign: "center", fontSize: "7.5px" }}>Conservação</strong>
-                    <div>Congelador: Até -12ºC = 30 dias</div>
-                    <div>Freezer: -18ºC ou mais frio = Vide validade</div>
+                  <div style={{ borderTop: "1px solid black", borderBottom: "1px solid black", padding: "4px 0", marginBottom: "5px", fontSize: "8.5px" }}>
+                    <strong style={{ display: "block", textAlign: "center", marginBottom: "3px", fontSize: "8.5px" }}>Conservação / Armazenamento</strong>
+                    <div>❄ Congelador: Até -12ºC = 30 dias</div>
+                    <div>❄ Freezer: -18ºC ou mais frio = Vide validade</div>
                   </div>
 
                   {config.transgenic && (
-                    <div style={{ textAlign: "center", marginBottom: "4px" }}>
-                      <div style={{ display: "inline-block", border: "1.5px solid black", width: "18px", height: "18px", transform: "rotate(45deg)", position: "relative" }}>
-                        <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) rotate(-45deg)", fontWeight: "900", fontSize: "11px" }}>T</span>
+                    <div style={{ textAlign: "center", marginBottom: "5px" }}>
+                      <div style={{ display: "inline-block", border: "2px solid black", width: "22px", height: "22px", transform: "rotate(45deg)", position: "relative" }}>
+                        <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) rotate(-45deg)", fontWeight: "900", fontSize: "13px" }}>T</span>
                       </div>
-                      <div style={{ fontSize: "7px", marginTop: "4px" }}>Contém derivados de milho e soja transgênicos.</div>
+                      <div style={{ fontSize: "8px", marginTop: "5px" }}>Contém derivados de milho e soja transgênicos.</div>
                     </div>
                   )}
 
-                  <div style={{ marginBottom: "4px", fontSize: "8px" }}>
+                  <div style={{ fontSize: "9px", lineHeight: "1.35", marginBottom: "5px", flex: 1 }}>
                     <strong>Ingredientes:</strong> {config.ingredients || "Não cadastrado."}
                   </div>
 
-                  <div style={{ fontSize: "8px", fontWeight: "bold", textTransform: "uppercase", marginBottom: "4px" }}>
+                  <div style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase" }}>
                     ALÉRGICOS: {config.allergens || "NÃO CADASTRADO"}
-                  </div>
-
-                  <div style={{ marginTop: "auto", borderTop: "1.5px solid black", paddingTop: "3px", fontSize: "8px", fontWeight: "bold" }}>
-                    <div>Fab: {fabDate ? new Date(fabDate).toLocaleDateString('pt-BR') : '--'}</div>
-                    <div>Val: {valDate ? new Date(valDate).toLocaleDateString('pt-BR') : '--'}</div>
-                    <div>Lote: {lote || '--'}</div>
                   </div>
                 </div>
 
                 {/* COLUNA DIREITA: Tabela Nutricional */}
-                <div style={{ width: "46%", flexShrink: 0 }}>
-                  <div style={{ border: "1.5px solid black", fontSize: "7.5px" }}>
-                    <div style={{ borderBottom: "1px solid black", padding: "2px 3px", textAlign: "center", fontWeight: "900", fontSize: "8px" }}>INFORMAÇÃO NUTRICIONAL</div>
-                    <div style={{ display: "flex", borderBottom: "1px solid black", fontWeight: "bold", fontSize: "7px" }}>
-                      <div style={{ flex: 2, borderRight: "1px solid black", padding: "1px 3px" }}></div>
-                      <div style={{ flex: 1, padding: "1px 3px", textAlign: "center" }}>100 g</div>
+                <div style={{ width: "44%", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+                  <div style={{ border: "2px solid black", flex: 1 }}>
+                    <div style={{ borderBottom: "1.5px solid black", padding: "3px 4px", textAlign: "center", fontWeight: "900", fontSize: "9px" }}>INFORMAÇÃO NUTRICIONAL</div>
+                    <div style={{ display: "flex", borderBottom: "1px solid black", fontWeight: "bold", fontSize: "8px" }}>
+                      <div style={{ flex: 2, borderRight: "1px solid black", padding: "2px 3px" }}></div>
+                      <div style={{ flex: 1, padding: "2px 3px", textAlign: "center" }}>100 g</div>
                     </div>
                     {[
                       ["Val. energético (kcal)", config.energy],
@@ -403,22 +398,31 @@ ${printArea.innerHTML}
                       ["Gorduras sat. (g)",        config.fatSat],
                       ["Sódio (mg)",               config.sodium],
                     ].map(([label, val], i, arr) => (
-                      <div key={i} style={{ display: "flex", borderBottom: i < arr.length-1 ? "1px solid black" : "none" }}>
-                        <div style={{ flex: 2, borderRight: "1px solid black", padding: "1px 3px", fontSize: "7px" }}>{label}</div>
-                        <div style={{ flex: 1, padding: "1px 3px", textAlign: "center", fontSize: "7px" }}>{val}</div>
+                      <div key={i} style={{ display: "flex", borderBottom: i < arr.length - 1 ? "1px solid black" : "none", flex: 1 }}>
+                        <div style={{ flex: 2, borderRight: "1px solid black", padding: "2px 3px", fontSize: "8px" }}>{label}</div>
+                        <div style={{ flex: 1, padding: "2px 3px", textAlign: "center", fontSize: "8.5px", fontWeight: "bold" }}>{val}</div>
                       </div>
                     ))}
                   </div>
-                  <div style={{ textAlign: "center", marginTop: "4px" }}>
-                    <img src="/logo.png" style={{ height: "18px", filter: "grayscale(100%) brightness(0)" }} />
+                  <div style={{ textAlign: "center", marginTop: "5px" }}>
+                    <img src="/logo.png" style={{ height: "20px", filter: "grayscale(100%) brightness(0)" }} />
                   </div>
                 </div>
-
               </div>{/* fim 2 colunas */}
+
+              {/* ── RODAPÉ: Fab / Val / Lote ── */}
+              <div style={{ borderTop: "2px solid black", paddingTop: "5px", marginTop: "5px", display: "flex", justifyContent: "space-between", fontSize: "10px", fontWeight: "bold" }}>
+                <span>Fab: {fabDate ? new Date(fabDate).toLocaleDateString('pt-BR') : '--'}</span>
+                <span>Val: {valDate ? new Date(valDate).toLocaleDateString('pt-BR') : '--'}</span>
+                <span>Lote: {lote || '--'}</span>
+              </div>
+
             </div>
           </div>
         </div>
       )}
+
+
 
 
 
@@ -428,7 +432,7 @@ ${printArea.innerHTML}
 
         @media print {
           @page {
-            size: 100mm 150mm;
+            size: 150mm 100mm;
             margin: 0;
           }
           body { margin: 0; padding: 0; background: #fff; }
