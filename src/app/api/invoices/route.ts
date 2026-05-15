@@ -49,8 +49,9 @@ export async function POST(req: NextRequest) {
         const base64 = Buffer.from(imgBuffer).toString("base64");
         const mimeType = imgResponse.headers.get("content-type") || "image/jpeg";
 
+        // Usando gemini-2.0-flash para melhor leitura de notas fiscais
         const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -59,21 +60,25 @@ export async function POST(req: NextRequest) {
                 parts: [
                   { inlineData: { mimeType, data: base64 } },
                   {
-                    text: `Analise esta nota fiscal/cupom fiscal brasileiro e extraia:
-1. Valor total (apenas o número final, ex: 125.50)
-2. Data da nota (formato YYYY-MM-DD)
-3. Categoria da despesa mais adequada dentre: Matéria-prima/Ingredientes, Embalagens, Gás/Combustível, Manutenção/Equipamentos, Limpeza/Higiene, Marketing/Publicidade, Aluguel/Condomínio, Água/Energia/Internet, Frete/Logística, Material de Escritório, Salários/Freelancers, Impostos/Taxas, Outros
+                    text: `Você é um leitor de notas fiscais brasileiras. Analise CUIDADOSAMENTE esta imagem de nota fiscal ou cupom fiscal e extraia as informações abaixo.
 
-Contexto do usuário: "${description}"
+INSTRUÇÕES:
+- Procure pelo VALOR TOTAL da nota (geralmente no final, pode aparecer como "TOTAL", "TOTAL R$", "VALOR TOTAL", "TOTAL A PAGAR")
+- O valor pode usar vírgula como separador decimal (ex: 125,50) — converta para ponto (125.50)
+- Se encontrar o valor, retorne como número (ex: 125.50, não "R$ 125,50")
+- Para a data, procure "DATA", "DT.EMIS", "EMISSÃO" — formato final deve ser YYYY-MM-DD
+- Contexto do usuário sobre o que foi comprado: "${description}"
 
-Responda APENAS em JSON válido no formato:
-{"valor": 125.50, "data": "2024-01-15", "categoria": "Matéria-prima/Ingredientes"}
+Responda SOMENTE com um JSON puro, sem markdown, sem explicações:
+{"valor": 125.50, "data": "2024-01-15", "categoria": "Outros"}
 
-Se não conseguir ler algum campo, use null.`
+Categorias disponíveis: Matéria-prima/Ingredientes, Embalagens, Gás/Combustível, Manutenção/Equipamentos, Limpeza/Higiene, Marketing/Publicidade, Aluguel/Condomínio, Água/Energia/Internet, Frete/Logística, Material de Escritório, Salários/Freelancers, Impostos/Taxas, Outros
+
+Se não conseguir ler um campo específico, use null para aquele campo.`
                   }
                 ]
               }],
-              generationConfig: { temperature: 0.1 }
+              generationConfig: { temperature: 0, responseMimeType: "application/json" }
             }),
           }
         );
@@ -81,18 +86,49 @@ Se não conseguir ler algum campo, use null.`
         if (geminiRes.ok) {
           const geminiData = await geminiRes.json();
           const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          console.log("[Invoices/AI] Resposta bruta Gemini:", text);
+
+          // Extrai JSON — suporta markdown ```json ... ```, e JSON puro
+          const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) ||
+                            text.match(/```\s*([\s\S]*?)```/) ||
+                            text.match(/(\{[\s\S]*\})/);
+
           if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            aiValue = parsed.valor ? parseFloat(parsed.valor) : null;
-            aiCategory = parsed.categoria || null;
-            invoiceDate = parsed.data ? new Date(parsed.data) : null;
+            const jsonStr = (jsonMatch[1] || jsonMatch[0]).trim();
+            try {
+              const parsed = JSON.parse(jsonStr);
+              console.log("[Invoices/AI] JSON parseado:", parsed);
+
+              // Suporta tanto vírgula (125,50) quanto ponto (125.50)
+              if (parsed.valor !== null && parsed.valor !== undefined) {
+                const valorStr = String(parsed.valor).replace(",", ".");
+                const valorNum = parseFloat(valorStr);
+                if (!isNaN(valorNum) && valorNum > 0) aiValue = valorNum;
+              }
+
+              aiCategory = parsed.categoria || null;
+
+              if (parsed.data) {
+                const d = new Date(parsed.data);
+                if (!isNaN(d.getTime())) invoiceDate = d;
+              }
+            } catch (parseErr) {
+              console.error("[Invoices/AI] Erro ao parsear JSON:", parseErr, "| texto:", jsonStr);
+            }
+          } else {
+            console.warn("[Invoices/AI] Nenhum JSON encontrado na resposta:", text);
           }
+        } else {
+          const errText = await geminiRes.text();
+          console.error("[Invoices/AI] Gemini retornou erro HTTP", geminiRes.status, errText);
         }
       } catch (aiErr) {
         console.error("[Invoices/AI] Erro Gemini:", aiErr);
       }
+    } else {
+      console.error("[Invoices/AI] GEMINI_API_KEY não configurada!");
     }
+
 
     // ❌ Se não conseguiu ler o valor, não salva — pede nova foto
     if (!aiValue || aiValue <= 0) {
