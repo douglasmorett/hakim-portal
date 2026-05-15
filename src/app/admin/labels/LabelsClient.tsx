@@ -78,7 +78,52 @@ export default function LabelsClient({ products }: { products: any[] }) {
   }, [selectedProductId, fabDate]);
 
   const handlePrint = () => {
-    window.print();
+    const printArea = document.querySelector(".print-area");
+    if (!printArea) return;
+
+    const popup = window.open("", "_blank", "width=420,height=650,toolbar=0,menubar=0,scrollbars=0");
+    if (!popup) { alert("Permita pop-ups para imprimir."); return; }
+
+    popup.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { size: 100mm 150mm; margin: 0; }
+  * { box-sizing: border-box; max-width: 100%; word-break: break-word; overflow-wrap: break-word; }
+  body { margin: 0; padding: 0; background: #fff; font-family: Arial, Helvetica, sans-serif; }
+  .print-area { display: block; width: 100mm; }
+  .label-page {
+    width: 100mm;
+    height: 150mm;
+    padding: 4mm;
+    overflow: hidden;
+    background: white;
+    page-break-after: always;
+    color: black;
+  }
+  .label-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .conservation-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 9px;
+  }
+</style>
+</head>
+<body>
+${printArea.innerHTML}
+</body>
+</html>`);
+    popup.document.close();
+    popup.focus();
+    setTimeout(() => { popup.print(); popup.close(); }, 300);
   };
 
   const handleSaveConfig = async () => {
