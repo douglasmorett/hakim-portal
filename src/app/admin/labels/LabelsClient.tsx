@@ -100,19 +100,18 @@ export default function LabelsClient({ products }: { products: any[] }) {
 <head>
 <meta charset="utf-8"/>
 <style>
-  @page { size: 100mm 150mm; margin: 0; }
+  @page { size: auto; margin: 0; }
   html, body {
     margin: 0; padding: 0;
-    width: 100mm;
-    height: 150mm;
+    width: 100%; height: 100%;
     background: #fff;
     font-family: Arial, Helvetica, sans-serif;
   }
   * { box-sizing: border-box; word-break: break-word; overflow-wrap: break-word; }
-  .print-area { display: block !important; width: 100mm; height: 150mm; }
+  .print-area { display: block !important; width: 100%; height: 100%; }
   .label-page {
-    width: 100mm;
-    height: 150mm;
+    width: 100%;
+    height: 100vh;
     padding: 3mm;
     overflow: hidden;
     background: white;
