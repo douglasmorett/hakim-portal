@@ -100,7 +100,7 @@ export default function LabelsClient({ products }: { products: any[] }) {
 <head>
 <meta charset="utf-8"/>
 <style>
-  @page { size: landscape; margin: 0; }
+  @page { size: 150mm 100mm; margin: 0; }
   html, body {
     margin: 0; padding: 0;
     width: 100%; height: 100%;
