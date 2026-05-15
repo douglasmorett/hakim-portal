@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminSidebar />
       <main className="admin-main" style={{ marginLeft: "250px", flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Top bar */}
-        <div style={{
+        <div id="admin-topbar" style={{
           padding: "12px 2rem",
           borderBottom: "1px solid var(--border-color)",
           display: "flex",

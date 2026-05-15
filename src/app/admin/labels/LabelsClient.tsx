@@ -383,7 +383,17 @@ export default function LabelsClient({ products }: { products: any[] }) {
           body { margin: 0; padding: 0; background: #fff; }
           .no-print { display: none !important; }
           #admin-sidebar { display: none !important; }
-          .admin-main { margin: 0 !important; padding: 0 !important; }
+          #admin-topbar { display: none !important; }
+          .admin-main {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+          }
+          /* Remove padding do wrapper interno do conteúdo */
+          .admin-main > div:not(.print-area):not(.labels-container) {
+            display: none !important;
+          }
+          .labels-container > .no-print { display: none !important; }
 
           .print-area {
             display: block;
