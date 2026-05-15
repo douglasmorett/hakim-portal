@@ -2,7 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { saveLabelData } from "@/app/actions/labels";
-import { Printer, Settings, AlertTriangle, Info, Save } from "lucide-react";
+import { Printer, Settings, AlertTriangle, Save, Ruler } from "lucide-react";
+
+// ─── Presets de tamanho de etiqueta ───────────────────────────
+const LABEL_PRESETS = [
+  { label: "Elgin L42 — 100 × 150 mm", w: 100, h: 150 },
+  { label: "Elgin L42 — 100 × 100 mm", w: 100, h: 100 },
+  { label: "Elgin L42 — 100 × 50 mm",  w: 100, h: 50  },
+  { label: "Térmica 80mm — 80 × 150 mm", w: 80,  h: 150 },
+  { label: "Térmica 80mm — 80 × 100 mm", w: 80,  h: 100 },
+  { label: "Carta / A4 (não etiqueta)",   w: 210, h: 297 },
+  { label: "Personalizado",              w: 0,   h: 0   },
+];
 
 export default function LabelsClient({ products }: { products: any[] }) {
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -278,7 +289,7 @@ export default function LabelsClient({ products }: { products: any[] }) {
 
               <div style={{ borderTop: "1px solid black", borderBottom: "1px solid black", padding: "6px 0", fontSize: "10px", marginBottom: "10px" }}>
                 <strong style={{ display: "block", textAlign: "center", marginBottom: "4px" }}>Modo de Conservação / Armazenamento</strong>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div className="conservation-row">
                   <span>Congelador: Até -12ºC = 30 dias</span>
                   <span>Freezer: -18ºC ou mais frio = Vide validade</span>
                 </div>
@@ -363,7 +374,7 @@ export default function LabelsClient({ products }: { products: any[] }) {
 
       <style jsx global>{`
         .print-area { display: none; }
-        
+
         @media print {
           @page {
             size: 100mm 150mm;
@@ -373,28 +384,47 @@ export default function LabelsClient({ products }: { products: any[] }) {
           .no-print { display: none !important; }
           #admin-sidebar { display: none !important; }
           .admin-main { margin: 0 !important; padding: 0 !important; }
-          
+
           .print-area {
             display: block;
             width: 100mm;
+            overflow: hidden;
           }
-          
+
           .label-page {
             width: 100mm;
             height: 150mm;
-            padding: 5mm;
+            padding: 4mm;
             box-sizing: border-box;
+            overflow: hidden;
             background: white;
             page-break-after: always;
             color: black;
             font-family: Arial, Helvetica, sans-serif;
           }
-          
+
+          /* Nenhum filho estoura 100mm */
+          .label-page * {
+            box-sizing: border-box;
+            max-width: 100%;
+            word-break: break-word;
+            overflow-wrap: break-word;
+          }
+
           .label-content {
-            border: 1px dashed transparent; /* Margem visual de segurança */
+            width: 100%;
             height: 100%;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+          }
+
+          /* Linha de conservação em coluna para não estourar */
+          .conservation-row {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            font-size: 9px !important;
           }
         }
       `}</style>
