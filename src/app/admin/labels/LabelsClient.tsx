@@ -99,10 +99,10 @@ export default function LabelsClient({ products }: { products: any[] }) {
 <head>
 <meta charset="utf-8"/>
 <style>
-  @page { size: 101.6mm 152.4mm; margin: 0; }
+  @page { size: 4in 6in; margin: 0; }
   html, body {
     margin: 0; padding: 0;
-    width: 101.6mm; height: 152.4mm;
+    width: 4in; height: 6in;
     overflow: hidden;
     background: #fff;
     font-family: Arial, Helvetica, sans-serif;
@@ -110,15 +110,15 @@ export default function LabelsClient({ products }: { products: any[] }) {
   * { box-sizing: border-box; }
   .print-area {
     display: block !important;
-    width: 101.6mm;
-    height: 152.4mm;
+    width: 4in;
+    height: 6in;
   }
   .label-page {
     position: relative;
-    width: 101.6mm;
-    height: 152.4mm;
-    padding: 3mm;
-    padding-bottom: 18mm;
+    width: 4in;
+    height: 6in;
+    padding: 0.12in;
+    padding-bottom: 0.7in;
     background: white;
     color: black;
   }
@@ -127,9 +127,9 @@ export default function LabelsClient({ products }: { products: any[] }) {
   }
   .label-footer {
     position: absolute;
-    bottom: 3mm;
-    left: 3mm;
-    right: 3mm;
+    bottom: 0.12in;
+    left: 0.12in;
+    right: 0.12in;
   }
 </style>
 </head>
