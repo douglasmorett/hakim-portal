@@ -2,23 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { saveLabelData } from "@/app/actions/labels";
-import { Printer, Settings, AlertTriangle, Save, Ruler } from "lucide-react";
+import { createKitchenItem, updateKitchenItem, deleteKitchenItem } from "@/app/actions/kitchenItems";
+import { Printer, Settings, AlertTriangle, Save, Plus, Trash2, Edit2 } from "lucide-react";
 
-// ─── Presets de tamanho de etiqueta ───────────────────────────
-const LABEL_PRESETS = [
-  { label: "Elgin L42 — 100 × 150 mm", w: 100, h: 150 },
-  { label: "Elgin L42 — 100 × 100 mm", w: 100, h: 100 },
-  { label: "Elgin L42 — 100 × 50 mm",  w: 100, h: 50  },
-  { label: "Térmica 80mm — 80 × 150 mm", w: 80,  h: 150 },
-  { label: "Térmica 80mm — 80 × 100 mm", w: 80,  h: 100 },
-  { label: "Carta / A4 (não etiqueta)",   w: 210, h: 297 },
-  { label: "Personalizado",              w: 0,   h: 0   },
-];
-
-export default function LabelsClient({ products }: { products: any[] }) {
+export default function LabelsClient({ products, kitchenItems, storeAddress }: { products: any[], kitchenItems: any[], storeAddress: string }) {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [mode, setMode] = useState<"print" | "config">("print");
+  const [items, setItems] = useState<any[]>([...products.map(p => ({ ...p, isKitchenItem: false })), ...kitchenItems.map(ki => ({ ...ki, isKitchenItem: true }))]);
   
+  // Modal Novo Item
+  const [showNewItemModal, setShowNewItemModal] = useState(false);
+  const [newItemName, setNewItemName] = useState("");
+
   // Print State
   const [lote, setLote] = useState("");
   const [fabDate, setFabDate] = useState("");
@@ -36,21 +31,41 @@ export default function LabelsClient({ products }: { products: any[] }) {
     highFat: false,
     transgenic: false,
     weightStr: "1,00 kg",
-    energy: "153",
-    carbs: "25",
-    sugars: "18",
-    addedSugars: "17",
-    proteins: "2,6",
-    fatTotal: "4,7",
-    fatSat: "2,0",
-    sodium: "73"
+    energy: "0",
+    carbs: "0",
+    sugars: "0",
+    addedSugars: "0",
+    proteins: "0",
+    fatTotal: "0",
+    fatSat: "0",
+    sodium: "0"
   });
 
-  const selectedProduct = products.find(p => p.id === selectedProductId);
+  const selectedProduct = items.find(p => p.id === selectedProductId);
 
   useEffect(() => {
     if (selectedProduct) {
-      if (selectedProduct.labelData) {
+      if (selectedProduct.isKitchenItem) {
+        setConfig({
+          shelfLifeDays: selectedProduct.shelfLifeDays || 90,
+          ingredients: selectedProduct.ingredients || "",
+          allergens: selectedProduct.allergens || "",
+          preparation: selectedProduct.preparation || "",
+          highSugar: selectedProduct.highSugar || false,
+          highSodium: selectedProduct.highSodium || false,
+          highFat: selectedProduct.highFat || false,
+          transgenic: selectedProduct.transgenic || false,
+          weightStr: selectedProduct.weightStr || "1,00 kg",
+          energy: selectedProduct.energy || "0",
+          carbs: selectedProduct.carbs || "0",
+          sugars: selectedProduct.sugars || "0",
+          addedSugars: selectedProduct.addedSugars || "0",
+          proteins: selectedProduct.proteins || "0",
+          fatTotal: selectedProduct.fatTotal || "0",
+          fatSat: selectedProduct.fatSat || "0",
+          sodium: selectedProduct.sodium || "0"
+        });
+      } else if (selectedProduct.labelData) {
         setConfig({ ...config, ...selectedProduct.labelData });
       } else {
         // Reset defaults
@@ -69,13 +84,45 @@ export default function LabelsClient({ products }: { products: any[] }) {
       }
       
       // Auto calc valDate se fabDate existir e tiver shelfLifeDays
-      if (fabDate && selectedProduct.labelData?.shelfLifeDays) {
+      const days = selectedProduct.isKitchenItem ? selectedProduct.shelfLifeDays : selectedProduct.labelData?.shelfLifeDays;
+      if (fabDate && days) {
         const date = new Date(fabDate);
-        date.setDate(date.getDate() + Number(selectedProduct.labelData.shelfLifeDays));
+        date.setDate(date.getDate() + Number(days));
         setValDate(date.toISOString().split("T")[0]);
       }
     }
-  }, [selectedProductId, fabDate]);
+  }, [selectedProductId, fabDate, items]);
+
+  const handleCreateNewItem = async () => {
+    if (!newItemName) return;
+    setSaving(true);
+    try {
+      const newItem = await createKitchenItem({ name: newItemName });
+      setItems([...items, { ...newItem, isKitchenItem: true }]);
+      setSelectedProductId(newItem.id);
+      setMode("config");
+      setShowNewItemModal(false);
+      setNewItemName("");
+    } catch (e: any) {
+      alert("Erro ao criar item: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este item da cozinha?")) return;
+    setSaving(true);
+    try {
+      await deleteKitchenItem(id);
+      setItems(items.filter(i => i.id !== id));
+      if (selectedProductId === id) setSelectedProductId("");
+    } catch (e: any) {
+      alert("Erro ao excluir: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handlePrint = () => {
     const printArea = document.querySelector<HTMLElement>(".print-area");
@@ -153,7 +200,13 @@ ${printArea.innerHTML}
     if (!selectedProductId) return;
     setSaving(true);
     try {
-      await saveLabelData(selectedProductId, config);
+      if (selectedProduct.isKitchenItem) {
+        const updated = await updateKitchenItem(selectedProductId, config);
+        setItems(items.map(i => i.id === selectedProductId ? { ...updated, isKitchenItem: true } : i));
+      } else {
+        await saveLabelData(selectedProductId, config);
+        setItems(items.map(i => i.id === selectedProductId ? { ...i, labelData: config } : i));
+      }
       alert("Configurações salvas com sucesso!");
     } catch (e: any) {
       alert("Erro ao salvar: " + e.message);
@@ -168,22 +221,68 @@ ${printArea.innerHTML}
       <div className="no-print mb-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="font-bold text-2xl">Módulo de Validação e Etiquetas</h1>
+          <button className="btn btn-primary" onClick={() => setShowNewItemModal(true)}>
+            <Plus size={18} style={{ marginRight: "8px" }} /> Novo Item de Cozinha
+          </button>
         </div>
+
+        {showNewItemModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Adicionar Novo Item de Cozinha</h2>
+              <p className="text-sm text-gray-500 mb-4">Use para itens de preparo interno que não estão no cardápio de vendas (ex: Massas, Molhos, Temperos).</p>
+              <div className="input-group">
+                <label>Nome do Item</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={newItemName} 
+                  onChange={e => setNewItemName(e.target.value)} 
+                  placeholder="Ex: Massa de Esfirra"
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button className="btn btn-outline" onClick={() => setShowNewItemModal(false)} disabled={saving}>Cancelar</button>
+                <button className="btn btn-primary" onClick={handleCreateNewItem} disabled={saving || !newItemName}>
+                  {saving ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="card mb-6">
           <div className="input-group mb-0">
             <label>Selecione o Produto</label>
-            <select 
-              className="input-field" 
-              value={selectedProductId} 
-              onChange={e => setSelectedProductId(e.target.value)}
-              style={{ backgroundColor: "var(--surface-1)" }}
-            >
-              <option value="">-- Escolha um produto --</option>
-              {products.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <select 
+                className="input-field" 
+                value={selectedProductId} 
+                onChange={e => setSelectedProductId(e.target.value)}
+                style={{ backgroundColor: "var(--surface-1)", flex: 1 }}
+              >
+                <option value="">-- Escolha um produto --</option>
+                <optgroup label="Itens de Cozinha (Internos)">
+                  {items.filter(p => p.isKitchenItem).map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Produtos do Cardápio">
+                  {items.filter(p => !p.isKitchenItem).map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+              {selectedProduct?.isKitchenItem && (
+                <button 
+                  className="btn btn-outline text-red-500" 
+                  onClick={() => handleDeleteItem(selectedProductId)}
+                  title="Excluir item de cozinha"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -415,14 +514,21 @@ ${printArea.innerHTML}
                 </div>
               </div>
 
-              {/* ── RODAPÉ: Datas + Logo ── */}
-              <div className="label-footer" style={{ borderTop: "0.5mm solid black", paddingTop: "2mm", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: "3.5mm", fontWeight: "bold", lineHeight: "1.5" }}>
-                  <div>Fab: {fabDate ? new Date(fabDate).toLocaleDateString('pt-BR') : '--'}</div>
-                  <div>Val: {valDate ? new Date(valDate).toLocaleDateString('pt-BR') : '--'}</div>
-                  <div>Lote: {lote || '--'}</div>
+              {/* ── RODAPÉ: Datas + Logo + Endereço ── */}
+              <div className="label-footer" style={{ borderTop: "0.5mm solid black", paddingTop: "2mm" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1mm" }}>
+                  <div style={{ fontSize: "3.5mm", fontWeight: "bold", lineHeight: "1.5" }}>
+                    <div>Fab: {fabDate ? new Date(fabDate).toLocaleDateString('pt-BR') : '--'}</div>
+                    <div>Val: {valDate ? new Date(valDate).toLocaleDateString('pt-BR') : '--'}</div>
+                    <div>Lote: {lote || '--'}</div>
+                  </div>
+                  <img src="/logo.png" style={{ height: "8mm", filter: "grayscale(100%) brightness(0)" }} />
                 </div>
-                <img src="/logo.png" style={{ height: "8mm", filter: "grayscale(100%) brightness(0)" }} />
+                {storeAddress && (
+                  <div style={{ fontSize: "2.5mm", textAlign: "center", marginTop: "2mm", borderTop: "0.2mm dashed black", paddingTop: "1mm" }}>
+                    <strong>Fabricado por:</strong> {storeAddress}
+                  </div>
+                )}
               </div>
 
             </div>
@@ -436,12 +542,9 @@ ${printArea.innerHTML}
 
 
 
-
-
       <style jsx global>{`
         .print-area { display: none; }
       `}</style>
     </div>
   );
 }
-

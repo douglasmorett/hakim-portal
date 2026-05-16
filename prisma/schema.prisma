@@ -72,7 +72,9 @@ model User {
   storeReviews    StoreReview[]
   motoboys        Motoboy[]
   menuProducts    MenuProduct[]
+  kitchenItems    KitchenItem[]
 }
+
 
 model Product {
   id          String      @id @default(cuid())
@@ -510,3 +512,33 @@ model MetaAdsCampaign {
   updatedAt        DateTime  @updatedAt
 }
 
+// ========== MÓDULO DE COZINHA E VALIDADE ==========
+model KitchenItem {
+  id               String    @id @default(cuid())
+  franchiseeId     String?
+  name             String
+  shelfLifeDays    Int       @default(1)
+  ingredients      String?   @db.Text
+  allergens        String?   @db.Text
+  preparation      String?   @db.Text
+  weightStr        String?   @default("N/A")
+  // Tabela Nutricional
+  energy           String?   @default("0")
+  carbs            String?   @default("0")
+  sugars           String?   @default("0")
+  addedSugars      String?   @default("0")
+  proteins         String?   @default("0")
+  fatTotal         String?   @default("0")
+  fatSat           String?   @default("0")
+  sodium           String?   @default("0")
+  // Alertas
+  highSugar        Boolean   @default(false)
+  highSodium       Boolean   @default(false)
+  highFat          Boolean   @default(false)
+  transgenic       Boolean   @default(false)
+  
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  franchisee       User?     @relation(fields: [franchiseeId], references: [id])
+}
