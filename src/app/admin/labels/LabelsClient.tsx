@@ -117,7 +117,6 @@ export default function LabelsClient({ products }: { products: any[] }) {
     width: 101.6mm;
     height: 152.4mm;
     padding: 3mm;
-    overflow: hidden;
     background: white;
     color: black;
   }
@@ -126,6 +125,7 @@ export default function LabelsClient({ products }: { products: any[] }) {
     height: 100%;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
   }
 </style>
 </head>
