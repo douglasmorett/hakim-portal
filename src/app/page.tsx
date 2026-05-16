@@ -11,10 +11,11 @@ export default async function Home() {
 
   const role = (session.user as any)?.role;
 
-  if (role === "ADMIN" || role === "STAFF" || role === "FRANCHISEE") {
+  if (role === "CUSTOMER") {
+    // Caso exista alguma rota de cliente futuramente, redirecione aqui. Por hora, vai para admin.
     redirect("/admin");
   } else {
-    redirect("/store");
+    redirect("/admin");
   }
 
   return null;

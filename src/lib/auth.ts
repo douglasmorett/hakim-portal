@@ -78,6 +78,7 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.city = (user as any).city;
         token.permissions = (user as any).permissions;
+        token.id = user.id;
       }
       return token;
     },
@@ -86,6 +87,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role;
         (session.user as any).city = token.city;
         (session.user as any).permissions = token.permissions;
+        (session.user as any).id = token.id || token.sub;
       }
       return session;
     }
