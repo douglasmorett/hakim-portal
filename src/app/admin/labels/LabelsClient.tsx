@@ -375,6 +375,7 @@ export default function LabelsClient({ products }: { products: any[] }) {
 
         @media print {
           @page {
+            size: 152.4mm 101.6mm;
             margin: 0;
           }
 
@@ -382,33 +383,28 @@ export default function LabelsClient({ products }: { products: any[] }) {
           #admin-sidebar, #admin-topbar, .no-print,
           header, nav, footer { display: none !important; }
 
-          /* Reset de todos os containers */
-          html, body, #__next, .admin-main, main {
+          /* Reset containers - sem margin/padding pra não empurrar conteúdo */
+          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+          #__next, .admin-main, main, [class*="layout"], [class*="container"] {
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            overflow: visible !important;
-            background: white !important;
+            display: block !important;
+            width: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
           }
 
-          /* Print-area preenche a página inteira */
           .print-area {
             display: block !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            z-index: 999999 !important;
+            width: 152.4mm !important;
+            height: 101.6mm !important;
+            overflow: hidden !important;
             background: white !important;
           }
 
           .label-page {
-            width: 100% !important;
-            height: 100% !important;
+            width: 152.4mm !important;
+            height: 101.6mm !important;
             padding: 3mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
@@ -417,13 +413,11 @@ export default function LabelsClient({ products }: { products: any[] }) {
             font-family: Arial, Helvetica, sans-serif !important;
           }
 
-          .label-page * {
-            box-sizing: border-box;
-          }
+          .label-page * { box-sizing: border-box; }
 
           .label-content {
             width: 100% !important;
-            height: 100% !important;
+            height: calc(101.6mm - 6mm) !important;
             display: flex !important;
             flex-direction: column !important;
           }
