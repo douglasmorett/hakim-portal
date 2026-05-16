@@ -664,7 +664,7 @@ ${printArea.innerHTML}
                 )}
                 {globalAddress && (
                   <div style={{ fontSize: "2.5mm", textAlign: "center", lineHeight: "1.2" }}>
-                    <strong>Fabricado por:</strong> {globalAddress}
+                    <strong>Endereço:</strong> {globalAddress}
                   </div>
                 )}
               </div>
