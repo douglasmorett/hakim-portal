@@ -16,3 +16,15 @@ export async function saveLabelData(productId: string, labelData: any) {
 
   revalidatePath("/admin/labels");
 }
+
+export async function updateStoreLabelInfo(cpfCnpj: string, storeAddress: string) {
+  const session = await getServerSession(authOptions);
+  if (!(session?.user as any)?.id) throw new Error("Não autorizado");
+
+  await prisma.user.update({
+    where: { id: (session?.user as any).id },
+    data: { cpfCnpj, storeAddress }
+  });
+
+  revalidatePath("/admin/labels");
+}

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { saveLabelData } from "@/app/actions/labels";
+import { saveLabelData, updateStoreLabelInfo } from "@/app/actions/labels";
 import { createKitchenItem, updateKitchenItem, deleteKitchenItem } from "@/app/actions/kitchenItems";
-import { Printer, Settings, AlertTriangle, Save, Plus, Trash2, Edit2 } from "lucide-react";
+import { Printer, Settings, AlertTriangle, Save, Plus, Trash2, Edit2, Store } from "lucide-react";
 
 export default function LabelsClient({ products, kitchenItems, storeAddress, storeCnpj }: { products: any[], kitchenItems: any[], storeAddress: string, storeCnpj: string }) {
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -13,6 +13,11 @@ export default function LabelsClient({ products, kitchenItems, storeAddress, sto
   // Modal Novo Item
   const [showNewItemModal, setShowNewItemModal] = useState(false);
   const [newItemName, setNewItemName] = useState("");
+
+  // Modal Dados da Loja
+  const [showStoreDataModal, setShowStoreDataModal] = useState(false);
+  const [globalCnpj, setGlobalCnpj] = useState(storeCnpj);
+  const [globalAddress, setGlobalAddress] = useState(storeAddress);
 
   // Print State
   const [lote, setLote] = useState("");
@@ -38,9 +43,7 @@ export default function LabelsClient({ products, kitchenItems, storeAddress, sto
     proteins: "0",
     fatTotal: "0",
     fatSat: "0",
-    sodium: "0",
-    customCnpj: "",
-    customAddress: ""
+    sodium: "0"
   });
 
   const selectedProduct = items.find(p => p.id === selectedProductId);
@@ -65,9 +68,7 @@ export default function LabelsClient({ products, kitchenItems, storeAddress, sto
           proteins: selectedProduct.proteins || "0",
           fatTotal: selectedProduct.fatTotal || "0",
           fatSat: selectedProduct.fatSat || "0",
-          sodium: selectedProduct.sodium || "0",
-          customCnpj: selectedProduct.customCnpj || "",
-          customAddress: selectedProduct.customAddress || ""
+          sodium: selectedProduct.sodium || "0"
         });
       } else if (selectedProduct.labelData) {
         setConfig({ ...config, ...selectedProduct.labelData });
@@ -83,8 +84,7 @@ export default function LabelsClient({ products, kitchenItems, storeAddress, sto
           highFat: false,
           transgenic: false,
           weightStr: "1,00 kg",
-          energy: "0", carbs: "0", sugars: "0", addedSugars: "0", proteins: "0", fatTotal: "0", fatSat: "0", sodium: "0",
-          customCnpj: "", customAddress: ""
+          energy: "0", carbs: "0", sugars: "0", addedSugars: "0", proteins: "0", fatTotal: "0", fatSat: "0", sodium: "0"
         });
       }
       
@@ -220,16 +220,69 @@ ${printArea.innerHTML}
     }
   };
 
+  const handleSaveStoreData = async () => {
+    setSaving(true);
+    try {
+      await updateStoreLabelInfo(globalCnpj, globalAddress);
+      alert("Dados da loja atualizados com sucesso!");
+      setShowStoreDataModal(false);
+    } catch (e: any) {
+      alert("Erro ao salvar dados: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="labels-container">
       {/* Esconde a interface na hora da impressão */}
       <div className="no-print mb-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="font-bold text-2xl">Módulo de Validação e Etiquetas</h1>
-          <button className="btn btn-primary" onClick={() => setShowNewItemModal(true)}>
-            <Plus size={18} style={{ marginRight: "8px" }} /> Novo Item de Cozinha
-          </button>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button className="btn btn-outline" onClick={() => setShowStoreDataModal(true)}>
+              <Store size={18} style={{ marginRight: "8px" }} /> Dados da Loja
+            </button>
+            <button className="btn btn-primary" onClick={() => setShowNewItemModal(true)}>
+              <Plus size={18} style={{ marginRight: "8px" }} /> Novo Item de Cozinha
+            </button>
+          </div>
         </div>
+
+        {showStoreDataModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Dados da Loja (Vigilância)</h2>
+              <p className="text-sm text-gray-500 mb-4">Esses dados serão impressos no rodapé de todas as etiquetas para fins de conformidade com a vigilância sanitária.</p>
+              <div className="input-group">
+                <label>CNPJ da Loja</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={globalCnpj} 
+                  onChange={e => setGlobalCnpj(e.target.value)} 
+                  placeholder="Ex: 00.000.000/0000-00"
+                />
+              </div>
+              <div className="input-group">
+                <label>Endereço de Fabricação</label>
+                <textarea 
+                  className="input-field" 
+                  rows={3}
+                  value={globalAddress} 
+                  onChange={e => setGlobalAddress(e.target.value)} 
+                  placeholder="Ex: Rua das Flores, 123 - Centro"
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button className="btn btn-outline" onClick={() => setShowStoreDataModal(false)} disabled={saving}>Cancelar</button>
+                <button className="btn btn-primary" onClick={handleSaveStoreData} disabled={saving}>
+                  {saving ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showNewItemModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -358,17 +411,7 @@ ${printArea.innerHTML}
             </div>
 
             <div>
-              <h3 className="font-bold mb-4 border-b pb-2">Vigilância Sanitária (Opcional)</h3>
-              <div className="input-group">
-                <label>CNPJ Customizado (Deixe em branco p/ usar o da loja)</label>
-                <input type="text" className="input-field" value={config.customCnpj} onChange={e => setConfig({...config, customCnpj: e.target.value})} placeholder={storeCnpj || "Ex: 00.000.000/0000-00"} />
-              </div>
-              <div className="input-group">
-                <label>Endereço Customizado (Deixe em branco p/ usar o da loja)</label>
-                <textarea className="input-field" rows={2} value={config.customAddress} onChange={e => setConfig({...config, customAddress: e.target.value})} placeholder={storeAddress || "Ex: Rua das Flores, 123 - Centro"}></textarea>
-              </div>
-
-              <h3 className="font-bold mb-4 mt-6 border-b pb-2">Informação Nutricional (100g)</h3>
+              <h3 className="font-bold mb-4 border-b pb-2">Informação Nutricional (100g)</h3>
               <div className="input-group">
                 <label>Valor Energético (kcal)</label>
                 <input type="text" className="input-field" value={config.energy} onChange={e => setConfig({...config, energy: e.target.value})} />
@@ -539,14 +582,14 @@ ${printArea.innerHTML}
                   </div>
                   <img src="/logo.png" style={{ height: "8mm", filter: "grayscale(100%) brightness(0)" }} />
                 </div>
-                {(config.customCnpj || storeCnpj) && (
+                {globalCnpj && (
                   <div style={{ fontSize: "2.5mm", textAlign: "center", marginTop: "1mm", borderTop: "0.2mm dashed black", paddingTop: "1mm" }}>
-                    <strong>CNPJ:</strong> {config.customCnpj || storeCnpj}
+                    <strong>CNPJ:</strong> {globalCnpj}
                   </div>
                 )}
-                {(config.customAddress || storeAddress) && (
+                {globalAddress && (
                   <div style={{ fontSize: "2.5mm", textAlign: "center", marginTop: "1mm", lineHeight: "1.2" }}>
-                    <strong>Fabricado por:</strong> {config.customAddress || storeAddress}
+                    <strong>Fabricado por:</strong> {globalAddress}
                   </div>
                 )}
               </div>
