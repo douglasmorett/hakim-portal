@@ -119,10 +119,11 @@ export default function LabelsClient({ products }: { products: any[] }) {
     padding: 3mm;
     background: white;
     color: black;
+    display: flex;
+    flex-direction: column;
   }
   .label-content {
-    width: 100%;
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
