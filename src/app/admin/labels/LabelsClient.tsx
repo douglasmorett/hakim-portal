@@ -5,7 +5,7 @@ import { saveLabelData, updateStoreLabelInfo } from "@/app/actions/labels";
 import { createKitchenItem, updateKitchenItem, deleteKitchenItem, fillNutritionWithAI } from "@/app/actions/kitchenItems";
 import { Printer, Settings, AlertTriangle, Save, Plus, Trash2, Edit2, Store, Sparkles } from "lucide-react";
 
-export default function LabelsClient({ products, kitchenItems, storeAddress, storeCnpj }: { products: any[], kitchenItems: any[], storeAddress: string, storeCnpj: string }) {
+export default function LabelsClient({ products, kitchenItems, storeAddress, storeCnpj, storeName, storeLogo }: { products: any[], kitchenItems: any[], storeAddress: string, storeCnpj: string, storeName: string, storeLogo: string }) {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [mode, setMode] = useState<"print" | "config">("print");
   const [items, setItems] = useState<any[]>([...products.map(p => ({ ...p, isKitchenItem: false })), ...kitchenItems.map(ki => ({ ...ki, isKitchenItem: true }))]);
@@ -18,6 +18,12 @@ export default function LabelsClient({ products, kitchenItems, storeAddress, sto
   const [showStoreDataModal, setShowStoreDataModal] = useState(false);
   const [globalCnpj, setGlobalCnpj] = useState(storeCnpj);
   const [globalAddress, setGlobalAddress] = useState(storeAddress);
+  const [globalStoreName, setGlobalStoreName] = useState(storeName);
+  const [showLogo, setShowLogo] = useState(false);
+
+  useEffect(() => {
+    setShowLogo(localStorage.getItem("labelShowLogo") === "true");
+  }, []);
 
   // Print State
   const [lote, setLote] = useState("");
@@ -166,22 +172,24 @@ export default function LabelsClient({ products, kitchenItems, storeAddress, sto
     height: 6in;
   }
   .label-page {
-    position: relative;
+    display: flex;
+    flex-direction: column;
     width: 4in;
     height: 6in;
     padding: 0.12in;
-    padding-bottom: 0.7in;
     background: white;
     color: black;
+    box-sizing: border-box;
   }
   .label-content {
-    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   .label-footer {
-    position: absolute;
-    bottom: 0.12in;
-    left: 0.12in;
-    right: 0.12in;
+    margin-top: auto;
+    flex-shrink: 0;
   }
 </style>
 </head>
@@ -223,7 +231,8 @@ ${printArea.innerHTML}
   const handleSaveStoreData = async () => {
     setSaving(true);
     try {
-      const res = await updateStoreLabelInfo(globalCnpj, globalAddress);
+      localStorage.setItem("labelShowLogo", showLogo.toString());
+      const res = await updateStoreLabelInfo(globalCnpj, globalAddress, globalStoreName, storeLogo);
       if (res && res.error) {
         alert("Erro: " + res.error);
       } else {
@@ -277,6 +286,16 @@ ${printArea.innerHTML}
               <h2 className="text-xl font-bold mb-4">Dados da Loja (Vigilância)</h2>
               <p className="text-sm text-gray-500 mb-4">Esses dados serão impressos no rodapé de todas as etiquetas para fins de conformidade com a vigilância sanitária.</p>
               <div className="input-group">
+                <label>Nome da Loja (Fabricante)</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={globalStoreName} 
+                  onChange={e => setGlobalStoreName(e.target.value)} 
+                  placeholder="Ex: Hakim Esfirraria"
+                />
+              </div>
+              <div className="input-group">
                 <label>CNPJ da Loja</label>
                 <input 
                   type="text" 
@@ -290,11 +309,21 @@ ${printArea.innerHTML}
                 <label>Endereço de Fabricação</label>
                 <textarea 
                   className="input-field" 
-                  rows={3}
+                  rows={2}
                   value={globalAddress} 
                   onChange={e => setGlobalAddress(e.target.value)} 
                   placeholder="Ex: Rua das Flores, 123 - Centro"
                 ></textarea>
+              </div>
+              <div className="input-group" style={{ flexDirection: "row", alignItems: "center", gap: "10px" }}>
+                <input 
+                  type="checkbox" 
+                  id="chkLogo"
+                  checked={showLogo}
+                  onChange={e => setShowLogo(e.target.checked)}
+                  style={{ width: "16px", height: "16px" }}
+                />
+                <label htmlFor="chkLogo" style={{ margin: 0, cursor: "pointer" }}>Imprimir Logo no Rodapé</label>
               </div>
               <div className="flex justify-end gap-2 mt-4">
                 <button className="btn btn-outline" onClick={() => setShowStoreDataModal(false)} disabled={saving}>Cancelar</button>
@@ -522,8 +551,8 @@ ${printArea.innerHTML}
       {/* ÁREA DE IMPRESSÃO — PORTRAIT 4x6 (101.6×152.4mm) */}
       {selectedProduct && mode === "print" && (
         <div className="print-area">
-          <div className="label-page">
-            <div className="label-content">
+          <div className="label-page" style={{ display: "flex", flexDirection: "column", height: "6in", padding: "0.12in", boxSizing: "border-box" }}>
+            <div className="label-content" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
               {/* ── CABEÇALHO: Nome + Alerta ── */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "0.5mm solid black", paddingBottom: "2mm", marginBottom: "3mm" }}>
@@ -547,7 +576,7 @@ ${printArea.innerHTML}
               </div>
 
               {/* ── MEIO: 2 COLUNAS (Preparo | Nutricional) ── */}
-              <div style={{ display: "flex", gap: "3mm", flex: 1, overflow: "hidden" }}>
+              <div style={{ display: "flex", gap: "3mm", overflow: "hidden", flexShrink: 0 }}>
 
                 {/* Coluna esquerda: Preparo + Conservação */}
                 <div style={{ flex: 1, fontSize: "3mm", lineHeight: "1.4", display: "flex", flexDirection: "column" }}>
@@ -592,7 +621,7 @@ ${printArea.innerHTML}
               </div>
 
               {/* ── INGREDIENTES + ALÉRGICOS ── */}
-              <div style={{ borderTop: "0.3mm solid black", paddingTop: "2mm", marginTop: "3mm", fontSize: "3mm", lineHeight: "1.4" }}>
+              <div style={{ borderTop: "0.3mm solid black", paddingTop: "2mm", marginTop: "3mm", fontSize: "2.4mm", lineHeight: "1.2", flex: 1, overflow: "hidden" }}>
                 {config.transgenic && (
                   <div style={{ display: "flex", alignItems: "center", gap: "2mm", marginBottom: "2mm" }}>
                     <div style={{ display: "inline-block", border: "0.4mm solid black", width: "5mm", height: "5mm", transform: "rotate(45deg)", position: "relative", flexShrink: 0 }}>
@@ -601,37 +630,45 @@ ${printArea.innerHTML}
                     <span style={{ fontSize: "2.8mm" }}>Contém derivados de milho e soja transgênicos.</span>
                   </div>
                 )}
-                <div style={{ marginBottom: "2mm" }}>
+                <div style={{ marginBottom: "1.5mm" }}>
                   <strong>Ingredientes:</strong> {config.ingredients || "Não cadastrado."}
                 </div>
-                <div style={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "3mm" }}>
+                <div style={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "2.4mm" }}>
                   ALÉRGICOS: {config.allergens || "NÃO CADASTRADO"}
                 </div>
               </div>
 
+            </div>
+
               {/* ── RODAPÉ: Datas + Logo + Endereço ── */}
-              <div className="label-footer" style={{ borderTop: "0.5mm solid black", paddingTop: "2mm" }}>
+              <div className="label-footer" style={{ borderTop: "0.5mm solid black", paddingTop: "2mm", marginTop: "auto", flexShrink: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1mm" }}>
                   <div style={{ fontSize: "3.5mm", fontWeight: "bold", lineHeight: "1.5" }}>
                     <div>Fab: {fabDate ? new Date(fabDate).toLocaleDateString('pt-BR') : '--'}</div>
                     <div>Val: {valDate ? new Date(valDate).toLocaleDateString('pt-BR') : '--'}</div>
                     <div>Lote: {lote || '--'}</div>
                   </div>
-                  <img src="/logo.png" style={{ height: "8mm", filter: "grayscale(100%) brightness(0)" }} />
+                  {showLogo && (
+                    <img src={storeLogo || "/logo.png"} style={{ height: "8mm", filter: "grayscale(100%) brightness(0)", objectFit: "contain" }} />
+                  )}
                 </div>
+                {globalStoreName && (
+                  <div style={{ fontSize: "3mm", textAlign: "center", marginTop: "1mm", fontWeight: "bold" }}>
+                    {globalStoreName}
+                  </div>
+                )}
                 {globalCnpj && (
-                  <div style={{ fontSize: "2.5mm", textAlign: "center", marginTop: "1mm", borderTop: "0.2mm dashed black", paddingTop: "1mm" }}>
+                  <div style={{ fontSize: "2.5mm", textAlign: "center", borderTop: globalStoreName ? "none" : "0.2mm dashed black", paddingTop: globalStoreName ? "0" : "1mm" }}>
                     <strong>CNPJ:</strong> {globalCnpj}
                   </div>
                 )}
                 {globalAddress && (
-                  <div style={{ fontSize: "2.5mm", textAlign: "center", marginTop: "1mm", lineHeight: "1.2" }}>
+                  <div style={{ fontSize: "2.5mm", textAlign: "center", lineHeight: "1.2" }}>
                     <strong>Fabricado por:</strong> {globalAddress}
                   </div>
                 )}
               </div>
 
-            </div>
           </div>
         </div>
       )}

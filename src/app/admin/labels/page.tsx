@@ -12,6 +12,8 @@ export default async function LabelsPage() {
 
   let storeAddress = "";
   let storeCnpj = "";
+  let storeName = "";
+  let storeLogo = "";
   let currentUserId: string | undefined;
 
   if (session?.user?.email) {
@@ -22,6 +24,8 @@ export default async function LabelsPage() {
       currentUserId = user.id;
       storeAddress = user.storeAddress || "";
       storeCnpj = user.cpfCnpj || "";
+      storeName = user.storeName || "";
+      storeLogo = user.storeLogo || "";
     }
   }
 
@@ -32,7 +36,7 @@ export default async function LabelsPage() {
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-      <LabelsClient products={products} kitchenItems={kitchenItems} storeAddress={storeAddress} storeCnpj={storeCnpj} />
+      <LabelsClient products={products} kitchenItems={kitchenItems} storeAddress={storeAddress} storeCnpj={storeCnpj} storeName={storeName} storeLogo={storeLogo} />
     </div>
   );
 }
