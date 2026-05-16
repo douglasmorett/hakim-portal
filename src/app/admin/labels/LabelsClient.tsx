@@ -78,7 +78,70 @@ export default function LabelsClient({ products }: { products: any[] }) {
   }, [selectedProductId, fabDate]);
 
   const handlePrint = () => {
-    window.print();
+    const printArea = document.querySelector<HTMLElement>(".print-area");
+    if (!printArea) return;
+
+    const old = document.getElementById("label-print-frame");
+    if (old) old.remove();
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "label-print-frame";
+    // 101.6mm x 152.4mm at 96dpi = 384px x 576px
+    iframe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:384px;height:576px;border:none;";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { size: 101.6mm 152.4mm; margin: 0; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 101.6mm; height: 152.4mm;
+    overflow: hidden;
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  .print-area {
+    display: block !important;
+    width: 101.6mm;
+    height: 152.4mm;
+  }
+  .label-page {
+    width: 101.6mm;
+    height: 152.4mm;
+    padding: 3mm;
+    overflow: hidden;
+    background: white;
+    color: black;
+  }
+  .label-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+</style>
+</head>
+<body>
+${printArea.innerHTML}
+</body>
+</html>`);
+    doc.close();
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => iframe.remove(), 2000);
+      }, 500);
+    };
   };
 
 
@@ -258,76 +321,58 @@ export default function LabelsClient({ products }: { products: any[] }) {
         )}
       </div>
 
-      {/* ÁREA DE IMPRESSÃO — 4x6 landscape (152.4×101.6mm) */}
+      {/* ÁREA DE IMPRESSÃO — PORTRAIT 4x6 (101.6×152.4mm) */}
       {selectedProduct && mode === "print" && (
         <div className="print-area">
           <div className="label-page">
             <div className="label-content">
 
-              {/* ── CABEÇALHO ── */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "0.5mm solid black", paddingBottom: "1mm", marginBottom: "2mm" }}>
-                <div style={{ flex: 1 }}>
+              {/* ── CABEÇALHO: Nome + Alerta ── */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "0.5mm solid black", paddingBottom: "2mm", marginBottom: "3mm" }}>
+                <div style={{ flex: 1, paddingRight: "2mm" }}>
                   <div style={{ fontSize: "5mm", fontWeight: "900", textTransform: "uppercase", lineHeight: "1.15" }}>
                     {selectedProduct.name}
                   </div>
-                  <div style={{ fontSize: "3.2mm", fontWeight: "700" }}>{config.weightStr}</div>
+                  <div style={{ fontSize: "3.5mm", fontWeight: "700", marginTop: "1mm" }}>{config.weightStr}</div>
                 </div>
                 {(config.highSugar || config.highSodium || config.highFat) && (
-                  <div style={{ border: "0.5mm solid black", borderRadius: "1mm", padding: "1mm 2mm", display: "flex", alignItems: "center", flexShrink: 0 }}>
-                    <AlertTriangle size={14} color="black" style={{ marginRight: "1mm" }} />
-                    <div style={{ fontWeight: "900", fontSize: "3mm", lineHeight: "1.2" }}>
+                  <div style={{ border: "0.5mm solid black", borderRadius: "1mm", padding: "1.5mm 3mm", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                    <AlertTriangle size={16} color="black" style={{ marginRight: "1.5mm" }} />
+                    <div style={{ fontWeight: "900", fontSize: "3mm", lineHeight: "1.3" }}>
                       ALTO EM<br/>
-                      {config.highSugar  && <span style={{ background:"black", color:"white", padding:"0 1mm", display:"inline-block", marginTop:"0.5mm" }}>AÇÚCAR</span>}
-                      {config.highSodium && <span style={{ background:"black", color:"white", padding:"0 1mm", display:"inline-block", marginTop:"0.5mm" }}>SÓDIO</span>}
-                      {config.highFat    && <span style={{ background:"black", color:"white", padding:"0 1mm", display:"inline-block", marginTop:"0.5mm" }}>GORDURA</span>}
+                      {config.highSugar  && <span style={{ background:"black", color:"white", padding:"0.3mm 1mm", display:"inline-block", marginTop:"0.5mm" }}>AÇÚCAR</span>}
+                      {config.highSodium && <span style={{ background:"black", color:"white", padding:"0.3mm 1mm", display:"inline-block", marginTop:"0.5mm" }}>SÓDIO</span>}
+                      {config.highFat    && <span style={{ background:"black", color:"white", padding:"0.3mm 1mm", display:"inline-block", marginTop:"0.5mm" }}>GORDURA</span>}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* ── CORPO: 3 COLUNAS ── */}
-              <div style={{ display: "flex", gap: "2mm", flex: 1, overflow: "hidden" }}>
+              {/* ── MEIO: 2 COLUNAS (Preparo | Nutricional) ── */}
+              <div style={{ display: "flex", gap: "3mm", flex: 1, overflow: "hidden" }}>
 
-                {/* COL 1: Preparo + Conservação */}
-                <div style={{ flex: 1, fontSize: "3mm", lineHeight: "1.35", display: "flex", flexDirection: "column" }}>
+                {/* Coluna esquerda: Preparo + Conservação */}
+                <div style={{ flex: 1, fontSize: "3mm", lineHeight: "1.4", display: "flex", flexDirection: "column" }}>
                   {config.preparation && (
-                    <div style={{ marginBottom: "1.5mm" }}>
-                      <strong>MODO DE PREPARO:</strong><br/>
+                    <div style={{ marginBottom: "3mm" }}>
+                      <strong style={{ fontSize: "3.2mm" }}>MODO DE PREPARO:</strong><br/>
                       {config.preparation.split('\n').map((line: string, i: number) => <span key={i}>{line} </span>)}
                     </div>
                   )}
-                  <div style={{ borderTop: "0.3mm solid black", borderBottom: "0.3mm solid black", padding: "1.5mm 0", fontSize: "2.8mm", marginTop: "auto" }}>
-                    <strong style={{ display: "block", textAlign: "center", marginBottom: "0.5mm" }}>Conservação</strong>
-                    <div>Congelador: -12ºC = 30 dias</div>
+                  <div style={{ borderTop: "0.3mm solid black", borderBottom: "0.3mm solid black", padding: "2mm 0", fontSize: "2.8mm", marginTop: "auto" }}>
+                    <strong style={{ display: "block", textAlign: "center", fontSize: "3mm", marginBottom: "1mm" }}>Conservação</strong>
+                    <div>Congelador: Até -12ºC = 30 dias</div>
                     <div>Freezer: -18ºC = Vide validade</div>
                   </div>
                 </div>
 
-                {/* COL 2: Ingredientes + Alérgicos */}
-                <div style={{ flex: 1, fontSize: "3mm", lineHeight: "1.35", display: "flex", flexDirection: "column", borderLeft: "0.3mm solid #ccc", paddingLeft: "2mm" }}>
-                  {config.transgenic && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "1.5mm", marginBottom: "1.5mm" }}>
-                      <div style={{ display: "inline-block", border: "0.4mm solid black", width: "4mm", height: "4mm", transform: "rotate(45deg)", position: "relative", flexShrink: 0 }}>
-                        <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) rotate(-45deg)", fontWeight: "900", fontSize: "3mm" }}>T</span>
-                      </div>
-                      <span style={{ fontSize: "2.5mm" }}>Transgênico (milho/soja)</span>
-                    </div>
-                  )}
-                  <div style={{ marginBottom: "1.5mm", flex: 1 }}>
-                    <strong>Ingredientes:</strong> {config.ingredients || "Não cadastrado."}
-                  </div>
-                  <div style={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "3mm", borderTop: "0.3mm solid black", paddingTop: "1.5mm" }}>
-                    ALÉRGICOS: {config.allergens || "NÃO CADASTRADO"}
-                  </div>
-                </div>
-
-                {/* COL 3: Tabela Nutricional */}
-                <div style={{ width: "38%", flexShrink: 0, borderLeft: "0.3mm solid #ccc", paddingLeft: "1.5mm" }}>
-                  <div style={{ border: "0.4mm solid black" }}>
-                    <div style={{ borderBottom: "0.3mm solid black", padding: "0.8mm 1mm", textAlign: "center", fontWeight: "900", fontSize: "2.8mm" }}>INFO. NUTRICIONAL</div>
+                {/* Coluna direita: Tabela Nutricional */}
+                <div style={{ width: "42mm", flexShrink: 0 }}>
+                  <div style={{ border: "0.5mm solid black" }}>
+                    <div style={{ borderBottom: "0.3mm solid black", padding: "1mm", textAlign: "center", fontWeight: "900", fontSize: "3mm" }}>INFORMAÇÃO NUTRICIONAL</div>
                     <div style={{ display: "flex", borderBottom: "0.3mm solid black" }}>
                       <div style={{ flex: 1, borderRight: "0.3mm solid black", padding: "0.5mm 1mm", fontSize: "2.5mm", fontWeight: "bold" }}></div>
-                      <div style={{ width: "30%", padding: "0.5mm 1mm", textAlign: "center", fontSize: "2.5mm", fontWeight: "bold" }}>100 g</div>
+                      <div style={{ width: "14mm", padding: "0.5mm 1mm", textAlign: "center", fontSize: "2.5mm", fontWeight: "bold" }}>100 g</div>
                     </div>
                     {[
                       ["Energia (kcal)",  config.energy],
@@ -340,21 +385,40 @@ export default function LabelsClient({ products }: { products: any[] }) {
                       ["Sódio (mg)",       config.sodium],
                     ].map(([label, val], i, arr) => (
                       <div key={i} style={{ display: "flex", borderBottom: i < arr.length - 1 ? "0.3mm solid black" : "none" }}>
-                        <div style={{ flex: 1, borderRight: "0.3mm solid black", padding: "0.5mm 1mm", fontSize: "2.5mm", whiteSpace: "nowrap", overflow: "hidden" }}>{label}</div>
-                        <div style={{ width: "30%", padding: "0.5mm 1mm", textAlign: "center", fontSize: "2.8mm", fontWeight: "bold" }}>{val}</div>
+                        <div style={{ flex: 1, borderRight: "0.3mm solid black", padding: "0.8mm 1mm", fontSize: "2.5mm", whiteSpace: "nowrap", overflow: "hidden" }}>{label}</div>
+                        <div style={{ width: "14mm", padding: "0.8mm 1mm", textAlign: "center", fontSize: "3mm", fontWeight: "bold" }}>{val}</div>
                       </div>
                     ))}
                   </div>
                 </div>
-
               </div>
 
-              {/* ── RODAPÉ ── */}
-              <div style={{ borderTop: "0.5mm solid black", paddingTop: "1.5mm", marginTop: "2mm", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "3.2mm", fontWeight: "bold" }}>
-                <span>Fab: {fabDate ? new Date(fabDate).toLocaleDateString('pt-BR') : '--'}</span>
-                <span>Val: {valDate ? new Date(valDate).toLocaleDateString('pt-BR') : '--'}</span>
-                <span>Lote: {lote || '--'}</span>
-                <img src="/logo.png" style={{ height: "5mm", filter: "grayscale(100%) brightness(0)" }} />
+              {/* ── INGREDIENTES + ALÉRGICOS ── */}
+              <div style={{ borderTop: "0.3mm solid black", paddingTop: "2mm", marginTop: "3mm", fontSize: "3mm", lineHeight: "1.4" }}>
+                {config.transgenic && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "2mm", marginBottom: "2mm" }}>
+                    <div style={{ display: "inline-block", border: "0.4mm solid black", width: "5mm", height: "5mm", transform: "rotate(45deg)", position: "relative", flexShrink: 0 }}>
+                      <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) rotate(-45deg)", fontWeight: "900", fontSize: "3.5mm" }}>T</span>
+                    </div>
+                    <span style={{ fontSize: "2.8mm" }}>Contém derivados de milho e soja transgênicos.</span>
+                  </div>
+                )}
+                <div style={{ marginBottom: "2mm" }}>
+                  <strong>Ingredientes:</strong> {config.ingredients || "Não cadastrado."}
+                </div>
+                <div style={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "3mm" }}>
+                  ALÉRGICOS: {config.allergens || "NÃO CADASTRADO"}
+                </div>
+              </div>
+
+              {/* ── RODAPÉ: Datas + Logo ── */}
+              <div style={{ borderTop: "0.5mm solid black", paddingTop: "2mm", marginTop: "3mm", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: "3.5mm", fontWeight: "bold", lineHeight: "1.5" }}>
+                  <div>Fab: {fabDate ? new Date(fabDate).toLocaleDateString('pt-BR') : '--'}</div>
+                  <div>Val: {valDate ? new Date(valDate).toLocaleDateString('pt-BR') : '--'}</div>
+                  <div>Lote: {lote || '--'}</div>
+                </div>
+                <img src="/logo.png" style={{ height: "8mm", filter: "grayscale(100%) brightness(0)" }} />
               </div>
 
             </div>
@@ -372,57 +436,8 @@ export default function LabelsClient({ products }: { products: any[] }) {
 
       <style jsx global>{`
         .print-area { display: none; }
-
-        @media print {
-          @page {
-            size: 152.4mm 101.6mm;
-            margin: 0;
-          }
-
-          /* Esconde admin chrome e formulário */
-          #admin-sidebar, #admin-topbar, .no-print,
-          header, nav, footer { display: none !important; }
-
-          /* Reset containers - sem margin/padding pra não empurrar conteúdo */
-          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
-          #__next, .admin-main, main, [class*="layout"], [class*="container"] {
-            margin: 0 !important;
-            padding: 0 !important;
-            display: block !important;
-            width: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
-          }
-
-          .print-area {
-            display: block !important;
-            width: 152.4mm !important;
-            height: 101.6mm !important;
-            overflow: hidden !important;
-            background: white !important;
-          }
-
-          .label-page {
-            width: 152.4mm !important;
-            height: 101.6mm !important;
-            padding: 3mm !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-            background: white !important;
-            color: black !important;
-            font-family: Arial, Helvetica, sans-serif !important;
-          }
-
-          .label-page * { box-sizing: border-box; }
-
-          .label-content {
-            width: 100% !important;
-            height: calc(101.6mm - 6mm) !important;
-            display: flex !important;
-            flex-direction: column !important;
-          }
-        }
       `}</style>
     </div>
   );
 }
+
