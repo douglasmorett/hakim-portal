@@ -114,19 +114,22 @@ export default function LabelsClient({ products }: { products: any[] }) {
     height: 152.4mm;
   }
   .label-page {
+    position: relative;
     width: 101.6mm;
     height: 152.4mm;
     padding: 3mm;
+    padding-bottom: 18mm;
     background: white;
     color: black;
-    display: flex;
-    flex-direction: column;
   }
   .label-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    width: 100%;
+  }
+  .label-footer {
+    position: absolute;
+    bottom: 3mm;
+    left: 3mm;
+    right: 3mm;
   }
 </style>
 </head>
@@ -413,7 +416,7 @@ ${printArea.innerHTML}
               </div>
 
               {/* ── RODAPÉ: Datas + Logo ── */}
-              <div style={{ borderTop: "0.5mm solid black", paddingTop: "2mm", marginTop: "3mm", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="label-footer" style={{ borderTop: "0.5mm solid black", paddingTop: "2mm", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: "3.5mm", fontWeight: "bold", lineHeight: "1.5" }}>
                   <div>Fab: {fabDate ? new Date(fabDate).toLocaleDateString('pt-BR') : '--'}</div>
                   <div>Val: {valDate ? new Date(valDate).toLocaleDateString('pt-BR') : '--'}</div>
