@@ -223,9 +223,13 @@ ${printArea.innerHTML}
   const handleSaveStoreData = async () => {
     setSaving(true);
     try {
-      await updateStoreLabelInfo(globalCnpj, globalAddress);
-      alert("Dados da loja atualizados com sucesso!");
-      setShowStoreDataModal(false);
+      const res = await updateStoreLabelInfo(globalCnpj, globalAddress);
+      if (res && res.error) {
+        alert("Erro: " + res.error);
+      } else {
+        alert("Dados da loja atualizados com sucesso!");
+        setShowStoreDataModal(false);
+      }
     } catch (e: any) {
       alert("Erro ao salvar dados: " + e.message);
     } finally {
@@ -460,7 +464,17 @@ ${printArea.innerHTML}
             <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
               <div className="input-group" style={{ flex: 1, minWidth: "200px" }}>
                 <label>Lote (Opcional)</label>
-                <input type="text" className="input-field" value={lote} onChange={e => setLote(e.target.value)} placeholder="Ex: 030326" />
+                <div style={{ display: "flex", gap: "5px" }}>
+                  <input type="text" className="input-field" value={lote} onChange={e => setLote(e.target.value)} placeholder="Ex: 030326" style={{ flex: 1 }} />
+                  <button 
+                    className="btn btn-outline" 
+                    onClick={() => setLote(Math.floor(100000 + Math.random() * 900000).toString())} 
+                    title="Gerar Lote Aleatório" 
+                    style={{ padding: "0 10px", fontSize: "1.2rem" }}
+                  >
+                    🎲
+                  </button>
+                </div>
               </div>
               <div className="input-group" style={{ flex: 1, minWidth: "200px" }}>
                 <label>Data de Fabricação</label>

@@ -18,13 +18,18 @@ export async function saveLabelData(productId: string, labelData: any) {
 }
 
 export async function updateStoreLabelInfo(cpfCnpj: string, storeAddress: string) {
-  const session = await getServerSession(authOptions);
-  if (!(session?.user as any)?.id) throw new Error("Não autorizado");
+  try {
+    const session = await getServerSession(authOptions);
+    if (!(session?.user as any)?.id) return { success: false, error: "Não autorizado" };
 
-  await prisma.user.update({
-    where: { id: (session?.user as any).id },
-    data: { cpfCnpj, storeAddress }
-  });
+    await prisma.user.update({
+      where: { id: (session?.user as any).id },
+      data: { cpfCnpj, storeAddress }
+    });
 
-  revalidatePath("/admin/labels");
+    revalidatePath("/admin/labels");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Erro desconhecido" };
+  }
 }
