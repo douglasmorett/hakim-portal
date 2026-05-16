@@ -7,14 +7,15 @@ import { revalidatePath } from "next/cache";
 
 export async function createKitchenItem(data: any) {
   const session = await getServerSession(authOptions);
-  if (!session) throw new Error("Não autorizado");
+  if (!session?.user?.email) throw new Error("Não autorizado");
 
-  if (!(session?.user as any)?.id) throw new Error("Não autorizado");
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) throw new Error("Usuário não encontrado");
 
   const item = await prisma.kitchenItem.create({
     data: {
       ...data,
-      franchiseeId: (session.user as any).id
+      franchiseeId: user.id
     }
   });
 

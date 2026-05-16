@@ -10,20 +10,25 @@ export default async function LabelsPage() {
     orderBy: { name: "asc" }
   });
 
-  const kitchenItems = await prisma.kitchenItem.findMany({
-    where: { franchiseeId: (session?.user as any)?.id },
-    orderBy: { name: "asc" }
-  });
-
   let storeAddress = "";
   let storeCnpj = "";
-  if ((session?.user as any)?.id) {
+  let currentUserId: string | undefined;
+
+  if (session?.user?.email) {
     const user = await prisma.user.findUnique({
-      where: { id: (session?.user as any).id }
+      where: { email: session.user.email }
     });
-    storeAddress = user?.storeAddress || "";
-    storeCnpj = user?.cpfCnpj || "";
+    if (user) {
+      currentUserId = user.id;
+      storeAddress = user.storeAddress || "";
+      storeCnpj = user.cpfCnpj || "";
+    }
   }
+
+  const kitchenItems = await prisma.kitchenItem.findMany({
+    where: { franchiseeId: currentUserId },
+    orderBy: { name: "asc" }
+  });
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto" }}>

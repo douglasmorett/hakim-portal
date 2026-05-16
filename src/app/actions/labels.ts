@@ -20,10 +20,13 @@ export async function saveLabelData(productId: string, labelData: any) {
 export async function updateStoreLabelInfo(cpfCnpj: string, storeAddress: string) {
   try {
     const session = await getServerSession(authOptions);
-    if (!(session?.user as any)?.id) return { success: false, error: "Não autorizado" };
+    if (!session?.user?.email) return { success: false, error: "Não autorizado" };
+
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return { success: false, error: "Usuário não encontrado" };
 
     await prisma.user.update({
-      where: { id: (session?.user as any).id },
+      where: { id: user.id },
       data: { cpfCnpj, storeAddress }
     });
 
