@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { saveLabelData, updateStoreLabelInfo } from "@/app/actions/labels";
-import { createKitchenItem, updateKitchenItem, deleteKitchenItem } from "@/app/actions/kitchenItems";
-import { Printer, Settings, AlertTriangle, Save, Plus, Trash2, Edit2, Store } from "lucide-react";
+import { createKitchenItem, updateKitchenItem, deleteKitchenItem, fillNutritionWithAI } from "@/app/actions/kitchenItems";
+import { Printer, Settings, AlertTriangle, Save, Plus, Trash2, Edit2, Store, Sparkles } from "lucide-react";
 
 export default function LabelsClient({ products, kitchenItems, storeAddress, storeCnpj }: { products: any[], kitchenItems: any[], storeAddress: string, storeCnpj: string }) {
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -237,6 +237,24 @@ ${printArea.innerHTML}
     }
   };
 
+  const handleFillWithAI = async () => {
+    if (!selectedProduct) return;
+    setSaving(true);
+    try {
+      const data = await fillNutritionWithAI(selectedProduct.name);
+      if (data.error) {
+        alert("Erro da IA: " + data.error);
+        return;
+      }
+      setConfig({ ...config, ...data });
+      alert("Campos preenchidos com sucesso pela IA. Revise e clique em 'Salvar Configuração'.");
+    } catch (e: any) {
+      alert("Erro ao chamar IA: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="labels-container">
       {/* Esconde a interface na hora da impressão */}
@@ -370,7 +388,12 @@ ${printArea.innerHTML}
         {selectedProduct && mode === "config" && (
           <div className="card" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
             <div>
-              <h3 className="font-bold mb-4 border-b pb-2">Informações Gerais</h3>
+              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 className="font-bold">Informações Gerais</h3>
+                <button className="btn btn-outline" style={{ borderColor: "var(--primary)", color: "var(--primary)", padding: "5px 10px", fontSize: "0.85rem" }} onClick={handleFillWithAI} disabled={saving}>
+                  <Sparkles size={14} style={{ marginRight: "5px" }} /> {saving ? "Gerando..." : "Preencher com IA"}
+                </button>
+              </div>
               
               <div className="input-group">
                 <label>Validade em Dias (Shelf Life)</label>
