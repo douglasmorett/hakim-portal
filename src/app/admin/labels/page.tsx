@@ -16,16 +16,18 @@ export default async function LabelsPage() {
   });
 
   let storeAddress = "";
+  let storeCnpj = "";
   if ((session?.user as any)?.id) {
     const user = await prisma.user.findUnique({
       where: { id: (session?.user as any).id }
     });
     storeAddress = user?.storeAddress || "";
+    storeCnpj = user?.cpfCnpj || "";
   }
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-      <LabelsClient products={products} kitchenItems={kitchenItems} storeAddress={storeAddress} />
+      <LabelsClient products={products} kitchenItems={kitchenItems} storeAddress={storeAddress} storeCnpj={storeCnpj} />
     </div>
   );
 }

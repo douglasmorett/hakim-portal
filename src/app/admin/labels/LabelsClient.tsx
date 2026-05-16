@@ -5,7 +5,7 @@ import { saveLabelData } from "@/app/actions/labels";
 import { createKitchenItem, updateKitchenItem, deleteKitchenItem } from "@/app/actions/kitchenItems";
 import { Printer, Settings, AlertTriangle, Save, Plus, Trash2, Edit2 } from "lucide-react";
 
-export default function LabelsClient({ products, kitchenItems, storeAddress }: { products: any[], kitchenItems: any[], storeAddress: string }) {
+export default function LabelsClient({ products, kitchenItems, storeAddress, storeCnpj }: { products: any[], kitchenItems: any[], storeAddress: string, storeCnpj: string }) {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [mode, setMode] = useState<"print" | "config">("print");
   const [items, setItems] = useState<any[]>([...products.map(p => ({ ...p, isKitchenItem: false })), ...kitchenItems.map(ki => ({ ...ki, isKitchenItem: true }))]);
@@ -38,7 +38,9 @@ export default function LabelsClient({ products, kitchenItems, storeAddress }: {
     proteins: "0",
     fatTotal: "0",
     fatSat: "0",
-    sodium: "0"
+    sodium: "0",
+    customCnpj: "",
+    customAddress: ""
   });
 
   const selectedProduct = items.find(p => p.id === selectedProductId);
@@ -63,7 +65,9 @@ export default function LabelsClient({ products, kitchenItems, storeAddress }: {
           proteins: selectedProduct.proteins || "0",
           fatTotal: selectedProduct.fatTotal || "0",
           fatSat: selectedProduct.fatSat || "0",
-          sodium: selectedProduct.sodium || "0"
+          sodium: selectedProduct.sodium || "0",
+          customCnpj: selectedProduct.customCnpj || "",
+          customAddress: selectedProduct.customAddress || ""
         });
       } else if (selectedProduct.labelData) {
         setConfig({ ...config, ...selectedProduct.labelData });
@@ -79,7 +83,8 @@ export default function LabelsClient({ products, kitchenItems, storeAddress }: {
           highFat: false,
           transgenic: false,
           weightStr: "1,00 kg",
-          energy: "0", carbs: "0", sugars: "0", addedSugars: "0", proteins: "0", fatTotal: "0", fatSat: "0", sodium: "0"
+          energy: "0", carbs: "0", sugars: "0", addedSugars: "0", proteins: "0", fatTotal: "0", fatSat: "0", sodium: "0",
+          customCnpj: "", customAddress: ""
         });
       }
       
@@ -353,7 +358,17 @@ ${printArea.innerHTML}
             </div>
 
             <div>
-              <h3 className="font-bold mb-4 border-b pb-2">Informação Nutricional (100g)</h3>
+              <h3 className="font-bold mb-4 border-b pb-2">Vigilância Sanitária (Opcional)</h3>
+              <div className="input-group">
+                <label>CNPJ Customizado (Deixe em branco p/ usar o da loja)</label>
+                <input type="text" className="input-field" value={config.customCnpj} onChange={e => setConfig({...config, customCnpj: e.target.value})} placeholder={storeCnpj || "Ex: 00.000.000/0000-00"} />
+              </div>
+              <div className="input-group">
+                <label>Endereço Customizado (Deixe em branco p/ usar o da loja)</label>
+                <textarea className="input-field" rows={2} value={config.customAddress} onChange={e => setConfig({...config, customAddress: e.target.value})} placeholder={storeAddress || "Ex: Rua das Flores, 123 - Centro"}></textarea>
+              </div>
+
+              <h3 className="font-bold mb-4 mt-6 border-b pb-2">Informação Nutricional (100g)</h3>
               <div className="input-group">
                 <label>Valor Energético (kcal)</label>
                 <input type="text" className="input-field" value={config.energy} onChange={e => setConfig({...config, energy: e.target.value})} />
@@ -524,9 +539,14 @@ ${printArea.innerHTML}
                   </div>
                   <img src="/logo.png" style={{ height: "8mm", filter: "grayscale(100%) brightness(0)" }} />
                 </div>
-                {storeAddress && (
-                  <div style={{ fontSize: "2.5mm", textAlign: "center", marginTop: "2mm", borderTop: "0.2mm dashed black", paddingTop: "1mm" }}>
-                    <strong>Fabricado por:</strong> {storeAddress}
+                {(config.customCnpj || storeCnpj) && (
+                  <div style={{ fontSize: "2.5mm", textAlign: "center", marginTop: "1mm", borderTop: "0.2mm dashed black", paddingTop: "1mm" }}>
+                    <strong>CNPJ:</strong> {config.customCnpj || storeCnpj}
+                  </div>
+                )}
+                {(config.customAddress || storeAddress) && (
+                  <div style={{ fontSize: "2.5mm", textAlign: "center", marginTop: "1mm", lineHeight: "1.2" }}>
+                    <strong>Fabricado por:</strong> {config.customAddress || storeAddress}
                   </div>
                 )}
               </div>
