@@ -404,8 +404,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
         {/* Input oculto para a câmera */}
         <input 
           type="file" 
-          accept="image/*" 
-          capture="environment"
+          accept="image/*"
           ref={fileInputRef} 
           style={{ display: "none" }} 
           onChange={handleAiScan}
