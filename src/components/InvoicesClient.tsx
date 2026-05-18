@@ -239,8 +239,7 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
               {uploading ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} style={{ marginRight: "0.5rem" }} />}
               {uploading ? "A IA está lendo a nota..." : "Tirar Foto da Nota"}
             </button>
-            {/* capture removido — causava "The string did not match the expected pattern" em alguns browsers/desktop */}
-            <input type="file" accept="image/*" ref={fileInputRef} style={{ display: "none" }} onChange={handleFileChange} />
+            <input type="file" accept="image/*" capture="environment" ref={fileInputRef} style={{ display: "none" }} onChange={handleFileChange} />
           </div>
         )}
 

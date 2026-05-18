@@ -108,9 +108,46 @@ Se não conseguir ler um campo específico, use null para aquele campo.`
 
               aiCategory = parsed.categoria || null;
 
-              if (parsed.data) {
-                const d = new Date(parsed.data);
-                if (!isNaN(d.getTime())) invoiceDate = d;
+              // Sanitização robusta de data — Prisma exige ISO 8601
+              if (parsed.data && typeof parsed.data === "string") {
+                try {
+                  let year: number, month: number, day: number;
+
+                  // Tenta YYYY-MM-DD primeiro (formato pedido ao Gemini)
+                  const isoMatch = parsed.data.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+                  // Tenta DD/MM/YYYY (formato brasileiro comum)
+                  const brMatch = parsed.data.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+
+                  if (isoMatch) {
+                    year = parseInt(isoMatch[1]);
+                    month = parseInt(isoMatch[2]);
+                    day = parseInt(isoMatch[3]);
+                  } else if (brMatch) {
+                    day = parseInt(brMatch[1]);
+                    month = parseInt(brMatch[2]);
+                    year = parseInt(brMatch[3]);
+                  } else {
+                    // Fallback: tenta new Date() mas com validação extra
+                    const fallback = new Date(parsed.data);
+                    if (!isNaN(fallback.getTime())) {
+                      year = fallback.getFullYear();
+                      month = fallback.getMonth() + 1;
+                      day = fallback.getDate();
+                    } else {
+                      throw new Error("Data não reconhecida");
+                    }
+                  }
+
+                  // Valida ranges
+                  if (year >= 2020 && year <= 2030 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                    // Constrói Date de forma explícita — evita ambiguidade de timezone
+                    invoiceDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+                  }
+                  console.log("[Invoices/AI] Data parseada:", invoiceDate?.toISOString() ?? "null", "| original:", parsed.data);
+                } catch (dateErr) {
+                  console.warn("[Invoices/AI] Falha ao parsear data:", parsed.data, dateErr);
+                  // invoiceDate fica null — não impede o salvamento
+                }
               }
             } catch (parseErr) {
               console.error("[Invoices/AI] Erro ao parsear JSON:", parseErr, "| texto:", jsonStr);
@@ -141,19 +178,39 @@ Se não conseguir ler um campo específico, use null para aquele campo.`
       );
     }
 
-    const invoice = await (prisma as any).purchaseInvoice.create({
-      data: {
-        uploadedBy: session.user.email,
-        description,
-        category: category || "BUSINESS",
-        imageUrl,
-        aiValue,
-        aiCategory,
-        invoiceDate,
-        source: "ai",
-        status: "APPROVED",
-      },
-    });
+    // Tenta salvar — se falhar por causa da data, tenta novamente sem a data
+    let invoice;
+    try {
+      invoice = await (prisma as any).purchaseInvoice.create({
+        data: {
+          uploadedBy: session.user.email,
+          description,
+          category: category || "BUSINESS",
+          imageUrl,
+          aiValue,
+          aiCategory,
+          invoiceDate,
+          source: "ai",
+          status: "APPROVED",
+        },
+      });
+    } catch (prismaErr: any) {
+      console.error("[Invoices/POST] Prisma falhou com invoiceDate, tentando sem data:", prismaErr.message);
+      // Fallback: salva sem a data problemática
+      invoice = await (prisma as any).purchaseInvoice.create({
+        data: {
+          uploadedBy: session.user.email,
+          description,
+          category: category || "BUSINESS",
+          imageUrl,
+          aiValue,
+          aiCategory,
+          invoiceDate: null,
+          source: "ai",
+          status: "APPROVED",
+        },
+      });
+    }
 
     return NextResponse.json({ invoice });
   } catch (err: any) {

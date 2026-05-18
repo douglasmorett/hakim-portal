@@ -203,6 +203,7 @@ export default function ProductsClient({ products }: { products: any[] }) {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 style={{ display: "none" }}
                 onChange={handleFileChange}
               />
