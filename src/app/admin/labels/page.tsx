@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 
 export default async function LabelsPage() {
   const session = await getServerSession(authOptions);
-  
+
   const products = await prisma.product.findMany({
     orderBy: { name: "asc" }
   });

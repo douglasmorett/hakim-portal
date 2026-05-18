@@ -402,10 +402,10 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
         )}
 
         {/* Input oculto para a câmera */}
+        {/* capture removido — causava "The string did not match the expected pattern" em alguns browsers/desktop */}
         <input 
           type="file" 
           accept="image/*" 
-          capture="environment" 
           ref={fileInputRef} 
           style={{ display: "none" }} 
           onChange={handleAiScan}

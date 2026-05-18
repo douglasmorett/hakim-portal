@@ -11,12 +11,16 @@ export default async function Home() {
 
   const role = (session.user as any)?.role;
 
-  if (role === "CUSTOMER") {
-    // Caso exista alguma rota de cliente futuramente, redirecione aqui. Por hora, vai para admin.
-    redirect("/admin");
-  } else {
+  if (role === "ADMIN" || role === "STAFF") {
     redirect("/admin");
   }
+
+  if (role === "FRANCHISEE") {
+    redirect("/admin/meus-pedidos");
+  }
+
+  // CUSTOMER ou roles desconhecidos → site externo
+  redirect("https://www.iceboxcongelados.com.br");
 
   return null;
 }

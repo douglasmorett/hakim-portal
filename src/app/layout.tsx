@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FireHub — Gestão para Restaurantes",
-  description: "Plataforma completa de gestão para restaurantes. Cardápio digital, pedidos online, delivery e muito mais.",
+  title: "Hakim Portal — Gestão para Franquias",
+  description: "Portal de gestão exclusivo para franquias Hakim. Cardápio digital, pedidos online, estoque e muito mais.",
   icons: {
     icon: [
       { url: "/icon.jpg", type: "image/jpeg" },
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
     ],
     shortcut: "/favicon.ico",
   },
-  themeColor: "#C62828",
-  applicationName: "FireHub",
-  keywords: ["restaurante", "delivery", "cardápio digital", "gestão", "pedidos"],
+  themeColor: "#EF4444",
+  applicationName: "Hakim Portal",
+  keywords: ["franquia", "hakim", "restaurante", "gestão", "delivery", "cardápio digital"],
 };
 
 import { Providers } from "@/components/Providers";

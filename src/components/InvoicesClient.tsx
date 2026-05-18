@@ -50,34 +50,77 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
     const file = e.target.files?.[0];
     if (!file) return;
     if (!description.trim()) { setError("Por favor, digite a descrição ANTES de tirar a foto."); e.target.value = ""; return; }
-    setError(""); setUploading(true);
+
+    // Validação de tipo de arquivo no client-side
+    if (!file.type.startsWith("image/")) {
+      setError("Apenas imagens são permitidas. Selecione uma foto da nota.");
+      e.target.value = "";
+      return;
+    }
+
+    // Validação de tamanho (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError("A imagem é muito grande (máx 10MB). Tente tirar uma foto com menor resolução.");
+      e.target.value = "";
+      return;
+    }
+
+    setError(""); setSuccess(""); setUploading(true);
     try {
+      // 1. Upload da imagem
       const formData = new FormData();
       formData.append("file", file);
       formData.append("type", "invoice");
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.error || "Erro ao enviar imagem");
-      const imageUrl = uploadData.url;
 
-      const aiRes = await fetch("/api/invoices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, description, category }),
-      });
-      const aiData = await aiRes.json();
+      let uploadRes: Response;
+      try {
+        uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      } catch (networkErr) {
+        throw new Error("Sem conexão com o servidor. Verifique sua internet e tente novamente.");
+      }
+
+      let uploadData;
+      try {
+        uploadData = await uploadRes.json();
+      } catch {
+        throw new Error("Erro inesperado no servidor ao enviar a imagem. Tente novamente.");
+      }
+
+      if (!uploadRes.ok) throw new Error(uploadData.error || "Erro ao enviar imagem para o servidor.");
+      const imageUrl = uploadData.url;
+      if (!imageUrl) throw new Error("O servidor não retornou a URL da imagem. Tente novamente.");
+
+      // 2. Processar com IA
+      let aiRes: Response;
+      try {
+        aiRes = await fetch("/api/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl, description, category }),
+        });
+      } catch (networkErr) {
+        throw new Error("Imagem enviada, mas erro ao conectar com a IA. Tente novamente.");
+      }
+
+      let aiData;
+      try {
+        aiData = await aiRes.json();
+      } catch {
+        throw new Error("Erro inesperado ao processar a nota com IA. Tente novamente.");
+      }
+
       if (!aiRes.ok) {
         if (aiData.error === "NAO_LEU_VALOR") {
           throw new Error("📷 " + aiData.message);
         }
-        throw new Error(aiData.message || aiData.error || "A IA rejeitou a nota fiscal.");
+        throw new Error(aiData.message || aiData.error || "A IA não conseguiu processar a nota. Tire outra foto com melhor qualidade.");
       }
 
       setSuccess(`✅ Nota salva! Valor lido: R$ ${aiData.invoice?.aiValue?.toFixed(2) ?? "–"}`);
       setDescription("");
       fetchInvoices();
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Erro desconhecido. Tente novamente.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -87,7 +130,9 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
   // ── MODO MANUAL: salva direto sem IA ────────────────────────────────────
   const handleManualSave = async () => {
     if (!manualDesc.trim()) { setError("Informe a descrição da nota."); return; }
-    const valor = parseFloat(manualValue.replace(",", "."));
+    // Sanitiza: aceita tanto vírgula quanto ponto, remove R$ e espaços
+    const sanitized = manualValue.replace(/[R$\s]/g, "").replace(",", ".");
+    const valor = parseFloat(sanitized);
     if (!manualValue || isNaN(valor) || valor <= 0) { setError("Informe um valor válido (ex: 125,50)."); return; }
     setError(""); setSavingManual(true);
     try {
@@ -186,11 +231,16 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
                 style={{ width: "100%", padding: "0.85rem", fontSize: "1rem", resize: "none", borderRadius: "10px", border: "2px solid var(--border-color)", boxSizing: "border-box" }} />
             </div>
             <button className="btn btn-primary" style={{ width: "100%", padding: "0.9rem", fontSize: "1rem" }} disabled={uploading}
-              onClick={() => { if (!description.trim()) { setError("Digite a descrição primeiro!"); return; } fileInputRef.current?.click(); }}>
+              onClick={() => {
+                if (!description.trim()) { setError("Digite a descrição primeiro!"); return; }
+                setError(""); setSuccess("");
+                fileInputRef.current?.click();
+              }}>
               {uploading ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} style={{ marginRight: "0.5rem" }} />}
               {uploading ? "A IA está lendo a nota..." : "Tirar Foto da Nota"}
             </button>
-            <input type="file" accept="image/*" capture="environment" ref={fileInputRef} style={{ display: "none" }} onChange={handleFileChange} />
+            {/* capture removido — causava "The string did not match the expected pattern" em alguns browsers/desktop */}
+            <input type="file" accept="image/*" ref={fileInputRef} style={{ display: "none" }} onChange={handleFileChange} />
           </div>
         )}
 
