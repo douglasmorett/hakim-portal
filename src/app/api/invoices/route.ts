@@ -36,181 +36,183 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "imageUrl e description são obrigatórios" }, { status: 400 });
     }
 
-    // Chamar Gemini Vision para extrair dados da nota
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    let aiValue: number | null = null;
-    let aiCategory: string | null = null;
-    let invoiceDate: Date | null = null;
-
-    if (geminiApiKey) {
-      try {
-        const imgResponse = await fetch(imageUrl);
-        const imgBuffer = await imgResponse.arrayBuffer();
-        const base64 = Buffer.from(imgBuffer).toString("base64");
-        const mimeType = imgResponse.headers.get("content-type") || "image/jpeg";
-
-        // Usando gemini-1.5-pro para melhor leitura de notas fiscais
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { inlineData: { mimeType, data: base64 } },
-                  {
-                    text: `Você é um leitor de notas fiscais brasileiras. Analise CUIDADOSAMENTE esta imagem de nota fiscal ou cupom fiscal e extraia as informações abaixo.
-
-INSTRUÇÕES:
-- Procure pelo VALOR TOTAL da nota (geralmente no final, pode aparecer como "TOTAL", "TOTAL R$", "VALOR TOTAL", "TOTAL A PAGAR")
-- O valor pode usar vírgula como separador decimal (ex: 125,50) — converta para ponto (125.50)
-- Se encontrar o valor, retorne como número (ex: 125.50, não "R$ 125,50")
-- Para a data, procure "DATA", "DT.EMIS", "EMISSÃO" — formato final deve ser YYYY-MM-DD
-- Contexto do usuário sobre o que foi comprado: "${description}"
-
-Responda SOMENTE com um JSON puro, sem markdown, sem explicações:
-{"valor": 125.50, "data": "2024-01-15", "categoria": "Outros"}
-
-Categorias disponíveis: Matéria-prima/Ingredientes, Embalagens, Gás/Combustível, Manutenção/Equipamentos, Limpeza/Higiene, Marketing/Publicidade, Aluguel/Condomínio, Água/Energia/Internet, Frete/Logística, Material de Escritório, Salários/Freelancers, Impostos/Taxas, Outros
-
-Se não conseguir ler um campo específico, use null para aquele campo.`
-                  }
-                ]
-              }],
-              generationConfig: { temperature: 0, responseMimeType: "application/json" }
-            }),
-          }
-        );
-
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          console.log("[Invoices/AI] Resposta bruta Gemini:", text);
-
-          // Extrai JSON — suporta markdown ```json ... ```, e JSON puro
-          const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) ||
-                            text.match(/```\s*([\s\S]*?)```/) ||
-                            text.match(/(\{[\s\S]*\})/);
-
-          if (jsonMatch) {
-            const jsonStr = (jsonMatch[1] || jsonMatch[0]).trim();
-            try {
-              const parsed = JSON.parse(jsonStr);
-              console.log("[Invoices/AI] JSON parseado:", parsed);
-
-              // Suporta tanto vírgula (125,50) quanto ponto (125.50)
-              if (parsed.valor !== null && parsed.valor !== undefined) {
-                const valorStr = String(parsed.valor).replace(",", ".");
-                const valorNum = parseFloat(valorStr);
-                if (!isNaN(valorNum) && valorNum > 0) aiValue = valorNum;
-              }
-
-              aiCategory = parsed.categoria || null;
-
-              // Sanitização robusta de data — Prisma exige ISO 8601
-              if (parsed.data && typeof parsed.data === "string") {
-                try {
-                  let year: number, month: number, day: number;
-
-                  // Tenta YYYY-MM-DD primeiro (formato pedido ao Gemini)
-                  const isoMatch = parsed.data.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-                  // Tenta DD/MM/YYYY (formato brasileiro comum)
-                  const brMatch = parsed.data.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-
-                  if (isoMatch) {
-                    year = parseInt(isoMatch[1]);
-                    month = parseInt(isoMatch[2]);
-                    day = parseInt(isoMatch[3]);
-                  } else if (brMatch) {
-                    day = parseInt(brMatch[1]);
-                    month = parseInt(brMatch[2]);
-                    year = parseInt(brMatch[3]);
-                  } else {
-                    // Fallback: tenta new Date() mas com validação extra
-                    const fallback = new Date(parsed.data);
-                    if (!isNaN(fallback.getTime())) {
-                      year = fallback.getFullYear();
-                      month = fallback.getMonth() + 1;
-                      day = fallback.getDate();
-                    } else {
-                      throw new Error("Data não reconhecida");
-                    }
-                  }
-
-                  // Valida ranges
-                  if (year >= 2020 && year <= 2030 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-                    // Constrói Date de forma explícita — evita ambiguidade de timezone
-                    invoiceDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-                  }
-                  console.log("[Invoices/AI] Data parseada:", invoiceDate?.toISOString() ?? "null", "| original:", parsed.data);
-                } catch (dateErr) {
-                  console.warn("[Invoices/AI] Falha ao parsear data:", parsed.data, dateErr);
-                  // invoiceDate fica null — não impede o salvamento
-                }
-              }
-            } catch (parseErr) {
-              console.error("[Invoices/AI] Erro ao parsear JSON:", parseErr, "| texto:", jsonStr);
-            }
-          } else {
-            console.warn("[Invoices/AI] Nenhum JSON encontrado na resposta:", text);
-          }
-        } else {
-          const errText = await geminiRes.text();
-          console.error("[Invoices/AI] Gemini retornou erro HTTP", geminiRes.status, errText);
-        }
-      } catch (aiErr) {
-        console.error("[Invoices/AI] Erro Gemini:", aiErr);
-      }
-    } else {
+    if (!geminiApiKey) {
       console.error("[Invoices/AI] GEMINI_API_KEY não configurada!");
+      return NextResponse.json(
+        { error: "NAO_LEU_VALOR", message: "Erro interno: chave de IA não configurada. Avise o administrador." },
+        { status: 500 }
+      );
     }
 
+    // 1. Baixar a imagem e converter para base64
+    let base64: string;
+    let mimeType: string;
+    try {
+      const imgResponse = await fetch(imageUrl);
+      if (!imgResponse.ok) throw new Error(`HTTP ${imgResponse.status}`);
+      const imgBuffer = await imgResponse.arrayBuffer();
+      base64 = Buffer.from(imgBuffer).toString("base64");
+      mimeType = imgResponse.headers.get("content-type") || "image/jpeg";
+    } catch (imgErr: any) {
+      console.error("[Invoices/AI] Erro ao baixar imagem:", imgErr);
+      return NextResponse.json(
+        { error: "NAO_LEU_VALOR", message: "Erro ao acessar a imagem enviada. Tire outra foto e tente novamente." },
+        { status: 422 }
+      );
+    }
 
-    // ❌ Se não conseguiu ler o valor, não salva — pede nova foto
+    // 2. Chamar Gemini 2.5 Flash para ler a nota
+    let geminiText = "";
+    try {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inlineData: { mimeType, data: base64 } },
+                {
+                  text: `Você é um leitor especialista de notas fiscais e cupons fiscais brasileiros. Analise CUIDADOSAMENTE esta imagem e extraia:
+
+1. VALOR TOTAL — procure "TOTAL", "TOTAL R$", "VALOR TOTAL", "TOTAL A PAGAR", "VL TOTAL". O valor usa vírgula decimal (ex: 125,50). Retorne como número com ponto (125.50).
+2. DATA DE EMISSÃO — procure "DATA", "DT.EMIS", "EMISSÃO", "DT EMISSÃO". Retorne no formato YYYY-MM-DD.
+3. CATEGORIA — classifique baseado no contexto: "${description}"
+
+Categorias: Matéria-prima/Ingredientes, Embalagens, Gás/Combustível, Manutenção/Equipamentos, Limpeza/Higiene, Marketing/Publicidade, Aluguel/Condomínio, Água/Energia/Internet, Frete/Logística, Material de Escritório, Salários/Freelancers, Impostos/Taxas, Outros
+
+IMPORTANTE:
+- Se a imagem estiver ilegível, borrada ou não for uma nota fiscal, retorne: {"valor": null, "data": null, "categoria": null, "erro": "Imagem não é uma nota fiscal legível"}
+- Se conseguir ler o valor mas não a data, retorne a data como null
+- NUNCA invente valores. Só retorne o que realmente está escrito na nota.
+
+Responda APENAS com JSON puro:
+{"valor": 125.50, "data": "2024-01-15", "categoria": "Outros"}`
+                }
+              ]
+            }],
+            generationConfig: { temperature: 0, responseMimeType: "application/json" }
+          }),
+        }
+      );
+
+      if (!geminiRes.ok) {
+        const errBody = await geminiRes.text();
+        console.error("[Invoices/AI] Gemini HTTP", geminiRes.status, errBody);
+        return NextResponse.json(
+          { error: "NAO_LEU_VALOR", message: "Serviço de leitura temporariamente indisponível. Tente novamente em alguns segundos." },
+          { status: 422 }
+        );
+      }
+
+      const geminiData = await geminiRes.json();
+      geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      console.log("[Invoices/AI] Resposta Gemini:", geminiText);
+    } catch (aiErr: any) {
+      console.error("[Invoices/AI] Erro na chamada Gemini:", aiErr);
+      return NextResponse.json(
+        { error: "NAO_LEU_VALOR", message: "Erro ao conectar com o serviço de leitura. Verifique sua conexão e tente novamente." },
+        { status: 422 }
+      );
+    }
+
+    // 3. Parsear o JSON da resposta do Gemini
+    if (!geminiText.trim()) {
+      return NextResponse.json(
+        { error: "NAO_LEU_VALOR", message: "A IA não conseguiu ler nada da imagem. Tire outra foto com melhor iluminação." },
+        { status: 422 }
+      );
+    }
+
+    let parsed: any;
+    try {
+      // Suporta JSON puro ou envolvido em markdown
+      const jsonMatch = geminiText.match(/```json\s*([\s\S]*?)```/) ||
+                        geminiText.match(/```\s*([\s\S]*?)```/) ||
+                        geminiText.match(/(\{[\s\S]*\})/);
+      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]).trim() : geminiText.trim();
+      parsed = JSON.parse(jsonStr);
+      console.log("[Invoices/AI] JSON parseado:", parsed);
+    } catch (parseErr) {
+      console.error("[Invoices/AI] Falha ao parsear JSON:", parseErr, "| texto:", geminiText);
+      return NextResponse.json(
+        { error: "NAO_LEU_VALOR", message: "A IA não conseguiu interpretar a nota. Tire outra foto mais nítida, focando no valor total." },
+        { status: 422 }
+      );
+    }
+
+    // 4. Se o Gemini reportou erro (imagem ilegível)
+    if (parsed.erro) {
+      return NextResponse.json(
+        { error: "NAO_LEU_VALOR", message: `📷 ${parsed.erro}. Tire outra foto com melhor qualidade.` },
+        { status: 422 }
+      );
+    }
+
+    // 5. Extrair e validar o VALOR (obrigatório)
+    let aiValue: number | null = null;
+    if (parsed.valor !== null && parsed.valor !== undefined) {
+      const valorStr = String(parsed.valor).replace(",", ".");
+      const valorNum = parseFloat(valorStr);
+      if (!isNaN(valorNum) && valorNum > 0) aiValue = valorNum;
+    }
+
     if (!aiValue || aiValue <= 0) {
       return NextResponse.json(
         {
           error: "NAO_LEU_VALOR",
-          message: "Não consegui ler o valor da nota. Por favor, tire outra foto com melhor iluminação e foco no valor total.",
+          message: "📷 Não consegui ler o valor total da nota. Tire outra foto com melhor iluminação e foco no valor total.",
         },
         { status: 422 }
       );
     }
 
-    // Tenta salvar — se falhar por causa da data, tenta novamente sem a data
-    let invoice;
-    try {
-      invoice = await (prisma as any).purchaseInvoice.create({
-        data: {
-          uploadedBy: session.user.email,
-          description,
-          category: category || "BUSINESS",
-          imageUrl,
-          aiValue,
-          aiCategory,
-          invoiceDate,
-          source: "ai",
-          status: "APPROVED",
-        },
-      });
-    } catch (prismaErr: any) {
-      console.error("[Invoices/POST] Prisma falhou com invoiceDate, tentando sem data:", prismaErr.message);
-      // Fallback: salva sem a data problemática
-      invoice = await (prisma as any).purchaseInvoice.create({
-        data: {
-          uploadedBy: session.user.email,
-          description,
-          category: category || "BUSINESS",
-          imageUrl,
-          aiValue,
-          aiCategory,
-          invoiceDate: null,
-          source: "ai",
-          status: "APPROVED",
-        },
-      });
+    // 6. Extrair categoria
+    const aiCategory: string | null = parsed.categoria || null;
+
+    // 7. Extrair e sanitizar data (opcional — não bloqueia o salvamento)
+    let invoiceDate: Date | null = null;
+    if (parsed.data && typeof parsed.data === "string") {
+      try {
+        let year: number | undefined, month: number | undefined, day: number | undefined;
+
+        const isoMatch = parsed.data.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        const brMatch = parsed.data.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+
+        if (isoMatch) {
+          year = parseInt(isoMatch[1]);
+          month = parseInt(isoMatch[2]);
+          day = parseInt(isoMatch[3]);
+        } else if (brMatch) {
+          day = parseInt(brMatch[1]);
+          month = parseInt(brMatch[2]);
+          year = parseInt(brMatch[3]);
+        }
+
+        if (year && month && day && year >= 2020 && year <= 2030 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          invoiceDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        }
+      } catch {
+        // Data fica null — não impede o salvamento
+      }
     }
+
+    // 8. Salvar no banco
+    const invoice = await (prisma as any).purchaseInvoice.create({
+      data: {
+        uploadedBy: session.user.email,
+        description,
+        category: category || "BUSINESS",
+        imageUrl,
+        aiValue,
+        aiCategory,
+        invoiceDate,
+        source: "ai",
+        status: "APPROVED",
+      },
+    });
 
     return NextResponse.json({ invoice });
   } catch (err: any) {
