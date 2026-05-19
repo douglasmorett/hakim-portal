@@ -35,22 +35,30 @@ export default async function MeusPedidosPage() {
   // Só FRANCHISEE e ADMIN podem acessar
   if (role !== "FRANCHISEE" && role !== "ADMIN") redirect("/admin");
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user?.email || "" },
-    select: { id: true, name: true, role: true },
-  });
-  if (!user) redirect("/login");
+  let user;
+  let orders: any[] = [];
 
-  // FRANCHISEE vê só seus próprios pedidos. ADMIN vê todos.
-  const orders = await prisma.order.findMany({
-    where: user.role === "FRANCHISEE" ? { userId: user.id } : {},
-    include: {
-      items: { include: { product: true } },
-      user: { select: { name: true, storeName: true, city: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  try {
+    user = await prisma.user.findUnique({
+      where: { email: session.user?.email || "" },
+      select: { id: true, name: true, role: true },
+    });
+    if (!user) redirect("/login");
+
+    // FRANCHISEE vê só seus próprios pedidos. ADMIN vê todos.
+    orders = await prisma.order.findMany({
+      where: user.role === "FRANCHISEE" ? { userId: user.id } : {},
+      include: {
+        items: { include: { product: true } },
+        user: { select: { name: true, storeName: true, city: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  } catch (err) {
+    console.error("[MeusPedidos] Erro ao buscar dados:", err);
+    orders = [];
+  }
 
   const total = orders.reduce((s, o) => s + o.totalAmount, 0);
   const pagos = orders.filter(o => o.status === "PAID" || o.status === "DELIVERED" || o.status === "CONFIRMED").length;

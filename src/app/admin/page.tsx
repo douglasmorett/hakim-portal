@@ -34,33 +34,52 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const month = parseInt(resolvedParams?.month || String(now.getMonth() + 1));
   const year = parseInt(resolvedParams?.year || String(now.getFullYear()));
 
+  let totalFranchisees = 0;
+  let totalOrders = 0;
+  let recentOrders: any[] = [];
+  let pendingPayables = 0;
+  let overduePayables = 0;
+  let totalPayablesToday = 0;
+  let asaasData = null;
 
-
-  const [totalFranchisees, totalOrders, recentOrders, pendingPayables, overduePayables, todayPayables] = await Promise.all([
-    prisma.user.count({ where: { role: "FRANCHISEE" } }),
-    prisma.order.count(),
-    prisma.order.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: { user: { select: { name: true, city: true } } }
-    }),
-    prisma.payable.count({ where: { status: "PENDING", dueDate: { gte: new Date() } } }),
-    prisma.payable.count({ where: { status: "PENDING", dueDate: { lt: new Date(new Date().setHours(0,0,0,0)) } } }),
-    prisma.payable.findMany({
-      where: {
-        status: "PENDING",
-        dueDate: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          lte: new Date(new Date().setHours(23, 59, 59, 999))
+  try {
+    const [_totalFranchisees, _totalOrders, _recentOrders, _pendingPayables, _overduePayables, _todayPayables] = await Promise.all([
+      prisma.user.count({ where: { role: "FRANCHISEE" } }),
+      prisma.order.count(),
+      prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { name: true, city: true } } }
+      }),
+      prisma.payable.count({ where: { status: "PENDING", dueDate: { gte: new Date() } } }),
+      prisma.payable.count({ where: { status: "PENDING", dueDate: { lt: new Date(new Date().setHours(0,0,0,0)) } } }),
+      prisma.payable.findMany({
+        where: {
+          status: "PENDING",
+          dueDate: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            lte: new Date(new Date().setHours(23, 59, 59, 999))
+          }
         }
-      }
-    })
-  ]);
+      })
+    ]);
 
-  // Dados do Asaas (cobranças de clientes)
-  const asaasData = await getAsaasDashboardData(month, year);
+    totalFranchisees = _totalFranchisees;
+    totalOrders = _totalOrders;
+    recentOrders = _recentOrders;
+    pendingPayables = _pendingPayables;
+    overduePayables = _overduePayables;
+    totalPayablesToday = _todayPayables.reduce((acc, p) => acc + p.value, 0);
+  } catch (err) {
+    console.error("[Dashboard] Erro ao buscar dados do banco:", err);
+  }
 
-  const totalPayablesToday = todayPayables.reduce((acc, p) => acc + p.value, 0);
+  try {
+    // Dados do Asaas (cobranças de clientes)
+    asaasData = await getAsaasDashboardData(month, year);
+  } catch (err) {
+    console.error("[Dashboard] Erro ao buscar dados do Asaas:", err);
+  }
 
   return (
     <DashboardClient
