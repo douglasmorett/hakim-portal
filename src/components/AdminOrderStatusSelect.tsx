@@ -2,9 +2,12 @@
 import { cancelOrder } from "@/app/actions/cancelOrder";
 import { updateOrderStatus } from "@/app/actions/order";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminOrderStatusSelect({ orderId, currentStatus }: { orderId: string, currentStatus: string }) {
+  const [status, setStatus] = useState(currentStatus);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
@@ -12,36 +15,43 @@ export default function AdminOrderStatusSelect({ orderId, currentStatus }: { ord
     if (newStatus === "CANCELADO") {
       const adminPassword = window.prompt("Para cancelar este pedido e remover a cobrança do Asaas, digite sua SENHA de acesso:");
       if (!adminPassword) {
-        e.target.value = currentStatus;
+        // Usuário cancelou o prompt — reverte visualmente
+        setStatus(status);
         return;
       }
 
       const reason = window.prompt("Por favor, informe o MOTIVO do cancelamento:");
       if (!reason) {
         alert("O motivo é obrigatório para cancelar.");
-        e.target.value = currentStatus;
+        setStatus(status);
         return;
       }
       
       setLoading(true);
       try {
         await cancelOrder(orderId, adminPassword, reason);
+        setStatus("CANCELADO");
         alert("Pedido cancelado com sucesso!");
+        router.refresh();
       } catch (err: any) {
         alert(err.message || "Erro ao cancelar pedido.");
-        e.target.value = currentStatus;
+        setStatus(status); // reverte em caso de erro
       } finally {
         setLoading(false);
       }
       return;
     }
 
+    // Atualiza visualmente antes da chamada (optimistic)
+    const previousStatus = status;
+    setStatus(newStatus);
     setLoading(true);
     try {
       await updateOrderStatus(orderId, newStatus);
+      router.refresh();
     } catch (err) {
       alert("Erro ao atualizar status");
-      e.target.value = currentStatus;
+      setStatus(previousStatus); // reverte em caso de erro
     } finally {
       setLoading(false);
     }
@@ -49,9 +59,9 @@ export default function AdminOrderStatusSelect({ orderId, currentStatus }: { ord
 
   return (
     <select 
-      value={currentStatus} 
+      value={status} 
       onChange={handleStatusChange} 
-      disabled={loading || currentStatus === "PAID"}
+      disabled={loading || status === "PAID"}
       style={{
         padding: "0.5rem",
         borderRadius: "var(--radius-sm)",
@@ -60,7 +70,8 @@ export default function AdminOrderStatusSelect({ orderId, currentStatus }: { ord
         color: "var(--text-main)",
         fontWeight: "bold",
         fontSize: "0.85rem",
-        cursor: "pointer"
+        cursor: loading ? "wait" : "pointer",
+        opacity: loading ? 0.6 : 1,
       }}
     >
       <option value="PENDING_PAYMENT">Aguardando Pagamento</option>
