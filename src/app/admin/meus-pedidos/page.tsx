@@ -183,7 +183,7 @@ export default async function MeusPedidosPage() {
 
                   {/* Itens */}
                   <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {order.items.map(item => (
+                    {order.items.map((item: any) => (
                       <span key={item.id} style={{
                         background: "var(--bg-color)", border: "1px solid var(--border-color)",
                         padding: "3px 10px", borderRadius: 8, fontSize: ".78rem",
