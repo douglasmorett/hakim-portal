@@ -3,7 +3,13 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
+  let session;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (err) {
+    console.error("[Home] Erro ao obter sessão:", err);
+    redirect("/login");
+  }
 
   if (!session) {
     redirect("/login");
@@ -24,4 +30,3 @@ export default async function Home() {
 
   return null;
 }
-

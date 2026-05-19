@@ -33,7 +33,22 @@ export default function LoginPage() {
       setError("Credenciais inválidas. Verifique seu e-mail e senha.");
       setLoading(false);
     } else {
-      router.push("/");
+      // Buscar sessão para descobrir o role e redirecionar direto
+      try {
+        const sessionRes = await fetch("/api/auth/session");
+        const session = await sessionRes.json();
+        const role = session?.user?.role;
+
+        if (role === "ADMIN" || role === "STAFF") {
+          router.push("/admin");
+        } else if (role === "FRANCHISEE") {
+          router.push("/admin/meus-pedidos");
+        } else {
+          router.push("/");
+        }
+      } catch {
+        router.push("/");
+      }
       router.refresh();
     }
   };

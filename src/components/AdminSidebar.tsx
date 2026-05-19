@@ -7,17 +7,27 @@ import { prisma } from "@/lib/prisma";
 import MobileMenuToggle from "./MobileMenuToggle";
 
 export default async function AdminSidebar() {
-  const session = await getServerSession(authOptions);
+  let session;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (err) {
+    console.error("[AdminSidebar] Erro ao obter sessão:", err);
+    return null;
+  }
   const role = (session?.user as any)?.role || "";
 
   // Busca permissões SEMPRE do banco de dados (mais confiável que o JWT)
   let perms = "";
   if (session?.user?.email && role === "STAFF") {
-    const dbUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { permissions: true }
-    });
-    perms = dbUser?.permissions || "";
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { permissions: true }
+      });
+      perms = dbUser?.permissions || "";
+    } catch (err) {
+      console.error("[AdminSidebar] Erro ao buscar permissões:", err);
+    }
   }
 
   const can = (key: string) => hasPermission(perms, key, role);

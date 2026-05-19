@@ -4,11 +4,17 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
+  let session;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (err) {
+    console.error("[AdminLayout] Erro ao obter sessão:", err);
+    redirect("/login");
+  }
   const role = (session?.user as any)?.role;
 
   if (!session || (role !== "ADMIN" && role !== "STAFF" && role !== "FRANCHISEE")) {
-    redirect("/");
+    redirect("/login");
   }
 
   return (
