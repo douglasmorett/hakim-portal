@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25_000);
 
-    billRes = await fetch(`${ASAAS_BASE}/bill-payment`, {
+    billRes = await fetch(`${ASAAS_BASE}/bill`, {
       method: "POST",
       headers,
       body: JSON.stringify({

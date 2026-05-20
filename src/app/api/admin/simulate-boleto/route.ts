@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20_000);
 
-    simRes = await fetch(`${ASAAS_BASE}/bill-payment/simulate`, {
+    simRes = await fetch(`${ASAAS_BASE}/bill/simulate`, {
       method: "POST",
       headers: {
         "access_token": asaasKey,
