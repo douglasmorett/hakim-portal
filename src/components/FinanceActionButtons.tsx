@@ -166,6 +166,7 @@ export function PayViaAsaasButton({ id, barcode, supplierName, value }: {
       const data = await res.json().catch(() => null);
       if (!res.ok) { setError(data?.error || `Erro ${res.status} ao consultar boleto.`); setState("idle"); return; }
       if (!data?.boleto) { setError("Resposta inválida do servidor."); setState("idle"); return; }
+      if (data._debug) console.log("[DEBUG Asaas]", data._debug);
       setBoletoInfo(data.boleto);
       setState("confirm");
     } catch (err: any) {

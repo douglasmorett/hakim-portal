@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
   // Retorna dados reais do boleto para confirmação na tela
   return NextResponse.json({
     success: true,
+    _debug: { keys: Object.keys(simData), raw: JSON.stringify(simData).slice(0, 400) },
     boleto: {
       beneficiary,
       cnpj,
