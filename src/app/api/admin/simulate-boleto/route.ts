@@ -71,11 +71,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (!simRes.ok || !simData) {
-    const msg = simData?.errors?.[0]?.description
-      || simData?.error
-      || "Boleto não encontrado ou inválido.";
+    const msg = simRes.status === 401
+      ? "Chave de API do Asaas inválida ou expirada. Verifique ASAAS_API_KEY."
+      : simData?.errors?.[0]?.description
+        || simData?.error
+        || "Boleto não encontrado ou inválido.";
     console.error(`[simulate-boleto] ❌ Asaas retornou ${simRes.status}:`, rawText.slice(0, 500));
-    return NextResponse.json({ error: msg }, { status: 400 });
+    return NextResponse.json({ error: msg }, { status: simRes.status === 401 ? 503 : 400 });
   }
 
   console.log(`[simulate-boleto] ✅ Boleto consultado — beneficiário: ${simData.company?.name || simData.beneficiaryName || "?"}, valor: R$${simData.totalValue ?? simData.value ?? 0}`);
