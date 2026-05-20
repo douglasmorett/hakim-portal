@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 interface BarcodeScannerProps {
@@ -11,6 +11,8 @@ interface BarcodeScannerProps {
 export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const [errorMsg, setErrorMsg] = useState("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const onScanRef = useRef(onScan);
+  onScanRef.current = onScan;
 
   useEffect(() => {
     const scanner = new Html5Qrcode("reader", { 
@@ -31,14 +33,11 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
         qrbox: { width: 300, height: 100 }
       },
       (decodedText) => {
-        // Sucesso!
         scanner.stop().then(() => {
-          onScan(decodedText);
+          onScanRef.current(decodedText);
         }).catch(console.error);
       },
-      (error) => {
-        // Erros de leitura ignorados
-      }
+      () => {}
     ).catch((err) => {
       console.error(err);
       setErrorMsg("Permissão da câmera negada ou câmera não encontrada.");
@@ -49,7 +48,7 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
         scanner.stop().catch(console.error);
       }
     };
-  }, [onScan]);
+  }, []);
 
   return (
     <div style={{

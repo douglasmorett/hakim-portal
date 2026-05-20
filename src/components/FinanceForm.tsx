@@ -405,6 +405,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
         <input 
           type="file" 
           accept="image/*"
+          capture="environment"
           ref={fileInputRef} 
           style={{ display: "none" }} 
           onChange={handleAiScan}
