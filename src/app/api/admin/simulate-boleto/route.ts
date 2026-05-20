@@ -82,21 +82,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: simRes.status === 401 ? 503 : 400 });
   }
 
-  console.log(`[simulate-boleto] ✅ Boleto consultado — beneficiário: ${simData.company?.name || simData.beneficiaryName || "?"}, valor: R$${simData.totalValue ?? simData.value ?? 0}`);
+  // Log da resposta completa para diagnóstico
+  console.log(`[simulate-boleto] ✅ Resposta Asaas:`, JSON.stringify(simData).slice(0, 800));
+
+  // Mapeia os campos — o /bill/simulate pode usar nomes diferentes
+  const beneficiary = simData.companyName
+    || simData.company?.name
+    || simData.beneficiaryName
+    || simData.name
+    || "Não identificado";
+
+  const cnpj = simData.companyCnpj
+    || simData.company?.cpfCnpj
+    || simData.cpfCnpj
+    || "";
+
+  const value = simData.value ?? simData.totalValue ?? 0;
+  const discount = simData.discount ?? 0;
+  const fine = simData.fine ?? 0;
+  const interest = simData.interest ?? 0;
+  const totalValue = simData.totalValue ?? simData.value ?? 0;
+  const dueDate = simData.dueDate
+    || simData.minimumScheduleDate
+    || simData.expirationDate
+    || "";
 
   // Retorna dados reais do boleto para confirmação na tela
   return NextResponse.json({
     success: true,
     boleto: {
-      beneficiary:  simData.company?.name || simData.beneficiaryName || "Não identificado",
-      cnpj:         simData.company?.cpfCnpj || "",
-      value:        simData.value ?? simData.totalValue ?? 0,
-      discount:     simData.discount ?? 0,
-      fine:         simData.fine ?? 0,
-      interest:     simData.interest ?? 0,
-      totalValue:   simData.totalValue ?? simData.value ?? 0,
-      dueDate:      simData.dueDate || "",
-      barcode:      clean,
+      beneficiary,
+      cnpj,
+      value,
+      discount,
+      fine,
+      interest,
+      totalValue,
+      dueDate,
+      barcode: clean,
     },
   });
 }
