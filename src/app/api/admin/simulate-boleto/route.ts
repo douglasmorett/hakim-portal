@@ -30,7 +30,6 @@ export async function POST(req: NextRequest) {
 
   // Consulta o boleto no Asaas (simulação/validação) com timeout de 20s
   let simRes: Response;
-  let simData: any;
 
   try {
     const controller = new AbortController();
@@ -48,22 +47,34 @@ export async function POST(req: NextRequest) {
     });
 
     clearTimeout(timeout);
-    simData = await simRes.json();
   } catch (err: any) {
     const isTimeout = err?.name === "AbortError";
     console.error(`[simulate-boleto] ❌ ${isTimeout ? "TIMEOUT" : "NETWORK ERROR"} ao consultar Asaas:`, err?.message || err);
     return NextResponse.json({
       error: isTimeout
         ? "Timeout — o Asaas não respondeu a tempo. Tente novamente em alguns segundos."
-        : `Erro de conexão com Asaas: ${err?.message || "Falha na rede"}`,
+        : `Erro de rede com Asaas: ${err?.message || "Falha na conexão"}`,
     }, { status: 502 });
   }
 
-  if (!simRes.ok) {
+  // Lê a resposta como texto e tenta parsear como JSON
+  const rawText = await simRes.text();
+  let simData: any;
+
+  try {
+    simData = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    console.error(`[simulate-boleto] ❌ Resposta não-JSON do Asaas (status ${simRes.status}):`, rawText.slice(0, 500));
+    return NextResponse.json({
+      error: `Asaas retornou resposta inválida (status ${simRes.status}). Tente novamente.`,
+    }, { status: 502 });
+  }
+
+  if (!simRes.ok || !simData) {
     const msg = simData?.errors?.[0]?.description
       || simData?.error
       || "Boleto não encontrado ou inválido.";
-    console.error(`[simulate-boleto] ❌ Asaas retornou ${simRes.status}:`, JSON.stringify(simData));
+    console.error(`[simulate-boleto] ❌ Asaas retornou ${simRes.status}:`, rawText.slice(0, 500));
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 

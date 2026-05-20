@@ -62,7 +62,6 @@ export async function POST(req: NextRequest) {
 
   // 2. Cria o pagamento de conta no Asaas (com timeout de 25s)
   let billRes: Response;
-  let billData: any;
 
   try {
     const controller = new AbortController();
@@ -80,19 +79,31 @@ export async function POST(req: NextRequest) {
     });
 
     clearTimeout(timeout);
-    billData = await billRes.json();
   } catch (err: any) {
     const isTimeout = err?.name === "AbortError";
     console.error(`[pay-via-asaas] ❌ ${isTimeout ? "TIMEOUT" : "NETWORK ERROR"}:`, err?.message || err);
     return NextResponse.json({
       error: isTimeout
         ? "Timeout — o Asaas não respondeu a tempo. Tente novamente."
-        : `Erro de conexão com Asaas: ${err?.message || "Falha na rede"}`,
+        : `Erro de rede com Asaas: ${err?.message || "Falha na conexão"}`,
     }, { status: 502 });
   }
 
-  if (!billRes.ok) {
-    console.error("[pay-via-asaas] Erro Asaas:", JSON.stringify(billData));
+  // Lê a resposta como texto e tenta parsear como JSON
+  const rawText = await billRes.text();
+  let billData: any;
+
+  try {
+    billData = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    console.error(`[pay-via-asaas] ❌ Resposta não-JSON do Asaas (status ${billRes.status}):`, rawText.slice(0, 500));
+    return NextResponse.json({
+      error: `Asaas retornou resposta inválida (status ${billRes.status}). Tente novamente.`,
+    }, { status: 502 });
+  }
+
+  if (!billRes.ok || !billData) {
+    console.error("[pay-via-asaas] Erro Asaas:", rawText.slice(0, 500));
     const msg = billData?.errors?.[0]?.description
       || billData?.error
       || billData?.message
