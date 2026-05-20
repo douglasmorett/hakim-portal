@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FinanceForm from "@/components/FinanceForm";
 import { MarkPaidButton, DeletePayableButton, BarcodeDisplay, PayViaAsaasButton, PayViaPixButton } from "@/components/FinanceActionButtons";
 
@@ -27,6 +27,15 @@ interface Props {
 
 export default function FinanceClient({ businessPayables, personalPayables, canSeePersonal, isAdmin }: Props) {
   const [mode, setMode] = useState<"BUSINESS" | "PERSONAL">("BUSINESS");
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const payables = mode === "BUSINESS" ? businessPayables : personalPayables;
 
@@ -52,6 +61,36 @@ export default function FinanceClient({ businessPayables, personalPayables, canS
       <h2 className="font-bold text-lg mb-4" style={{ color }}>{title} ({list.length})</h2>
       {list.length === 0 ? (
         <p className="text-muted text-sm">Nenhuma conta encontrada nesta categoria.</p>
+      ) : isMobile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {list.map(item => (
+            <div key={item.id} style={{
+              border: '1px solid var(--border-color)',
+              borderRadius: '12px',
+              padding: '12px',
+              background: 'var(--card-bg, white)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <strong style={{ fontSize: '0.95rem', lineHeight: 1.3 }}>{item.supplierName}</strong>
+                <span style={{ color: 'var(--danger)', fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', marginLeft: '8px' }}>{formatCurrency(item.value)}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                <span>📅 {formatDate(item.dueDate)}</span>
+                {item.barcode && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '150px' }}>🔢 {item.barcode}</span>}
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {isAdmin && item.paymentType === "CREDIT_CARD" && (
+                  <PayViaPixButton id={item.id} pixKey={item.pixKey} pixKeyName={item.pixKeyName} supplierName={item.supplierName} value={item.value} />
+                )}
+                {isAdmin && item.paymentType !== "CREDIT_CARD" && (
+                  <PayViaAsaasButton id={item.id} barcode={item.barcode} supplierName={item.supplierName} value={item.value} />
+                )}
+                <MarkPaidButton id={item.id} />
+                <DeletePayableButton id={item.id} />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>

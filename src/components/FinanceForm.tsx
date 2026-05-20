@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPayable } from "@/app/actions/finance";
 import BarcodeScanner from "./BarcodeScanner";
 import { Camera, ScanLine, Loader2, FileText, PenLine, ChevronDown, ChevronUp } from "lucide-react";
@@ -22,6 +22,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
   });
   const [aiLoading, setAiLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const clearMessages = () => {
     setErrorMsg(null);
@@ -66,7 +67,8 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
         dueDate: data.dueDate || prev.dueDate,
         value: data.value ? data.value.toString() : prev.value
       }));
-      setSuccessMsg("✅ IA preencheu os dados encontrados! Confira e complete se necessário.");
+      setSuccessMsg("✅ IA preencheu os dados! Confira abaixo e clique em 'Registrar Conta'.");
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
     } catch (err: any) {
       // Se o erro indica problema na leitura da imagem
       const msg = err.message?.toLowerCase() || "";
@@ -265,7 +267,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
 
         {/* Formulário manual ou preenchido pela IA */}
         {inputMode !== null && (
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <form ref={formRef} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {/* Header do modo selecionado */}
             <div style={{ 
               display: "flex", 
@@ -291,7 +293,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1rem" }}>
               <div>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", fontWeight: "bold" }}>Nome do Fornecedor *</label>
                 <input 
@@ -317,7 +319,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1rem" }}>
               <div>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", fontWeight: "bold" }}>Data de Recebimento</label>
                 <input 
