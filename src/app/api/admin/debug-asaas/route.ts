@@ -1,21 +1,18 @@
 /**
- * TEMPORARY DEBUG ENDPOINT — retorna a resposta bruta do Asaas /bill/simulate
- * REMOVER APÓS DIAGNÓSTICO
+ * TEMPORARY DEBUG — resposta bruta do Asaas /bill/simulate
+ * Protegido por secret no body. REMOVER APÓS DIAGNÓSTICO.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any)?.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { barcode, secret } = await req.json();
+  if (secret !== "hakim-debug-2026") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const asaasKey = process.env.ASAAS_API_KEY;
-  if (!asaasKey) return NextResponse.json({ error: "ASAAS_API_KEY não configurada" }, { status: 503 });
+  if (!asaasKey) return NextResponse.json({ error: "no key", keyLen: 0 }, { status: 503 });
 
-  const { barcode } = await req.json();
   const clean = (barcode || "").replace(/\D/g, "");
 
   const res = await fetch("https://api.asaas.com/v3/bill/simulate", {
@@ -31,9 +28,9 @@ export async function POST(req: NextRequest) {
   const rawText = await res.text();
 
   return NextResponse.json({
-    status: res.status,
-    rawText,
-    parsed: (() => { try { return JSON.parse(rawText); } catch { return null; } })(),
-    keyPrefix: asaasKey.slice(0, 12) + "...",
+    asaasStatus: res.status,
+    rawResponse: rawText,
+    keyPrefix: asaasKey.slice(0, 15) + "...",
+    keyLength: asaasKey.length,
   });
 }
