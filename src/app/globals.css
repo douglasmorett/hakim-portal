@@ -408,3 +408,171 @@ button {
   .icebox-hero-grid { grid-template-columns: 1fr !important; }
   .icebox-features  { grid-template-columns: 1fr 1fr !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ORDER CARDS — Admin Order Card responsive layout
+═══════════════════════════════════════════════════════════ */
+.order-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.order-card-details-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.order-card-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.order-card-expanded-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+/* Desktop: show top-right chevron, hide bottom one */
+.order-card-chevron-desktop { display: flex; align-items: center; }
+.order-card-chevron-mobile  { display: none; }
+
+@media (max-width: 768px) {
+  /* Hide desktop chevron, show mobile one next to status */
+  .order-card-chevron-desktop { display: none; }
+  .order-card-chevron-mobile  { display: flex; align-items: center; }
+
+  .order-card-details-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .order-card-expanded-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .order-card-status-row select {
+    width: 100%;
+    font-size: 0.82rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MEUS PEDIDOS — Franchisee order list responsive
+═══════════════════════════════════════════════════════════ */
+.meus-pedidos-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.meus-pedidos-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.meus-pedidos-order-card {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.meus-pedidos-order-right {
+  text-align: right;
+  min-width: 120px;
+}
+
+@media (max-width: 768px) {
+  .meus-pedidos-header {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .meus-pedidos-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .meus-pedidos-order-card {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+
+  .meus-pedidos-order-right {
+    text-align: left;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+  }
+}
+
+@media (max-width: 400px) {
+  .meus-pedidos-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CUSTOMER ORDERS LIST — responsive header + expanded grid
+═══════════════════════════════════════════════════════════ */
+.customer-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.customer-order-expanded-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .customer-order-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .customer-order-header > div:last-child {
+    align-self: stretch;
+    justify-content: space-between;
+  }
+
+  .customer-order-expanded-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN TOPBAR — responsive adjustments
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  #admin-topbar {
+    padding: 8px 12px !important;
+  }
+}

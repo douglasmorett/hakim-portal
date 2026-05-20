@@ -56,38 +56,39 @@ export default function CustomerOrdersList({ orders, isAdmin = false }: { orders
         return (
           <div key={order.id} className="card" style={{ padding: "1rem", cursor: "pointer" }}>
             {/* HEADER */}
-            <div onClick={() => setExpandedId(expanded ? null : order.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                <div>
-                  <span className="font-bold" style={{ fontSize: "1rem" }}>#{order.id.slice(-6).toUpperCase()}</span>
-                  <p className="text-muted" style={{ fontSize: "0.75rem" }}>
-                    <Clock size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {new Date(order.createdAt).toLocaleString('pt-BR')}
+            <div onClick={() => setExpandedId(expanded ? null : order.id)} className="customer-order-header">
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", minWidth: 0, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0 }}>
+                  <span className="font-bold" style={{ fontSize: "0.95rem" }}>#{order.id.slice(-6).toUpperCase()}</span>
+                  <p className="text-muted" style={{ fontSize: "0.7rem", margin: 0 }}>
+                    <Clock size={11} style={{ display: "inline", verticalAlign: "middle" }} /> {new Date(order.createdAt).toLocaleString('pt-BR')}
                   </p>
                 </div>
 
                 {isAdmin && order.franchisee && (
-                  <div style={{ padding: "0.3rem 0.6rem", backgroundColor: "var(--primary-light)", borderRadius: "6px", fontSize: "0.75rem", fontWeight: "bold" }}>
+                  <div style={{ padding: "0.2rem 0.5rem", backgroundColor: "var(--primary-light)", borderRadius: "6px", fontSize: "0.7rem", fontWeight: "bold", whiteSpace: "nowrap" }}>
                     {order.franchisee.storeName || order.franchisee.name}
                   </div>
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                <span className="font-extrabold" style={{ color: "var(--primary)" }}>R$ {order.totalAmount.toFixed(2)}</span>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <span className="font-extrabold" style={{ color: "var(--primary)", fontSize: "0.9rem" }}>R$ {order.totalAmount.toFixed(2)}</span>
                 <span style={{ 
-                  padding: "0.3rem 0.8rem", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "bold",
-                  backgroundColor: `${statusInfo.color}15`, color: statusInfo.color, border: `1px solid ${statusInfo.color}30`
+                  padding: "0.2rem 0.6rem", borderRadius: "20px", fontSize: "0.7rem", fontWeight: "bold",
+                  backgroundColor: `${statusInfo.color}15`, color: statusInfo.color, border: `1px solid ${statusInfo.color}30`,
+                  whiteSpace: "nowrap",
                 }}>
                   {statusInfo.label}
                 </span>
-                {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </div>
             </div>
 
             {/* EXPANDED */}
             {expanded && (
               <div style={{ marginTop: "1rem", borderTop: "1px solid var(--border-color)", paddingTop: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+              <div className="customer-order-expanded-grid">
                   <div>
                     <p className="text-muted" style={{ fontSize: "0.75rem" }}>Cliente</p>
                     <p className="font-semibold" style={{ display: "flex", alignItems: "center", gap: "4px" }}>

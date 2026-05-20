@@ -58,63 +58,74 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
   return (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", transition: "all 0.3s ease" }}>
       {/* HEADER COMPACTO SEMPRE VISÍVEL */}
-      <div 
+      <div
         onClick={() => setExpanded(!expanded)}
-        style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr 2fr auto", gap: "1rem", alignItems: "center", cursor: "pointer", userSelect: "none" }}
+        className="order-card-header"
+        style={{ cursor: "pointer", userSelect: "none" }}
       >
-        <div>
-          <h3 className="font-bold">
-            #{order.id.slice(-6).toUpperCase()}
-            {order.isEmergency && <span style={{ marginLeft: "0.5rem", backgroundColor: "var(--danger)", color: "white", padding: "0.1rem 0.4rem", borderRadius: "4px", fontSize: "0.65rem", verticalAlign: "middle" }}>EMERGÊNCIA</span>}
-          </h3>
-          <p className="text-muted" style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}>
-            <Calendar size={12} style={{ display: "inline", marginRight: "4px" }} />
-            {new Date(order.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-          </p>
+        {/* Linha 1: ID + Data + Chevron */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <h3 className="font-bold" style={{ fontSize: "0.95rem", margin: 0 }}>
+              #{order.id.slice(-6).toUpperCase()}
+            </h3>
+            {order.isEmergency && <span style={{ backgroundColor: "var(--danger)", color: "white", padding: "0.15rem 0.5rem", borderRadius: "4px", fontSize: "0.65rem", fontWeight: 700 }}>EMERGÊNCIA</span>}
+            <span className="text-muted" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+              <Calendar size={11} style={{ display: "inline", marginRight: "3px", verticalAlign: "middle" }} />
+              {new Date(order.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          <div className="order-card-chevron-desktop">
+            {expanded ? <ChevronUp size={20} color="var(--text-muted)" /> : <ChevronDown size={20} color="var(--text-muted)" />}
+          </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <MapPin size={16} color="var(--primary)" />
-            <div>
-              <p className="font-bold" style={{ fontSize: "0.9rem" }}>{order.user.city || "Sem Rota"}</p>
-              <p className="text-muted" style={{ fontSize: "0.8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "150px" }}>{order.user.name}</p>
+        {/* Linha 2: Rota + Cliente + Valor + Status */}
+        <div className="order-card-details-row">
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
+            <MapPin size={14} color="var(--primary)" style={{ flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <p className="font-bold" style={{ fontSize: "0.85rem", margin: 0 }}>{order.user.city || "Sem Rota"}</p>
+              <p className="text-muted" style={{ fontSize: "0.75rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.user.name}</p>
             </div>
           </div>
-          {deliveryInfo && deliveryInfo.deliveryStr !== "A definir" && (
-             <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "1.5rem" }}>
-               <Truck size={12} />
-               <span>Previsto: {deliveryInfo.deliveryStr}</span>
-             </div>
-          )}
-        </div>
 
-        <div>
-          <p className="font-extrabold" style={{ color: "var(--text-main)" }}>R$ {order.totalAmount.toFixed(2)}</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.8rem", fontWeight: "bold", color: isPaid ? "var(--success)" : "var(--warning)" }}>
-            <CreditCard size={14} />
-            {isPaid ? "PAGO / ENCAMINHADO" : "EM ABERTO"}
+          {deliveryInfo && deliveryInfo.deliveryStr !== "A definir" && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.7rem", color: "var(--text-muted)" }}>
+              <Truck size={12} />
+              <span>Prev: {deliveryInfo.deliveryStr}</span>
+            </div>
+          )}
+
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <p className="font-extrabold" style={{ color: "var(--text-main)", margin: 0, fontSize: "0.95rem" }}>R$ {order.totalAmount.toFixed(2)}</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.7rem", fontWeight: "bold", color: isPaid ? "var(--success)" : "var(--warning)", justifyContent: "flex-end" }}>
+              <CreditCard size={12} />
+              {isPaid ? "PAGO" : "EM ABERTO"}
+            </div>
           </div>
         </div>
 
-        <div onClick={e => e.stopPropagation()}>
-          {order.isEmergency && order.emergencyStatus === "PENDING_APPROVAL" ? (
-            <span style={{ fontWeight: "bold", color: "var(--warning)", fontSize: "0.85rem" }}>Aguardando Aprovação</span>
-          ) : (
-            <AdminOrderStatusSelect orderId={order.id} currentStatus={order.status} />
-          )}
-        </div>
-
-        <div>
-          {expanded ? <ChevronUp size={20} color="var(--text-muted)" /> : <ChevronDown size={20} color="var(--text-muted)" />}
+        {/* Linha 3: Status select */}
+        <div className="order-card-status-row">
+          <div onClick={e => e.stopPropagation()} style={{ flex: 1, minWidth: 0 }}>
+            {order.isEmergency && order.emergencyStatus === "PENDING_APPROVAL" ? (
+              <span style={{ fontWeight: "bold", color: "var(--warning)", fontSize: "0.8rem" }}>Aguardando Aprovação</span>
+            ) : (
+              <AdminOrderStatusSelect orderId={order.id} currentStatus={order.status} />
+            )}
+          </div>
+          <div className="order-card-chevron-mobile">
+            {expanded ? <ChevronUp size={18} color="var(--text-muted)" /> : <ChevronDown size={18} color="var(--text-muted)" />}
+          </div>
         </div>
       </div>
 
       {/* DETALHES (EXPANSÍVEL) */}
       {expanded && (
         <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1rem", marginTop: "0.5rem", animation: "fadeIn 0.3s ease" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
-            
+          <div className="order-card-expanded-grid">
+
             {/* Lista de Itens */}
             <div>
               <p className="font-bold text-sm mb-3">Itens Solicitados</p>
@@ -162,7 +173,7 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
                 <div style={{ backgroundColor: "rgba(245, 158, 11, 0.1)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--warning)" }}>
                   <p className="font-bold mb-2" style={{ color: "var(--warning)" }}>🚨 Solicitação de Retirada de Emergência</p>
                   <p style={{ fontSize: "0.85rem", marginBottom: "1rem" }}>Avalie o pedido e decida se aprova ou não a retirada na base.</p>
-                  
+
                   {!isRejecting ? (
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <button onClick={handleApproveEmergency} disabled={loadingAction} className="btn" style={{ backgroundColor: "var(--success)", color: "white", fontSize: "0.85rem", flex: 1 }}>
@@ -174,12 +185,12 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                      <input 
-                        type="text" 
-                        placeholder="Motivo da reprovação..." 
-                        className="input-field" 
-                        value={rejectReason} 
-                        onChange={e => setRejectReason(e.target.value)} 
+                      <input
+                        type="text"
+                        placeholder="Motivo da reprovação..."
+                        className="input-field"
+                        value={rejectReason}
+                        onChange={e => setRejectReason(e.target.value)}
                         style={{ fontSize: "0.85rem" }}
                       />
                       <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -214,9 +225,9 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
                   <a href={order.boletoUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: "0.85rem" }}>
                     Abrir Link (Asaas)
                   </a>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(order.boletoUrl); alert("Link copiado com sucesso!"); }} 
-                    className="btn btn-primary" 
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(order.boletoUrl); alert("Link copiado com sucesso!"); }}
+                    className="btn btn-primary"
                     style={{ fontSize: "0.85rem" }}
                   >
                     Copiar Link de Pagamento

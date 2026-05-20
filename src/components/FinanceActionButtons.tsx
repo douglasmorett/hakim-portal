@@ -163,12 +163,13 @@ export function PayViaAsaasButton({ id, barcode, supplierName, value }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ barcode }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Erro ao consultar boleto."); setState("idle"); return; }
+      const data = await res.json().catch(() => null);
+      if (!res.ok) { setError(data?.error || `Erro ${res.status} ao consultar boleto.`); setState("idle"); return; }
+      if (!data?.boleto) { setError("Resposta inválida do servidor."); setState("idle"); return; }
       setBoletoInfo(data.boleto);
       setState("confirm");
-    } catch {
-      setError("Erro de conexão."); setState("idle");
+    } catch (err: any) {
+      setError(`Erro de conexão: ${err?.message || "Servidor não respondeu"}`); setState("idle");
     }
   };
 
@@ -180,12 +181,12 @@ export function PayViaAsaasButton({ id, barcode, supplierName, value }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payableId: id }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Erro no pagamento."); setState("idle"); return; }
-      alert(`✅ ${data.message}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) { setError(data?.error || `Erro ${res.status} no pagamento.`); setState("idle"); return; }
+      alert(`✅ ${data?.message || "Pagamento processado!"}`);
       window.location.reload();
-    } catch {
-      setError("Erro de conexão."); setState("idle");
+    } catch (err: any) {
+      setError(`Erro de conexão: ${err?.message || "Servidor não respondeu"}`); setState("idle");
     }
   };
 
@@ -202,7 +203,7 @@ export function PayViaAsaasButton({ id, barcode, supplierName, value }: {
       )}
 
       {error && (
-        <span style={{ color: "#EF4444", fontSize: ".78rem" }} title={error}>⚠️ {error.slice(0, 40)}...</span>
+        <span style={{ color: "#EF4444", fontSize: ".78rem", maxWidth: 280, display: "inline-block", wordBreak: "break-word" }} title={error}>⚠️ {error.slice(0, 80)}{error.length > 80 ? "..." : ""}</span>
       )}
 
       <button

@@ -60,18 +60,36 @@ export async function POST(req: NextRequest) {
   const today = new Date().toISOString().split("T")[0];
   if (scheduleDate < today) scheduleDate = today;
 
-  // 2. Cria o pagamento de conta no Asaas
-  const billRes = await fetch(`${ASAAS_BASE}/bill-payment`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      identificationField: payable.barcode.replace(/\D/g, ""),
-      scheduleDate,
-      description: `Pgto ${payable.supplierName} via Hakim Portal`,
-    }),
-  });
+  // 2. Cria o pagamento de conta no Asaas (com timeout de 25s)
+  let billRes: Response;
+  let billData: any;
 
-  const billData = await billRes.json();
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25_000);
+
+    billRes = await fetch(`${ASAAS_BASE}/bill-payment`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        identificationField: payable.barcode.replace(/\D/g, ""),
+        scheduleDate,
+        description: `Pgto ${payable.supplierName} via Hakim Portal`,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+    billData = await billRes.json();
+  } catch (err: any) {
+    const isTimeout = err?.name === "AbortError";
+    console.error(`[pay-via-asaas] ❌ ${isTimeout ? "TIMEOUT" : "NETWORK ERROR"}:`, err?.message || err);
+    return NextResponse.json({
+      error: isTimeout
+        ? "Timeout — o Asaas não respondeu a tempo. Tente novamente."
+        : `Erro de conexão com Asaas: ${err?.message || "Falha na rede"}`,
+    }, { status: 502 });
+  }
 
   if (!billRes.ok) {
     console.error("[pay-via-asaas] Erro Asaas:", JSON.stringify(billData));

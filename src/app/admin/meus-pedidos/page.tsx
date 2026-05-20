@@ -66,32 +66,33 @@ export default async function MeusPedidosPage() {
   const cancelados = orders.filter(o => o.status === "CANCELADO" || o.status === "CANCELLED").length;
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto" }}>
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 4px" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
+      <div className="meus-pedidos-header">
         <Link href="/admin" style={{
-          display: "flex", alignItems: "center", gap: 8,
+          display: "inline-flex", alignItems: "center", gap: 6,
           background: "linear-gradient(135deg, #EF4444, #DC2626)",
-          color: "#fff", padding: "10px 20px", borderRadius: 10,
-          fontWeight: 700, fontSize: ".9rem", textDecoration: "none",
+          color: "#fff", padding: "8px 14px", borderRadius: 10,
+          fontWeight: 700, fontSize: ".82rem", textDecoration: "none",
           boxShadow: "0 4px 15px rgba(239,68,68,0.3)",
+          flexShrink: 0,
         }}>
-          <ArrowLeft size={16} /> Voltar ao Painel
+          <ArrowLeft size={14} /> Voltar
         </Link>
-        <div>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0 }}>
-            <ShoppingCart size={22} style={{ verticalAlign: "middle", marginRight: 8, color: "#EF4444" }} />
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: "clamp(1.1rem, 4vw, 1.6rem)", fontWeight: 800, margin: 0 }}>
+            <ShoppingCart size={18} style={{ verticalAlign: "middle", marginRight: 6, color: "#EF4444" }} />
             Meus Pedidos
           </h1>
-          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: ".85rem" }}>
-            Visualize seus pedidos, links de pagamento e status — apenas leitura
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: ".78rem" }}>
+            Pedidos, pagamentos e status
           </p>
         </div>
       </div>
 
       {/* Cards de resumo */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
+      <div className="meus-pedidos-stats">
         {[
           { label: "Total de Pedidos", value: orders.length, color: "#3B82F6" },
           { label: "Pagos / Confirmados", value: pagos, color: "#22C55E" },
@@ -142,16 +143,7 @@ export default async function MeusPedidosPage() {
             const st = STATUS_LABEL[order.status] || { label: order.status, color: "#6B7280", icon: null };
             const boletoUrl = order.boletoUrl;
             return (
-              <div key={order.id} style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border-color)",
-                borderRadius: 14,
-                padding: "18px 20px",
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: 16,
-                alignItems: "start",
-              }}>
+              <div key={order.id} className="meus-pedidos-order-card">
                 {/* Info esquerda */}
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -195,7 +187,7 @@ export default async function MeusPedidosPage() {
                 </div>
 
                 {/* Info direita */}
-                <div style={{ textAlign: "right", minWidth: 160 }}>
+                <div className="meus-pedidos-order-right">
                   <p style={{ margin: "0 0 4px", fontSize: "1.2rem", fontWeight: 800, color: "#22C55E" }}>
                     {fmt(order.totalAmount)}
                   </p>

@@ -28,25 +28,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Código de barras inválido — deve ter pelo menos 44 dígitos" }, { status: 400 });
   }
 
-  // Consulta o boleto no Asaas (simulação/validação)
-  const simRes = await fetch(`${ASAAS_BASE}/bill-payment/simulate`, {
-    method: "POST",
-    headers: {
-      "access_token": asaasKey,
-      "Content-Type": "application/json",
-      "User-Agent": "hakim-portal/1.0",
-    },
-    body: JSON.stringify({ identificationField: clean }),
-  });
+  // Consulta o boleto no Asaas (simulação/validação) com timeout de 20s
+  let simRes: Response;
+  let simData: any;
 
-  const simData = await simRes.json();
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+
+    simRes = await fetch(`${ASAAS_BASE}/bill-payment/simulate`, {
+      method: "POST",
+      headers: {
+        "access_token": asaasKey,
+        "Content-Type": "application/json",
+        "User-Agent": "hakim-portal/1.0",
+      },
+      body: JSON.stringify({ identificationField: clean }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+    simData = await simRes.json();
+  } catch (err: any) {
+    const isTimeout = err?.name === "AbortError";
+    console.error(`[simulate-boleto] ❌ ${isTimeout ? "TIMEOUT" : "NETWORK ERROR"} ao consultar Asaas:`, err?.message || err);
+    return NextResponse.json({
+      error: isTimeout
+        ? "Timeout — o Asaas não respondeu a tempo. Tente novamente em alguns segundos."
+        : `Erro de conexão com Asaas: ${err?.message || "Falha na rede"}`,
+    }, { status: 502 });
+  }
 
   if (!simRes.ok) {
     const msg = simData?.errors?.[0]?.description
       || simData?.error
       || "Boleto não encontrado ou inválido.";
+    console.error(`[simulate-boleto] ❌ Asaas retornou ${simRes.status}:`, JSON.stringify(simData));
     return NextResponse.json({ error: msg }, { status: 400 });
   }
+
+  console.log(`[simulate-boleto] ✅ Boleto consultado — beneficiário: ${simData.company?.name || simData.beneficiaryName || "?"}, valor: R$${simData.totalValue ?? simData.value ?? 0}`);
 
   // Retorna dados reais do boleto para confirmação na tela
   return NextResponse.json({
