@@ -221,6 +221,36 @@ Responda APENAS com JSON puro:
   }
 }
 
+// PUT — edita uma nota (admin only)
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  const role = (session.user as any).role;
+  if (role !== "ADMIN") return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+
+  const { id, description, aiValue, aiCategory, invoiceDate } = await req.json();
+  if (!id) return NextResponse.json({ error: "ID obrigatório" }, { status: 400 });
+
+  const updateData: any = {};
+  if (description !== undefined) updateData.description = description;
+  if (aiValue !== undefined) updateData.aiValue = parseFloat(aiValue) || null;
+  if (aiCategory !== undefined) updateData.aiCategory = aiCategory;
+  if (invoiceDate !== undefined) {
+    updateData.invoiceDate = invoiceDate ? new Date(invoiceDate) : null;
+  }
+
+  try {
+    const updated = await (prisma as any).purchaseInvoice.update({
+      where: { id },
+      data: updateData,
+    });
+    return NextResponse.json({ invoice: updated });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 // DELETE — remove uma nota
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);

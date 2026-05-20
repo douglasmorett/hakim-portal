@@ -101,3 +101,29 @@ export async function deletePayable(id: string) {
   await prisma.payable.delete({ where: { id } });
   revalidatePath("/admin/finance");
 }
+
+export async function updatePayable(id: string, data: {
+  supplierName?: string;
+  barcode?: string;
+  dueDate?: string;
+  value?: number;
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user as any)?.role !== "ADMIN") {
+    return { error: "Apenas administradores podem editar contas." };
+  }
+
+  const updateData: any = {};
+  if (data.supplierName !== undefined) updateData.supplierName = data.supplierName.trim();
+  if (data.barcode !== undefined) updateData.barcode = data.barcode.trim() || null;
+  if (data.dueDate !== undefined) updateData.dueDate = new Date(data.dueDate);
+  if (data.value !== undefined) updateData.value = data.value;
+
+  try {
+    await prisma.payable.update({ where: { id }, data: updateData });
+    revalidatePath("/admin/finance");
+    return { success: true };
+  } catch (err: any) {
+    return { error: "Erro ao atualizar: " + (err?.message || "desconhecido") };
+  }
+}

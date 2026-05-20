@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import FinanceForm from "@/components/FinanceForm";
-import { MarkPaidButton, DeletePayableButton, BarcodeDisplay, PayViaAsaasButton, PayViaPixButton } from "@/components/FinanceActionButtons";
+import { MarkPaidButton, DeletePayableButton, BarcodeDisplay, PayViaAsaasButton, PayViaPixButton, EditPayableButton } from "@/components/FinanceActionButtons";
 
 interface Payable {
   id: string;
@@ -85,6 +85,15 @@ export default function FinanceClient({ businessPayables, personalPayables, canS
                 {isAdmin && item.paymentType !== "CREDIT_CARD" && (
                   <PayViaAsaasButton id={item.id} barcode={item.barcode} supplierName={item.supplierName} value={item.value} />
                 )}
+                {isAdmin && (
+                  <EditPayableButton
+                    id={item.id}
+                    supplierName={item.supplierName}
+                    value={item.value}
+                    dueDate={item.dueDate}
+                    barcode={item.barcode}
+                  />
+                )}
                 <MarkPaidButton id={item.id} />
                 <DeletePayableButton id={item.id} />
               </div>
@@ -126,6 +135,15 @@ export default function FinanceClient({ businessPayables, personalPayables, canS
                         barcode={item.barcode}
                         supplierName={item.supplierName}
                         value={item.value}
+                      />
+                    )}
+                    {isAdmin && (
+                      <EditPayableButton
+                        id={item.id}
+                        supplierName={item.supplierName}
+                        value={item.value}
+                        dueDate={item.dueDate}
+                        barcode={item.barcode}
                       />
                     )}
                     <MarkPaidButton id={item.id} />

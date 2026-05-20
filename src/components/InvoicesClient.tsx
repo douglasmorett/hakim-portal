@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, Receipt, CheckCircle, AlertCircle, Loader2, Trash2, Calendar, PenLine, Zap } from "lucide-react";
+import { Camera, Upload, Receipt, CheckCircle, AlertCircle, Loader2, Trash2, Calendar, PenLine, Zap, Pencil } from "lucide-react";
 
 type InvoiceMode = "ai" | "manual";
 
 export default function InvoicesClient({ role, canSeePersonal = false }: { role: string; canSeePersonal?: boolean }) {
+  const isAdmin = role === "ADMIN";
   const [invoices, setInvoices]     = useState<any[]>([]);
   const [loading, setLoading]       = useState(true);
   const [uploading, setUploading]   = useState(false);
@@ -23,6 +24,10 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
   const [manualCategory, setManualCategory] = useState("Outros");
   const [manualSupplier, setManualSupplier] = useState("");
   const [savingManual, setSavingManual]   = useState(false);
+
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ description: "", aiValue: "", aiCategory: "", invoiceDate: "" });
+  const [editLoading, setEditLoading] = useState(false);
 
   const EXPENSE_CATS = [
     "Matéria-prima / Ingredientes", "Embalagens", "Gás / Combustível",
@@ -167,6 +172,35 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
       const res = await fetch("/api/invoices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
       if (res.ok) { fetchInvoices(); } else alert("Erro ao excluir.");
     } catch { alert("Erro de conexão."); }
+  };
+
+  const handleEdit = async () => {
+    if (!editingInvoice) return;
+    setEditLoading(true);
+    try {
+      const res = await fetch("/api/invoices", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingInvoice.id,
+          description: editForm.description,
+          aiValue: editForm.aiValue,
+          aiCategory: editForm.aiCategory,
+          invoiceDate: editForm.invoiceDate || null,
+        }),
+      });
+      if (res.ok) {
+        setEditingInvoice(null);
+        fetchInvoices();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erro ao editar");
+      }
+    } catch {
+      alert("Erro de conexão");
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   const totalGasto = invoices.reduce((acc, inv) => acc + (inv.aiValue || 0), 0);
@@ -350,6 +384,22 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
                             Ver Foto
                           </a>
                         )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              setEditingInvoice(inv);
+                              setEditForm({
+                                description: inv.description || "",
+                                aiValue: inv.aiValue?.toString() || "",
+                                aiCategory: inv.aiCategory || "",
+                                invoiceDate: inv.invoiceDate ? inv.invoiceDate.slice(0, 10) : "",
+                              });
+                            }}
+                            style={{ color: "#2563eb", background: "none", border: "1px solid #2563eb", borderRadius: "6px", padding: "4px 10px", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "4px" }}
+                          >
+                            <Pencil size={14} /> Editar
+                          </button>
+                        )}
                         <button onClick={() => handleDelete(inv.id)}
                           style={{ padding: "4px 8px", color: "#ef4444", background: "rgba(239,68,68,0.1)", border: "none", borderRadius: 7, cursor: "pointer" }}
                           title="Excluir">
@@ -364,6 +414,41 @@ export default function InvoicesClient({ role, canSeePersonal = false }: { role:
           </div>
         )}
       </div>
+
+      {editingInvoice && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "var(--surface, white)", borderRadius: 16, padding: "24px", maxWidth: 500, width: "100%" }}>
+            <h3 style={{ marginBottom: "1rem", fontWeight: "bold" }}>✏️ Editar Nota</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <div>
+                <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "4px" }}>Descrição</label>
+                <input className="input" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "4px" }}>Valor (R$)</label>
+                <input className="input" type="number" step="0.01" value={editForm.aiValue} onChange={e => setEditForm({...editForm, aiValue: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "4px" }}>Categoria</label>
+                <select className="input" value={editForm.aiCategory} onChange={e => setEditForm({...editForm, aiCategory: e.target.value})}>
+                  <option value="">Selecione</option>
+                  {EXPENSE_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "4px" }}>Data da NF</label>
+                <input className="input" type="date" value={editForm.invoiceDate} onChange={e => setEditForm({...editForm, invoiceDate: e.target.value})} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setEditingInvoice(null)} style={{ padding: "8px 20px", borderRadius: "8px", border: "1px solid var(--border-color)", background: "none", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleEdit} disabled={editLoading} style={{ padding: "8px 20px", borderRadius: "8px", border: "none", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" }}>
+                {editLoading ? "Salvando..." : "💾 Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

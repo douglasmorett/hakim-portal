@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { markPayableAsPaid, deletePayable } from "@/app/actions/finance";
+import { markPayableAsPaid, deletePayable, updatePayable } from "@/app/actions/finance";
 
 // ─── Modal de confirmação de boleto ───────────────────────────────────────────
 interface BoletoInfo {
@@ -381,5 +381,182 @@ export function BarcodeDisplay({ barcode }: { barcode: string | null }) {
         {copied ? "Copiado!" : "Copiar"}
       </button>
     </div>
+  );
+}
+
+// ─── Editar Conta ─────────────────────────────────────────────────────────────
+export function EditPayableButton({ id, supplierName, value, dueDate, barcode }: {
+  id: string;
+  supplierName: string;
+  value: number;
+  dueDate: string;
+  barcode: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    supplierName,
+    value,
+    dueDate: dueDate.slice(0, 10),
+    barcode: barcode || "",
+  });
+
+  const handleSave = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await updatePayable(id, {
+        supplierName: form.supplierName,
+        value: form.value,
+        dueDate: form.dueDate,
+        barcode: form.barcode,
+      });
+      if (res.error) {
+        setError(res.error);
+        setLoading(false);
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError("Erro de conexão.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => { setOpen(true); setError(null); }}
+        className="btn btn-outline"
+        style={{
+          padding: "0.25rem 0.6rem",
+          fontSize: "0.85rem",
+          fontWeight: 700,
+          borderRadius: 6,
+          color: "var(--text-muted)",
+        }}
+      >
+        ✏️ Editar
+      </button>
+
+      {open && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        }}>
+          <div style={{
+            background: "var(--surface)", borderRadius: 16, padding: "28px 28px 24px",
+            maxWidth: 480, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+            border: "1px solid var(--border-color)",
+          }}>
+            <div style={{ marginBottom: 20, borderBottom: "1px solid var(--border-color)", paddingBottom: 16 }}>
+              <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800 }}>✏️ Editar Conta</h2>
+              <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: ".83rem" }}>
+                Altere os campos desejados e salve
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+              <label style={{ fontSize: ".85rem", fontWeight: 600 }}>
+                Fornecedor
+                <input
+                  type="text"
+                  value={form.supplierName}
+                  onChange={e => setForm({ ...form, supplierName: e.target.value })}
+                  style={{
+                    display: "block", width: "100%", marginTop: 4, padding: "8px 12px",
+                    borderRadius: 8, border: "1px solid var(--border-color)",
+                    background: "var(--bg-color)", fontSize: ".9rem", fontFamily: "inherit",
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: ".85rem", fontWeight: 600 }}>
+                Valor (R$)
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.value}
+                  onChange={e => setForm({ ...form, value: parseFloat(e.target.value) || 0 })}
+                  style={{
+                    display: "block", width: "100%", marginTop: 4, padding: "8px 12px",
+                    borderRadius: 8, border: "1px solid var(--border-color)",
+                    background: "var(--bg-color)", fontSize: ".9rem", fontFamily: "inherit",
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: ".85rem", fontWeight: 600 }}>
+                Vencimento
+                <input
+                  type="date"
+                  value={form.dueDate}
+                  onChange={e => setForm({ ...form, dueDate: e.target.value })}
+                  style={{
+                    display: "block", width: "100%", marginTop: 4, padding: "8px 12px",
+                    borderRadius: 8, border: "1px solid var(--border-color)",
+                    background: "var(--bg-color)", fontSize: ".9rem", fontFamily: "inherit",
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: ".85rem", fontWeight: 600 }}>
+                Código de Barras
+                <input
+                  type="text"
+                  value={form.barcode}
+                  onChange={e => setForm({ ...form, barcode: e.target.value })}
+                  placeholder="Opcional"
+                  style={{
+                    display: "block", width: "100%", marginTop: 4, padding: "8px 12px",
+                    borderRadius: 8, border: "1px solid var(--border-color)",
+                    background: "var(--bg-color)", fontSize: ".9rem", fontFamily: "inherit",
+                  }}
+                />
+              </label>
+            </div>
+
+            {error && (
+              <div style={{
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
+                borderRadius: 8, padding: "8px 12px", marginBottom: 14,
+                fontSize: ".83rem", color: "#EF4444",
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setOpen(false)}
+                disabled={loading}
+                style={{
+                  flex: 1, padding: "10px", borderRadius: 8, border: "1px solid var(--border-color)",
+                  background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: ".9rem",
+                  color: "var(--text-muted)",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                style={{
+                  flex: 2, padding: "10px", borderRadius: 8, border: "none",
+                  background: loading ? "#6B7280" : "var(--success, #22C55E)",
+                  color: "#fff", cursor: loading ? "wait" : "pointer",
+                  fontWeight: 700, fontSize: ".9rem",
+                }}
+              >
+                {loading ? "Salvando..." : "💾 Salvar Alterações"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

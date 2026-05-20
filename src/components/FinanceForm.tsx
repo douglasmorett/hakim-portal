@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { createPayable } from "@/app/actions/finance";
 import BarcodeScanner from "./BarcodeScanner";
-import { Camera, ScanLine, Loader2, FileText, PenLine, ChevronDown, ChevronUp } from "lucide-react";
+import { ScanLine, Loader2, PenLine } from "lucide-react";
 
-type InputMode = "manual" | "ai" | null;
+type InputMode = "manual" | "scan" | null;
 
 export default function FinanceForm({ category = "BUSINESS" }: { category?: string }) {
   const [loading, setLoading] = useState(false);
@@ -13,6 +13,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
   const [inputMode, setInputMode] = useState<InputMode>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [scanLoading, setScanLoading] = useState(false);
   const [formData, setFormData] = useState({
     supplierName: "",
     barcode: "",
@@ -20,8 +21,6 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
     dueDate: "",
     value: ""
   });
-  const [aiLoading, setAiLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const clearMessages = () => {
@@ -29,57 +28,47 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
     setSuccessMsg(null);
   };
 
-  const handleAiScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setAiLoading(true);
+  // Consulta o Asaas com o barcode escaneado para preencher dados reais
+  const handleBarcodeLookup = async (barcode: string) => {
+    setScanLoading(true);
     clearMessages();
+    setFormData(prev => ({ ...prev, barcode }));
+
     try {
-      const uploadData = new FormData();
-      uploadData.append("file", file);
-      uploadData.append("type", "payable");
-
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadData });
-      const { url, error: upError } = await uploadRes.json();
-      if (upError) throw new Error(upError);
-
-      const aiRes = await fetch("/api/payables/ai", {
+      const res = await fetch("/api/admin/simulate-boleto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: url })
+        body: JSON.stringify({ barcode }),
       });
-      const aiResponse = await aiRes.json();
-      if (aiResponse.error) throw new Error(aiResponse.error);
+      const data = await res.json();
 
-      const data = aiResponse.data;
-      
-      // Verifica se a IA conseguiu extrair dados mínimos
-      if (!data || (!data.supplierName && !data.value && !data.dueDate)) {
-        setErrorMsg("📸 Tire outra foto, esta foto não estava legível. Tente em um ambiente mais iluminado e com a nota centralizada.");
+      if (!res.ok || !data?.boleto) {
+        // Barcode pode não estar no Asaas — preenche só o barcode
+        setFormData(prev => ({ ...prev, barcode }));
+        setSuccessMsg("📋 Código de barras capturado! Preencha os demais campos manualmente.");
+        setInputMode("scan");
+        setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
         return;
       }
-      
+
+      const boleto = data.boleto;
       setFormData(prev => ({
         ...prev,
-        supplierName: data.supplierName || prev.supplierName,
-        barcode: data.barcode || prev.barcode,
-        dueDate: data.dueDate || prev.dueDate,
-        value: data.value ? data.value.toString() : prev.value
+        supplierName: boleto.beneficiary || prev.supplierName,
+        barcode: boleto.barcode || barcode,
+        dueDate: boleto.dueDate || prev.dueDate,
+        value: boleto.totalValue ? boleto.totalValue.toString() : (boleto.value ? boleto.value.toString() : prev.value),
       }));
-      setSuccessMsg("✅ IA preencheu os dados! Confira abaixo e clique em 'Registrar Conta'.");
+      setInputMode("scan");
+      setSuccessMsg("✅ Dados do boleto preenchidos via Asaas! Confira e clique em 'Registrar Conta'.");
       setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
     } catch (err: any) {
-      // Se o erro indica problema na leitura da imagem
-      const msg = err.message?.toLowerCase() || "";
-      if (msg.includes("image") || msg.includes("photo") || msg.includes("read") || msg.includes("parse") || msg.includes("extract")) {
-        setErrorMsg("📸 Tire outra foto, esta foto não estava legível. Tente em um ambiente mais iluminado e com a nota centralizada.");
-      } else {
-        setErrorMsg("Erro na IA: " + err.message);
-      }
+      setFormData(prev => ({ ...prev, barcode }));
+      setInputMode("scan");
+      setSuccessMsg("📋 Código de barras capturado! Preencha os demais campos manualmente.");
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
     } finally {
-      setAiLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setScanLoading(false);
     }
   };
 
@@ -88,7 +77,6 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
     setLoading(true);
     clearMessages();
 
-    // Validação local
     if (!formData.supplierName.trim()) {
       setErrorMsg("Informe o nome do fornecedor.");
       setLoading(false);
@@ -137,8 +125,8 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
         <BarcodeScanner 
           onClose={() => setShowScanner(false)} 
           onScan={(text) => {
-            setFormData({ ...formData, barcode: text });
             setShowScanner(false);
+            handleBarcodeLookup(text);
           }} 
         />
       )}
@@ -189,8 +177,27 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
           </div>
         )}
 
+        {/* Loading do scan */}
+        {scanLoading && (
+          <div style={{
+            padding: "1rem",
+            backgroundColor: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            borderRadius: "0.5rem",
+            color: "#2563eb",
+            fontSize: "0.9rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.75rem"
+          }}>
+            <Loader2 size={20} className="animate-spin" />
+            <span>Consultando dados do boleto no Asaas...</span>
+          </div>
+        )}
+
         {/* Seletor de modo de entrada */}
-        {inputMode === null && (
+        {inputMode === null && !scanLoading && (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", margin: 0 }}>
               Escolha como deseja registrar:
@@ -231,12 +238,10 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
               <button
                 type="button"
                 onClick={() => {
-                  setInputMode("ai");
                   clearMessages();
-                  setTimeout(() => fileInputRef.current?.click(), 100);
+                  setShowScanner(true);
                 }}
                 className="btn"
-                disabled={aiLoading}
                 style={{
                   flex: 1,
                   minWidth: "200px",
@@ -245,7 +250,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
                   flexDirection: "column",
                   alignItems: "center",
                   gap: "0.5rem",
-                  backgroundColor: "#f59e0b",
+                  backgroundColor: "#10b981",
                   color: "white",
                   borderRadius: "0.75rem",
                   border: "none",
@@ -255,17 +260,17 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
                   transition: "all 0.2s ease"
                 }}
               >
-                {aiLoading ? <Loader2 size={28} className="animate-spin" /> : <Camera size={28} />}
-                📸 Ler com Foto (IA)
+                <ScanLine size={28} />
+                📷 Escanear Boleto
                 <span style={{ fontSize: "0.75rem", fontWeight: "normal", opacity: 0.85 }}>
-                  Tire uma foto do boleto
+                  Escaneie o código de barras
                 </span>
               </button>
             </div>
           </div>
         )}
 
-        {/* Formulário manual ou preenchido pela IA */}
+        {/* Formulário manual ou preenchido pelo scan */}
         {inputMode !== null && (
           <form ref={formRef} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {/* Header do modo selecionado */}
@@ -274,15 +279,15 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
               alignItems: "center", 
               justifyContent: "space-between",
               padding: "0.5rem 0.75rem",
-              backgroundColor: inputMode === "manual" ? "#eff6ff" : "#fffbeb",
+              backgroundColor: inputMode === "manual" ? "#eff6ff" : "#ecfdf5",
               borderRadius: "0.5rem",
               fontSize: "0.85rem",
               fontWeight: "bold",
-              color: inputMode === "manual" ? "#2563eb" : "#d97706"
+              color: inputMode === "manual" ? "#2563eb" : "#059669"
             }}>
               <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                {inputMode === "manual" ? <PenLine size={16} /> : <Camera size={16} />}
-                {inputMode === "manual" ? "Modo Manual" : "Preenchido pela IA — Confira os dados"}
+                {inputMode === "manual" ? <PenLine size={16} /> : <ScanLine size={16} />}
+                {inputMode === "manual" ? "Modo Manual" : "Dados do Asaas — Confira e registre"}
               </span>
               <button 
                 type="button" 
@@ -344,7 +349,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
             </div>
 
             <div>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", fontWeight: "bold" }}>Código de Barras (Opcional)</label>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", fontWeight: "bold" }}>Código de Barras</label>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 <input 
                   type="text" 
@@ -366,32 +371,6 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
               </div>
             </div>
 
-            {/* Botões de ação no modo AI */}
-            {inputMode === "ai" && (
-              <button 
-                type="button" 
-                onClick={() => fileInputRef.current?.click()}
-                className="btn" 
-                disabled={aiLoading}
-                style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "center",
-                  gap: "0.5rem", 
-                  padding: "0.5rem 1rem",
-                  backgroundColor: "#f59e0b",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.5rem",
-                  cursor: "pointer",
-                  alignSelf: "flex-start"
-                }}
-              >
-                {aiLoading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
-                {aiLoading ? "Processando foto..." : "📸 Tirar outra foto (IA)"}
-              </button>
-            )}
-
             <button 
               type="submit" 
               className="btn btn-primary" 
@@ -402,16 +381,6 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
             </button>
           </form>
         )}
-
-        {/* Input oculto para a câmera */}
-        <input 
-          type="file" 
-          accept="image/*"
-          capture="environment"
-          ref={fileInputRef} 
-          style={{ display: "none" }} 
-          onChange={handleAiScan}
-        />
       </div>
     </>
   );
