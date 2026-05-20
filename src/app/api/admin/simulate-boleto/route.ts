@@ -82,35 +82,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: simRes.status === 401 ? 503 : 400 });
   }
 
-  // Log da resposta completa para diagnóstico
-  console.log(`[simulate-boleto] ✅ Resposta Asaas:`, JSON.stringify(simData).slice(0, 800));
+  // Dados do boleto ficam dentro de bankSlipInfo
+  const bill = simData.bankSlipInfo || simData;
 
-  // Mapeia os campos — o /bill/simulate pode usar nomes diferentes
-  const beneficiary = simData.companyName
-    || simData.company?.name
-    || simData.beneficiaryName
-    || simData.name
+  console.log(`[simulate-boleto] ✅ ${bill.beneficiaryName || "?"} R$${bill.value ?? 0} venc: ${bill.dueDate || simData.minimumScheduleDate || "?"}`);
+
+  const beneficiary = bill.beneficiaryName
+    || bill.companyName
     || "Não identificado";
 
-  const cnpj = simData.companyCnpj
-    || simData.company?.cpfCnpj
-    || simData.cpfCnpj
-    || "";
-
-  const value = simData.value ?? simData.totalValue ?? 0;
-  const discount = simData.discount ?? 0;
-  const fine = simData.fine ?? 0;
-  const interest = simData.interest ?? 0;
-  const totalValue = simData.totalValue ?? simData.value ?? 0;
-  const dueDate = simData.dueDate
-    || simData.minimumScheduleDate
-    || simData.expirationDate
-    || "";
+  const cnpj = bill.beneficiaryCpfCnpj || "";
+  const value = bill.value ?? bill.originalValue ?? 0;
+  const discount = bill.discountValue ?? bill.totalDiscountValue ?? 0;
+  const fine = bill.fineValue ?? 0;
+  const interest = bill.interestValue ?? 0;
+  const totalValue = value - discount + fine + interest;
+  const dueDate = bill.dueDate || simData.minimumScheduleDate || "";
 
   // Retorna dados reais do boleto para confirmação na tela
   return NextResponse.json({
     success: true,
-    _debug: { keys: Object.keys(simData), raw: JSON.stringify(simData).slice(0, 400) },
     boleto: {
       beneficiary,
       cnpj,
