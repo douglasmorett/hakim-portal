@@ -29,6 +29,7 @@ export default function LabelsClient({ products, kitchenItems, storeAddress, sto
   const [lote, setLote] = useState("");
   const [fabDate, setFabDate] = useState("");
   const [valDate, setValDate] = useState("");
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 
   // Config State
   const [saving, setSaving] = useState(false);
@@ -530,11 +531,11 @@ ${printArea.innerHTML}
               </div>
               <div className="input-group" style={{ flex: 1, minWidth: "200px" }}>
                 <label>Data de Fabricação</label>
-                <input type="date" className="input-field" value={fabDate} onChange={e => setFabDate(e.target.value)} />
+                <input type="date" className="input-field" value={fabDate} onChange={e => setFabDate(e.target.value)} min={todayStr} />
               </div>
               <div className="input-group" style={{ flex: 1, minWidth: "200px" }}>
                 <label>Data de Validade</label>
-                <input type="date" className="input-field" value={valDate} onChange={e => setValDate(e.target.value)} />
+                <input type="date" className="input-field" value={valDate} onChange={e => setValDate(e.target.value)} min={todayStr} />
               </div>
             </div>
 
