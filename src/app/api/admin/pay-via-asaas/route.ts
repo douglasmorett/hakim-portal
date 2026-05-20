@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         identificationField: payable.barcode.replace(/\D/g, ""),
         scheduleDate,
-        description: `Pgto ${payable.supplierName} via Hakim Portal`,
+        description: `Pgto ${payable.supplierName}`.slice(0, 50),
       }),
       signal: controller.signal,
     });
