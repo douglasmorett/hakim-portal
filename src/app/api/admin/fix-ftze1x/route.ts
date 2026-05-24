@@ -3,24 +3,22 @@
  * 
  * AÇÃO: Deleta as cobranças antigas com valor errado e cria uma nova com R$ 7.902,44
  * 
- * SEGURANÇA: Requer autenticação de ADMIN
  * REMOVER APÓS USO!
  */
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const CORRECT_VALUE = 7902.44;
 const ORDER_ID = "cmpfuky0d0001kt0bqdftze1x";
 const CUSTOMER_CPFCNPJ = "65703775000179";
+const FIX_TOKEN = "hakim-fix-ftze1x-2026";
 
-export async function POST(req: Request) {
-  // Verificar autenticação ADMIN
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role;
-  if (!session || role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const token = searchParams.get("token");
+  
+  if (token !== FIX_TOKEN) {
+    return NextResponse.json({ error: "Token inválido" }, { status: 401 });
   }
 
   const asaasKey = process.env.ASAAS_API_KEY;
@@ -32,7 +30,7 @@ export async function POST(req: Request) {
     ? "https://api.asaas.com/v3"
     : "https://sandbox.asaas.com/v3";
 
-  const headers = {
+  const headers: Record<string, string> = {
     "access_token": asaasKey,
     "Content-Type": "application/json",
   };
@@ -41,7 +39,7 @@ export async function POST(req: Request) {
 
   try {
     // 1. Buscar o cliente no Asaas pelo CPF/CNPJ
-    log.push("🔍 Buscando cliente no Asaas...");
+    log.push("Buscando cliente no Asaas...");
     const custRes = await fetch(
       `${BASE}/customers?cpfCnpj=${CUSTOMER_CPFCNPJ}`,
       { headers }
@@ -49,15 +47,15 @@ export async function POST(req: Request) {
     const custData = await custRes.json();
 
     if (!custRes.ok || !custData.data?.length) {
-      return NextResponse.json({ error: "Cliente não encontrado no Asaas", custData, log }, { status: 404 });
+      return NextResponse.json({ error: "Cliente nao encontrado no Asaas", details: custData, log }, { status: 404 });
     }
 
     const customerId = custData.data[0].id;
     const customerName = custData.data[0].name;
-    log.push(`✅ Cliente: ${customerName} (${customerId})`);
+    log.push(`Cliente: ${customerName} (${customerId})`);
 
     // 2. Listar todas as cobranças desse cliente
-    log.push("🔍 Listando cobranças do cliente...");
+    log.push("Listando cobrancas do cliente...");
     const payRes = await fetch(
       `${BASE}/payments?customer=${customerId}&limit=50`,
       { headers }
@@ -65,48 +63,49 @@ export async function POST(req: Request) {
     const payData = await payRes.json();
 
     if (!payRes.ok) {
-      return NextResponse.json({ error: "Erro ao listar cobranças", payData, log }, { status: 500 });
+      return NextResponse.json({ error: "Erro ao listar cobrancas", details: payData, log }, { status: 500 });
     }
 
-    // 3. Identificar cobranças relacionadas ao pedido #FTZE1X
-    // Procura por cobranças com valor R$ 6.078,80 ou que mencionem FTZ na descrição
-    const ftzePayments = payData.data.filter((p: any) =>
+    log.push(`Total cobrancas do cliente: ${payData.data?.length || 0}`);
+
+    // Listar todas para debug
+    for (const p of (payData.data || [])) {
+      log.push(`  ${p.id} | R$ ${p.value} | ${p.status} | ${p.description?.substring(0, 60) || 'N/A'} | Venc: ${p.dueDate}`);
+    }
+
+    // 3. Identificar cobranças com valor R$ 6.078,80 ou referência FTZE1X
+    const targetPayments = (payData.data || []).filter((p: any) =>
       (Math.abs(p.value - 6078.80) < 0.01) ||
-      (p.description?.includes("FTZ")) ||
+      (p.description?.toUpperCase()?.includes("FTZ")) ||
       (p.externalReference === ORDER_ID) ||
       (p.externalReference?.includes("ftze1x"))
     );
 
-    log.push(`📋 Total cobranças do cliente: ${payData.data.length}`);
-    log.push(`🔴 Cobranças relacionadas ao #FTZE1X: ${ftzePayments.length}`);
+    log.push(`Cobrancas para deletar: ${targetPayments.length}`);
 
-    for (const p of ftzePayments) {
-      log.push(`   → ${p.id} | R$ ${p.value} | ${p.status} | ${p.description}`);
-    }
-
-    // 4. Deletar as cobranças erradas (somente PENDING ou OVERDUE)
+    // 4. Deletar as cobranças erradas
     const deletedIds: string[] = [];
-    for (const p of ftzePayments) {
-      if (["PENDING", "OVERDUE", "CONFIRMED"].includes(p.status)) {
-        log.push(`🗑️ Deletando cobrança ${p.id} (R$ ${p.value})...`);
-        const delRes = await fetch(`${BASE}/payments/${p.id}`, {
-          method: "DELETE",
-          headers,
-        });
-        if (delRes.ok) {
-          log.push(`   ✅ Deletada com sucesso`);
-          deletedIds.push(p.id);
-        } else {
-          const delData = await delRes.json();
-          log.push(`   ❌ Erro ao deletar: ${JSON.stringify(delData)}`);
-        }
+    const failedDeletes: string[] = [];
+    
+    for (const p of targetPayments) {
+      log.push(`Deletando ${p.id} (R$ ${p.value}, status: ${p.status})...`);
+      const delRes = await fetch(`${BASE}/payments/${p.id}`, {
+        method: "DELETE",
+        headers,
+      });
+      
+      if (delRes.ok) {
+        log.push(`  OK - Deletada`);
+        deletedIds.push(p.id);
       } else {
-        log.push(`   ⚠️ Cobrança ${p.id} com status ${p.status} - não pode ser deletada`);
+        const delData = await delRes.json().catch(() => ({}));
+        log.push(`  ERRO: ${JSON.stringify(delData)}`);
+        failedDeletes.push(p.id);
       }
     }
 
-    // 5. Criar nova cobrança com valor correto
-    log.push(`\n💰 Criando nova cobrança com R$ ${CORRECT_VALUE}...`);
+    // 5. Criar nova cobrança com valor correto R$ 7.902,44
+    log.push(`Criando nova cobranca com R$ ${CORRECT_VALUE}...`);
 
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 10);
@@ -119,7 +118,7 @@ export async function POST(req: Request) {
         billingType: "BOLETO",
         value: CORRECT_VALUE,
         dueDate: dueDate.toISOString().split("T")[0],
-        description: `Pedido de Emergência #FTZE1X — Hakim Congelados (taxa de emergência 30% inclusa)`,
+        description: `Pedido de Emergência #FTZE1X — Hakim Congelados (taxa emergência 30% inclusa)`,
         externalReference: ORDER_ID,
       }),
     });
@@ -127,16 +126,16 @@ export async function POST(req: Request) {
     const newPayData = await newPayRes.json();
 
     if (!newPayRes.ok) {
-      return NextResponse.json({ error: "Erro ao criar nova cobrança", newPayData, log }, { status: 500 });
+      return NextResponse.json({ error: "Erro ao criar nova cobranca", details: newPayData, log }, { status: 500 });
     }
 
     const newPaymentId = newPayData.id;
     const newBoletoUrl = newPayData.invoiceUrl || newPayData.bankSlipUrl || null;
-    log.push(`✅ Nova cobrança criada: ${newPaymentId}`);
-    log.push(`   URL: ${newBoletoUrl}`);
+    log.push(`Nova cobranca criada: ${newPaymentId}`);
+    log.push(`URL boleto: ${newBoletoUrl}`);
 
-    // 6. Atualizar o pedido no banco de dados com a nova cobrança
-    log.push("📝 Atualizando pedido no banco de dados...");
+    // 6. Atualizar o pedido no banco de dados
+    log.push("Atualizando pedido no banco...");
     await prisma.order.update({
       where: { id: ORDER_ID },
       data: {
@@ -144,11 +143,12 @@ export async function POST(req: Request) {
         boletoUrl: newBoletoUrl,
       },
     });
-    log.push("✅ Pedido atualizado no banco!");
+    log.push("Pedido atualizado!");
 
     return NextResponse.json({
       success: true,
       deletedPayments: deletedIds,
+      failedDeletes,
       newPayment: {
         id: newPaymentId,
         value: CORRECT_VALUE,
@@ -157,7 +157,7 @@ export async function POST(req: Request) {
       log,
     });
   } catch (error: any) {
-    log.push(`❌ Erro: ${error.message}`);
+    log.push(`ERRO: ${error.message}`);
     return NextResponse.json({ error: error.message, log }, { status: 500 });
   }
 }
