@@ -461,6 +461,11 @@ button {
     width: 100%;
     font-size: 0.82rem !important;
   }
+
+  /* Allow expanded content to show fully on mobile */
+  .card {
+    overflow: visible;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════

@@ -124,7 +124,7 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
 
       {/* DETALHES (EXPANSÍVEL) */}
       {expanded && (
-        <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1rem", marginTop: "0.5rem", animation: "fadeIn 0.3s ease" }}>
+        <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1rem", marginTop: "0.5rem", animation: "fadeIn 0.3s ease", overflow: "visible" }}>
           <div className="order-card-expanded-grid">
 
             {/* Lista de Itens */}
@@ -156,7 +156,7 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
               )}
               {order.status === "PENDING_PAYMENT" && (
                 <div style={{ marginTop: "1rem" }}>
-                  <Link href={`/admin/orders/${order.id}/edit`} className="btn btn-outline" style={{ fontSize: "0.85rem", width: "100%", textAlign: "center", display: "block" }}>
+                  <Link href={`/admin/orders/${order.id}/edit`} className="btn btn-outline" style={{ fontSize: "0.85rem", width: "100%", textAlign: "center", display: "block", wordBreak: "break-word" }}>
                     ✏️ Editar Itens e Valores
                   </Link>
                 </div>
@@ -238,16 +238,16 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
               )}
 
               {order.boletoUrl && order.status !== "CANCELADO" && (
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "auto" }}>
-                  <a href={order.boletoUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: "0.85rem" }}>
-                    Abrir Link (Asaas)
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "auto" }}>
+                  <a href={order.boletoUrl} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ fontSize: "0.85rem", textAlign: "center", wordBreak: "break-all", whiteSpace: "normal" }}>
+                    🔗 Abrir Link de Pagamento (Asaas)
                   </a>
                   <button
                     onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(order.boletoUrl); alert("Link copiado com sucesso!"); }}
                     className="btn btn-primary"
-                    style={{ fontSize: "0.85rem" }}
+                    style={{ fontSize: "0.85rem", textAlign: "center" }}
                   >
-                    Copiar Link de Pagamento
+                    📋 Copiar Link de Pagamento
                   </button>
                 </div>
               )}
