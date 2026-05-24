@@ -47,10 +47,10 @@ export default function DashboardClient({
   useEffect(() => {
     setMounted(true);
     
-    // Polling para atualização em tempo real (a cada 10 segundos)
+    // Polling suave — atualiza a cada 60 segundos (evita sobrecarregar Server Component)
     const interval = setInterval(() => {
       router.refresh();
-    }, 10000);
+    }, 60000);
     
     return () => clearInterval(interval);
   }, [router]);

@@ -70,6 +70,7 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
               #{order.id.slice(-6).toUpperCase()}
             </h3>
             {order.isEmergency && <span style={{ backgroundColor: "var(--danger)", color: "white", padding: "0.15rem 0.5rem", borderRadius: "4px", fontSize: "0.65rem", fontWeight: 700 }}>EMERGÊNCIA</span>}
+            {order.emergencyFine > 0 && <span style={{ backgroundColor: "#DC2626", color: "white", padding: "0.15rem 0.5rem", borderRadius: "4px", fontSize: "0.65rem", fontWeight: 700 }}>MULTA 30%</span>}
             <span className="text-muted" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
               <Calendar size={11} style={{ display: "inline", marginRight: "3px", verticalAlign: "middle" }} />
               {new Date(order.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
@@ -137,6 +138,22 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
                   </li>
                 ))}
               </ul>
+              {order.isEmergency && order.emergencyFine > 0 && (
+                <div style={{ marginTop: "0.75rem", padding: "0.75rem", backgroundColor: "rgba(239,68,68,0.08)", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)", fontSize: "0.85rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.3rem" }}>
+                    <span style={{ color: "var(--text-muted)" }}>Subtotal itens</span>
+                    <span>R$ {(order.totalAmount - order.emergencyFine).toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.3rem" }}>
+                    <span style={{ color: "#DC2626", fontWeight: 700 }}>Multa 30% emergência</span>
+                    <span style={{ color: "#DC2626", fontWeight: 700 }}>+ R$ {order.emergencyFine.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(239,68,68,0.2)", paddingTop: "0.3rem" }}>
+                    <span style={{ fontWeight: 800 }}>Total cobrado</span>
+                    <span style={{ fontWeight: 800 }}>R$ {order.totalAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
               {order.status === "PENDING_PAYMENT" && (
                 <div style={{ marginTop: "1rem" }}>
                   <Link href={`/admin/orders/${order.id}/edit`} className="btn btn-outline" style={{ fontSize: "0.85rem", width: "100%", textAlign: "center", display: "block" }}>

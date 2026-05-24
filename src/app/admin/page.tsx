@@ -6,10 +6,23 @@ import DashboardClient from "@/components/DashboardClient";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ month?: string; year?: string }> }) {
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role || "";
-  const perms = (session?.user as any)?.permissions || "";
+  let session;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (err) {
+    console.error("[Dashboard] Erro ao obter sessão:", err);
+    redirect("/login");
+  }
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const role = (session.user as any)?.role || "";
+  const perms = (session.user as any)?.permissions || "";
 
   // STAFF sem acesso ao dashboard → redirecionar para primeira página disponível
   if (role === "STAFF") {
@@ -29,53 +42,88 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     }
   }
 
-  const resolvedParams = await searchParams;
-  const now = new Date();
-  const month = parseInt(resolvedParams?.month || String(now.getMonth() + 1));
-  const year = parseInt(resolvedParams?.year || String(now.getFullYear()));
+  let month: number;
+  let year: number;
+  try {
+    const resolvedParams = await searchParams;
+    const now = new Date();
+    month = parseInt(resolvedParams?.month || String(now.getMonth() + 1));
+    year = parseInt(resolvedParams?.year || String(now.getFullYear()));
+  } catch {
+    const now = new Date();
+    month = now.getMonth() + 1;
+    year = now.getFullYear();
+  }
 
+  // Buscar dados do banco — cada query isolada para não derrubar tudo
   let totalFranchisees = 0;
   let totalOrders = 0;
   let recentOrders: any[] = [];
   let pendingPayables = 0;
   let overduePayables = 0;
   let totalPayablesToday = 0;
-  let asaasData = null;
 
   try {
-    const [_totalFranchisees, _totalOrders, _recentOrders, _pendingPayables, _overduePayables, _todayPayables] = await Promise.all([
-      prisma.user.count({ where: { role: "FRANCHISEE" } }),
-      prisma.order.count(),
-      prisma.order.findMany({
-        take: 5,
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { name: true, city: true } } }
-      }),
-      prisma.payable.count({ where: { status: "PENDING", dueDate: { gte: new Date() } } }),
-      prisma.payable.count({ where: { status: "PENDING", dueDate: { lt: new Date(new Date().setHours(0,0,0,0)) } } }),
-      prisma.payable.findMany({
-        where: {
-          status: "PENDING",
-          dueDate: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0)),
-            lte: new Date(new Date().setHours(23, 59, 59, 999))
-          }
-        }
-      })
-    ]);
-
-    totalFranchisees = _totalFranchisees;
-    totalOrders = _totalOrders;
-    recentOrders = _recentOrders;
-    pendingPayables = _pendingPayables;
-    overduePayables = _overduePayables;
-    totalPayablesToday = _todayPayables.reduce((acc, p) => acc + p.value, 0);
+    totalFranchisees = await prisma.user.count({ where: { role: "FRANCHISEE" } });
   } catch (err) {
-    console.error("[Dashboard] Erro ao buscar dados do banco:", err);
+    console.error("[Dashboard] Erro ao contar franqueados:", err);
   }
 
   try {
-    // Dados do Asaas (cobranças de clientes)
+    totalOrders = await prisma.order.count();
+  } catch (err) {
+    console.error("[Dashboard] Erro ao contar pedidos:", err);
+  }
+
+  try {
+    const rawOrders = await prisma.order.findMany({
+      take: 5,
+      orderBy: { createdAt: "desc" },
+      include: { user: { select: { name: true, city: true } } }
+    });
+    // Serialização segura — converte Dates e evita crash
+    recentOrders = JSON.parse(JSON.stringify(rawOrders));
+  } catch (err) {
+    console.error("[Dashboard] Erro ao buscar pedidos recentes:", err);
+  }
+
+  try {
+    pendingPayables = await prisma.payable.count({
+      where: { status: "PENDING", dueDate: { gte: new Date() } }
+    });
+  } catch (err) {
+    console.error("[Dashboard] Erro ao contar contas pendentes:", err);
+  }
+
+  try {
+    overduePayables = await prisma.payable.count({
+      where: {
+        status: "PENDING",
+        dueDate: { lt: new Date(new Date().setHours(0, 0, 0, 0)) }
+      }
+    });
+  } catch (err) {
+    console.error("[Dashboard] Erro ao contar contas vencidas:", err);
+  }
+
+  try {
+    const todayPayables = await prisma.payable.findMany({
+      where: {
+        status: "PENDING",
+        dueDate: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          lte: new Date(new Date().setHours(23, 59, 59, 999))
+        }
+      }
+    });
+    totalPayablesToday = todayPayables.reduce((acc, p) => acc + p.value, 0);
+  } catch (err) {
+    console.error("[Dashboard] Erro ao calcular total a pagar hoje:", err);
+  }
+
+  // Dados do Asaas (cobranças de clientes) — isolado e com fallback
+  let asaasData = null;
+  try {
     asaasData = await getAsaasDashboardData(month, year);
   } catch (err) {
     console.error("[Dashboard] Erro ao buscar dados do Asaas:", err);
@@ -88,7 +136,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       year={year}
       totalFranchisees={totalFranchisees}
       totalOrders={totalOrders}
-      recentOrders={JSON.parse(JSON.stringify(recentOrders))}
+      recentOrders={recentOrders}
       pendingPayables={pendingPayables}
       overduePayables={overduePayables}
       totalPayablesToday={totalPayablesToday}

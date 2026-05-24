@@ -98,6 +98,7 @@ model Order {
   updatedAt       DateTime       @updatedAt
   cancelReason    String?
   emergencyStatus String?
+  emergencyFine   Float          @default(0)
   isEmergency     Boolean        @default(false)
   rejectionReason String?
   user            User           @relation(fields: [userId], references: [id])

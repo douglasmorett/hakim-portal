@@ -41,13 +41,28 @@ export default async function MeusPedidosPage() {
   try {
     user = await prisma.user.findUnique({
       where: { email: session.user?.email || "" },
-      select: { id: true, name: true, role: true },
+      select: { id: true, name: true, role: true, cpfCnpj: true },
     });
     if (!user) redirect("/login");
 
-    // FRANCHISEE vê só seus próprios pedidos. ADMIN vê todos.
+    // FRANCHISEE vê pedidos vinculados ao seu CPF/CNPJ (mesmo que a conta tenha sido recriada)
+    let whereClause = {};
+    if (user.role === "FRANCHISEE") {
+      if ((user as any).cpfCnpj) {
+        // Busca todos os userIds que compartilham o mesmo CPF/CNPJ
+        const relatedUsers = await prisma.user.findMany({
+          where: { cpfCnpj: (user as any).cpfCnpj },
+          select: { id: true },
+        });
+        const relatedIds = relatedUsers.map(u => u.id);
+        whereClause = { userId: { in: relatedIds } };
+      } else {
+        whereClause = { userId: user.id };
+      }
+    }
+
     orders = await prisma.order.findMany({
-      where: user.role === "FRANCHISEE" ? { userId: user.id } : {},
+      where: whereClause,
       include: {
         items: { include: { product: true } },
         user: { select: { name: true, storeName: true, city: true } },
@@ -164,6 +179,13 @@ export default async function MeusPedidosPage() {
                         padding: "2px 8px", borderRadius: 20, fontSize: ".75rem", fontWeight: 700,
                       }}>⚡ Emergência</span>
                     )}
+                    {order.emergencyFine > 0 && (
+                      <span style={{
+                        background: "rgba(220,38,38,0.1)", color: "#DC2626",
+                        border: "1px solid rgba(220,38,38,0.3)",
+                        padding: "2px 8px", borderRadius: 20, fontSize: ".75rem", fontWeight: 700,
+                      }}>💰 Multa 30%</span>
+                    )}
                   </div>
 
                   <p style={{ margin: "0 0 4px", fontSize: ".95rem", fontWeight: 700 }}>
@@ -184,6 +206,26 @@ export default async function MeusPedidosPage() {
                       </span>
                     ))}
                   </div>
+                  {order.emergencyFine > 0 && (
+                    <div style={{
+                      marginTop: 8, padding: "8px 12px", borderRadius: 8,
+                      background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)",
+                      fontSize: ".8rem",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                        <span style={{ color: "var(--text-muted)" }}>Subtotal itens</span>
+                        <span>{fmt(order.totalAmount - order.emergencyFine)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                        <span style={{ color: "#DC2626", fontWeight: 700 }}>Multa 30%</span>
+                        <span style={{ color: "#DC2626", fontWeight: 700 }}>+ {fmt(order.emergencyFine)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(239,68,68,0.15)", paddingTop: 4 }}>
+                        <span style={{ fontWeight: 800 }}>Total</span>
+                        <span style={{ fontWeight: 800 }}>{fmt(order.totalAmount)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Info direita */}
