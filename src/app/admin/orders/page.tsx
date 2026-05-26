@@ -6,6 +6,8 @@ import AdminOrderCard from "@/components/AdminOrderCard";
 import { getNextDeliveryInfo } from "@/lib/deliveryDates";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await getServerSession(authOptions);
   const { tab } = await searchParams;
