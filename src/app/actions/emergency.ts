@@ -2,7 +2,7 @@
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
 import { revalidatePath } from "next/cache";
 import { createAsaasPayment } from "@/lib/asaas";
 

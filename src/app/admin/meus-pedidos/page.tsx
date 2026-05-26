@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { prismaFirehub } from "@/lib/prismaFirehub";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -39,29 +40,43 @@ export default async function MeusPedidosPage() {
   let orders: any[] = [];
 
   try {
+    // Buscar usuário no banco Hakim (auth)
     user = await prisma.user.findUnique({
       where: { email: session.user?.email || "" },
-      select: { id: true, name: true, role: true, cpfCnpj: true },
+      select: { id: true, name: true, role: true, cpfCnpj: true, email: true },
     });
     if (!user) redirect("/login");
 
-    // FRANCHISEE vê pedidos vinculados ao seu CPF/CNPJ (mesmo que a conta tenha sido recriada)
+    // Buscar usuário(s) correspondente(s) no banco FireHub por cpfCnpj ou email
     let whereClause = {};
     if (user.role === "FRANCHISEE") {
       if ((user as any).cpfCnpj) {
-        // Busca todos os userIds que compartilham o mesmo CPF/CNPJ
-        const relatedUsers = await prisma.user.findMany({
+        const relatedUsers = await prismaFirehub.user.findMany({
           where: { cpfCnpj: (user as any).cpfCnpj },
           select: { id: true },
         });
         const relatedIds = relatedUsers.map(u => u.id);
-        whereClause = { userId: { in: relatedIds } };
+        if (relatedIds.length > 0) {
+          whereClause = { userId: { in: relatedIds } };
+        } else {
+          // Fallback: buscar por email no banco FireHub
+          const firehubUser = await prismaFirehub.user.findUnique({
+            where: { email: session.user?.email || "" },
+            select: { id: true },
+          });
+          whereClause = firehubUser ? { userId: firehubUser.id } : { userId: "none" };
+        }
       } else {
-        whereClause = { userId: user.id };
+        const firehubUser = await prismaFirehub.user.findUnique({
+          where: { email: session.user?.email || "" },
+          select: { id: true },
+        });
+        whereClause = firehubUser ? { userId: firehubUser.id } : { userId: "none" };
       }
     }
 
-    orders = await prisma.order.findMany({
+    // Buscar pedidos no banco FireHub
+    orders = await prismaFirehub.order.findMany({
       where: whereClause,
       include: {
         items: { include: { product: true } },
