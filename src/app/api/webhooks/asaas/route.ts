@@ -13,7 +13,7 @@
  *   Configurações → Integrações → Webhooks → URL: https://hakim-portal-8umjlo6jv-grupohakim.vercel.app/api/webhooks/asaas
  */
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
 
 export async function POST(req: NextRequest) {
   try {

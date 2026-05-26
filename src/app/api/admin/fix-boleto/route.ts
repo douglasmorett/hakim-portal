@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
 import { createAsaasPayment } from "@/lib/asaas";
 
 export async function POST(req: NextRequest) {

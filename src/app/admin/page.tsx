@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { prismaFirehub } from "@/lib/prismaFirehub";
 import { getAsaasDashboardData } from "@/lib/asaas";
 import DashboardClient from "@/components/DashboardClient";
 import { redirect } from "next/navigation";
@@ -70,13 +71,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   }
 
   try {
-    totalOrders = await prisma.order.count();
+    totalOrders = await prismaFirehub.order.count();
   } catch (err) {
     console.error("[Dashboard] Erro ao contar pedidos:", err);
   }
 
   try {
-    const rawOrders = await prisma.order.findMany({
+    const rawOrders = await prismaFirehub.order.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
       include: { user: { select: { name: true, city: true } } }
