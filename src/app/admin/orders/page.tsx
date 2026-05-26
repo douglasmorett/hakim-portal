@@ -1,4 +1,5 @@
-import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
+import { prisma } from "@/lib/prisma";
+import { prismaFirehub } from "@/lib/prismaFirehub";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import AdminOrderCard from "@/components/AdminOrderCard";
@@ -10,17 +11,37 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const { tab } = await searchParams;
   const currentTab = tab === "cancelados" ? "cancelados" : "ativos";
 
-  const orders = await prisma.order.findMany({
-    include: {
-      user: true,
-      items: { include: { product: true } },
-      history: { orderBy: { createdAt: "desc" } }
-    },
-    orderBy: { createdAt: 'desc' },
-    where: currentTab === "cancelados" 
-      ? { status: "CANCELADO" } 
-      : { status: { not: "CANCELADO" } }
-  });
+  const whereClause = currentTab === "cancelados" 
+    ? { status: "CANCELADO" } 
+    : { status: { not: "CANCELADO" } };
+
+  const includeClause = {
+    user: true,
+    items: { include: { product: true } },
+    history: { orderBy: { createdAt: "desc" as const } }
+  };
+
+  // Buscar pedidos dos DOIS bancos em paralelo
+  const [hakimOrders, firehubOrders] = await Promise.all([
+    prisma.order.findMany({
+      include: includeClause,
+      orderBy: { createdAt: 'desc' },
+      where: whereClause,
+    }).catch(err => { console.error("[Orders] Erro banco Hakim:", err); return []; }),
+    prismaFirehub.order.findMany({
+      include: includeClause,
+      orderBy: { createdAt: 'desc' },
+      where: whereClause,
+    }).catch(err => { console.error("[Orders] Erro banco FireHub:", err); return []; }),
+  ]);
+
+  // Mesclar e remover duplicatas (por ID), ordenar por data
+  const seen = new Set<string>();
+  const allOrders = [...hakimOrders, ...firehubOrders]
+    .filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const orders = allOrders;
 
   return (
     <div>

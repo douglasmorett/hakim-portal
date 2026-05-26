@@ -47,44 +47,68 @@ export default async function MeusPedidosPage() {
     });
     if (!user) redirect("/login");
 
-    // Buscar usuário(s) correspondente(s) no banco FireHub por cpfCnpj ou email
-    let whereClause = {};
+    const includeOrders = {
+      items: { include: { product: true } },
+      user: { select: { name: true, storeName: true, city: true } },
+    };
+
     if (user.role === "FRANCHISEE") {
+      // Buscar pedidos do FRANCHISEE nos dois bancos
+      let hakimWhere: any = { userId: user.id };
+      let firehubWhere: any = { userId: "none" };
+
       if ((user as any).cpfCnpj) {
-        const relatedUsers = await prismaFirehub.user.findMany({
+        // Hakim: match por cpfCnpj
+        const hakimRelated = await prisma.user.findMany({
           where: { cpfCnpj: (user as any).cpfCnpj },
           select: { id: true },
         });
-        const relatedIds = relatedUsers.map(u => u.id);
-        if (relatedIds.length > 0) {
-          whereClause = { userId: { in: relatedIds } };
+        if (hakimRelated.length > 0) {
+          hakimWhere = { userId: { in: hakimRelated.map(u => u.id) } };
+        }
+        // FireHub: match por cpfCnpj
+        const firehubRelated = await prismaFirehub.user.findMany({
+          where: { cpfCnpj: (user as any).cpfCnpj },
+          select: { id: true },
+        });
+        if (firehubRelated.length > 0) {
+          firehubWhere = { userId: { in: firehubRelated.map(u => u.id) } };
         } else {
-          // Fallback: buscar por email no banco FireHub
-          const firehubUser = await prismaFirehub.user.findUnique({
+          const fbUser = await prismaFirehub.user.findUnique({
             where: { email: session.user?.email || "" },
             select: { id: true },
           });
-          whereClause = firehubUser ? { userId: firehubUser.id } : { userId: "none" };
+          if (fbUser) firehubWhere = { userId: fbUser.id };
         }
       } else {
-        const firehubUser = await prismaFirehub.user.findUnique({
+        const fbUser = await prismaFirehub.user.findUnique({
           where: { email: session.user?.email || "" },
           select: { id: true },
         });
-        whereClause = firehubUser ? { userId: firehubUser.id } : { userId: "none" };
+        if (fbUser) firehubWhere = { userId: fbUser.id };
       }
-    }
 
-    // Buscar pedidos no banco FireHub
-    orders = await prismaFirehub.order.findMany({
-      where: whereClause,
-      include: {
-        items: { include: { product: true } },
-        user: { select: { name: true, storeName: true, city: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    });
+      const [hakimOrders, firehubOrders] = await Promise.all([
+        prisma.order.findMany({ where: hakimWhere, include: includeOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
+        prismaFirehub.order.findMany({ where: firehubWhere, include: includeOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
+      ]);
+
+      const seen = new Set<string>();
+      orders = [...hakimOrders, ...firehubOrders]
+        .filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; })
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else {
+      // ADMIN: buscar todos de ambos os bancos
+      const [hakimOrders, firehubOrders] = await Promise.all([
+        prisma.order.findMany({ include: includeOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
+        prismaFirehub.order.findMany({ include: includeOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
+      ]);
+
+      const seen = new Set<string>();
+      orders = [...hakimOrders, ...firehubOrders]
+        .filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; })
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
   } catch (err) {
     console.error("[MeusPedidos] Erro ao buscar dados:", err);
     orders = [];

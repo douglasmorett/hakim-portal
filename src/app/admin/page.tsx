@@ -71,19 +71,36 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   }
 
   try {
-    totalOrders = await prismaFirehub.order.count();
+    const [hakimCount, firehubCount] = await Promise.all([
+      prisma.order.count().catch(() => 0),
+      prismaFirehub.order.count().catch(() => 0),
+    ]);
+    totalOrders = hakimCount + firehubCount;
   } catch (err) {
     console.error("[Dashboard] Erro ao contar pedidos:", err);
   }
 
   try {
-    const rawOrders = await prismaFirehub.order.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: { user: { select: { name: true, city: true } } }
-    });
+    const [hakimOrders, firehubOrdersRaw] = await Promise.all([
+      prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { name: true, city: true } } }
+      }).catch(() => []),
+      prismaFirehub.order.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { name: true, city: true } } }
+      }).catch(() => []),
+    ]);
+    // Mesclar, remover duplicatas, pegar os 5 mais recentes
+    const seen = new Set<string>();
+    const merged = [...hakimOrders, ...firehubOrdersRaw]
+      .filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
     // Serialização segura — converte Dates e evita crash
-    recentOrders = JSON.parse(JSON.stringify(rawOrders));
+    recentOrders = JSON.parse(JSON.stringify(merged));
   } catch (err) {
     console.error("[Dashboard] Erro ao buscar pedidos recentes:", err);
   }

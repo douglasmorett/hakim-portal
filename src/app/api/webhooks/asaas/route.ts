@@ -13,7 +13,8 @@
  *   Configurações → Integrações → Webhooks → URL: https://hakim-portal-8umjlo6jv-grupohakim.vercel.app/api/webhooks/asaas
  */
 import { NextRequest, NextResponse } from "next/server";
-import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
+import { prisma } from "@/lib/prisma";
+import { prismaFirehub } from "@/lib/prismaFirehub";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,11 +42,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, event, action: "noop" });
     }
 
-    // Busca o pedido pelo ID do Asaas
-    const order = await prisma.order.findFirst({
+    // Busca o pedido pelo ID do Asaas nos DOIS bancos
+    let order = await prisma.order.findFirst({
       where: { asaasPaymentId },
       select: { id: true, status: true, userId: true },
     });
+    let db = prisma;
+
+    if (!order) {
+      order = await prismaFirehub.order.findFirst({
+        where: { asaasPaymentId },
+        select: { id: true, status: true, userId: true },
+      });
+      db = prismaFirehub;
+    }
 
     if (!order) {
       console.warn(`[Asaas Webhook] Pedido não encontrado para payment: ${asaasPaymentId}`);
@@ -57,8 +67,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, skipped: "order already paid, ignoring cancel" });
     }
 
-    // Atualiza o status
-    await prisma.order.update({
+    // Atualiza o status no banco correto
+    await db.order.update({
       where: { id: order.id },
       data: {
         status: newStatus,
@@ -67,7 +77,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Registra no histórico
-    await prisma.orderHistory.create({
+    await db.orderHistory.create({
       data: {
         orderId:     order.id,
         statusFrom:  order.status,
