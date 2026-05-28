@@ -116,6 +116,11 @@ export default async function AdminSidebar() {
               <ShoppingCart size={18} style={{ marginRight: "10px" }} /> Pedidos
             </Link>
           )}
+          {can("routes") && (
+            <Link href="/admin/routes" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
+              <Truck size={18} style={{ marginRight: "10px" }} /> Logística / Rotas
+            </Link>
+          )}
           {(role === "ADMIN" || isFranchisee) && (
             <Link href="/admin/cardapio" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
               <UtensilsCrossed size={18} style={{ marginRight: "10px" }} /> Cardápio Digital
@@ -162,14 +167,13 @@ export default async function AdminSidebar() {
             <>
               <p style={{ fontSize: ".65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, padding: "12px 12px 4px", margin: 0 }}>Administração</p>
 
-              <Link href="/admin/franchisees" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
-                <Users size={18} style={{ marginRight: "10px" }} /> Clientes
-              </Link>
+              {can("franchisees") && (
+                <Link href="/admin/franchisees" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
+                  <Users size={18} style={{ marginRight: "10px" }} /> Clientes
+                </Link>
+              )}
               <Link href="/admin/equipe" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
                 <UserCog size={18} style={{ marginRight: "10px" }} /> Equipe / Acessos
-              </Link>
-              <Link href="/admin/routes" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none" }}>
-                <Truck size={18} style={{ marginRight: "10px" }} /> Logística / Rotas
               </Link>
               <Link href="/admin/lojistas" className="btn btn-outline sidebar-link" style={{ justifyContent: "flex-start", border: "none", background: "rgba(220,38,38,0.06)", borderLeft: "3px solid #DC2626" }}>
                 <Store size={18} style={{ marginRight: "10px", color: "#DC2626" }} /> Painel de Lojistas
