@@ -7,6 +7,12 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 
+// Colunas seguras que existem em AMBOS os bancos
+const FIREHUB_ORDER_SELECT = {
+  id: true, userId: true, totalAmount: true, status: true,
+  createdAt: true, updatedAt: true,
+};
+
 export async function cancelOrder(orderId: string, adminPassword?: string, reason?: string): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await getServerSession(authOptions);
@@ -24,15 +30,16 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
       return { success: false, error: "O motivo do cancelamento é obrigatório." };
     }
 
-    // Buscar o usuário logado para validar a senha — tenta banco principal primeiro
+    // Buscar o usuário logado para validar a senha
     let currentUser = await prisma.user.findUnique({
       where: { email: session.user.email! }
-    }).catch(() => null);
+    }).catch((err) => { console.error("[cancelOrder] Erro busca user principal:", err.message); return null; });
 
     if (!currentUser) {
       currentUser = await prismaFirehub.user.findUnique({
-        where: { email: session.user.email! }
-      }).catch(() => null);
+        where: { email: session.user.email! },
+        select: { id: true, name: true, email: true, password: true }
+      }).catch((err) => { console.error("[cancelOrder] Erro busca user firehub:", err.message); return null; });
     }
 
     if (!currentUser) {
@@ -45,19 +52,20 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
       return { success: false, error: "Senha incorreta. O pedido não foi cancelado." };
     }
 
-    // Buscar o pedido — tenta banco principal primeiro, depois FireHub
-    let order = await prisma.order.findUnique({
+    // Buscar o pedido — tenta banco principal primeiro (com todas as colunas)
+    let order: any = await prisma.order.findUnique({
       where: { id: orderId }
-    }).catch(() => null);
+    }).catch((err) => { console.error("[cancelOrder] Erro busca order principal:", err.message); return null; });
 
-    // Determina qual client usar para atualizar o pedido
-    let dbClient = prisma;
+    let source: "hakim" | "firehub" = "hakim";
 
     if (!order) {
+      // FireHub: usar SELECT explícito — só colunas que existem nesse banco
       order = await prismaFirehub.order.findUnique({
-        where: { id: orderId }
-      }).catch(() => null);
-      dbClient = prismaFirehub;
+        where: { id: orderId },
+        select: FIREHUB_ORDER_SELECT,
+      }).catch((err) => { console.error("[cancelOrder] Erro busca order firehub:", err.message); return null; });
+      source = "firehub";
     }
 
     if (!order) {
@@ -71,7 +79,7 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
     }
 
     // Se o pedido possui um ID de pagamento no Asaas, tentamos cancelar lá primeiro
-    if ((order as any).asaasPaymentId) {
+    if (order.asaasPaymentId) {
       const asaasKey = process.env.ASAAS_API_KEY;
       if (asaasKey) {
         const ASAAS_URL = asaasKey.startsWith("$aact_prod")
@@ -79,16 +87,11 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
           : "https://sandbox.asaas.com/v3";
 
         try {
-          const res = await fetch(`${ASAAS_URL}/payments/${(order as any).asaasPaymentId}`, {
+          const res = await fetch(`${ASAAS_URL}/payments/${order.asaasPaymentId}`, {
             method: "DELETE",
-            headers: {
-              "access_token": asaasKey,
-              "User-Agent": "HakimPortal/1.0"
-            }
+            headers: { "access_token": asaasKey, "User-Agent": "HakimPortal/1.0" }
           });
-          
           const data = await res.json();
-          
           if (!res.ok && data.errors && data.errors[0]?.code !== "invalid_action") {
             console.warn("[cancelOrder] Aviso Asaas:", data.errors);
           }
@@ -99,55 +102,48 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
     }
 
     // Atualizar status do pedido
-    try {
+    const dbClient = source === "hakim" ? prisma : prismaFirehub;
+    
+    if (source === "hakim") {
+      // Banco principal — tem cancelReason
       await dbClient.order.update({
         where: { id: orderId },
-        data: { 
-          status: "CANCELADO",
-          cancelReason: reason
-        }
+        data: { status: "CANCELADO", cancelReason: reason }
       });
-    } catch (updateErr: any) {
-      console.error("[cancelOrder] Erro ao atualizar pedido:", updateErr);
-      // Se falhou com cancelReason (campo pode não existir no FireHub), tenta sem
+    } else {
+      // FireHub — só atualiza status (cancelReason pode não existir)
       try {
+        await dbClient.order.update({
+          where: { id: orderId },
+          data: { status: "CANCELADO", cancelReason: reason }
+        });
+      } catch {
+        // Se falhar com cancelReason, tenta sem
         await dbClient.order.update({
           where: { id: orderId },
           data: { status: "CANCELADO" }
         });
-      } catch (updateErr2: any) {
-        console.error("[cancelOrder] Erro ao atualizar pedido (sem cancelReason):", updateErr2);
-        return { success: false, error: "Erro ao atualizar pedido: " + (updateErr2.message || "Erro desconhecido") };
       }
     }
 
-    // Registrar histórico — tenta no mesmo banco, fallback para principal
+    // Registrar histórico
+    const historyData = {
+      orderId,
+      statusFrom: oldStatus,
+      statusTo: "CANCELADO",
+      actionBy: session.user?.name || "Sistema",
+      actionEmail: session.user?.email || "",
+      notes: reason
+    };
+
     try {
-      await dbClient.orderHistory.create({
-        data: {
-          orderId,
-          statusFrom: oldStatus,
-          statusTo: "CANCELADO",
-          actionBy: session.user?.name || "Sistema",
-          actionEmail: session.user?.email || "",
-          notes: reason
-        }
-      });
-    } catch (histErr) {
-      console.warn("[cancelOrder] Falha histórico no banco do pedido:", histErr);
+      await dbClient.orderHistory.create({ data: historyData });
+    } catch {
+      // Fallback: tenta no banco principal
       try {
-        await prisma.orderHistory.create({
-          data: {
-            orderId,
-            statusFrom: oldStatus,
-            statusTo: "CANCELADO",
-            actionBy: session.user?.name || "Sistema",
-            actionEmail: session.user?.email || "",
-            notes: reason
-          }
-        });
-      } catch (histErr2) {
-        console.warn("[cancelOrder] Falha histórico no banco principal:", histErr2);
+        await prisma.orderHistory.create({ data: historyData });
+      } catch (e) {
+        console.warn("[cancelOrder] Não conseguiu criar histórico:", e);
       }
     }
 
