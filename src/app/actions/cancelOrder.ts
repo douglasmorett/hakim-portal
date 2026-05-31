@@ -105,23 +105,25 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
     const dbClient = source === "hakim" ? prisma : prismaFirehub;
     
     if (source === "hakim") {
-      // Banco principal — tem cancelReason
+      // Banco principal — tem todas as colunas
       await dbClient.order.update({
         where: { id: orderId },
         data: { status: "CANCELADO", cancelReason: reason }
       });
     } else {
-      // FireHub — só atualiza status (cancelReason pode não existir)
+      // FireHub — usar select explícito para não retornar colunas inexistentes
       try {
         await dbClient.order.update({
           where: { id: orderId },
-          data: { status: "CANCELADO", cancelReason: reason }
+          data: { status: "CANCELADO", cancelReason: reason },
+          select: FIREHUB_ORDER_SELECT,
         });
       } catch {
         // Se falhar com cancelReason, tenta sem
         await dbClient.order.update({
           where: { id: orderId },
-          data: { status: "CANCELADO" }
+          data: { status: "CANCELADO" },
+          select: FIREHUB_ORDER_SELECT,
         });
       }
     }
@@ -137,7 +139,10 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
     };
 
     try {
-      await dbClient.orderHistory.create({ data: historyData });
+      await dbClient.orderHistory.create({
+        data: historyData,
+        select: { id: true },
+      });
     } catch {
       // Fallback: tenta no banco principal
       try {
