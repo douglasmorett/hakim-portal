@@ -54,13 +54,17 @@ export default function AdminOrderStatusSelect({ orderId, currentStatus }: { ord
 
     setLoading(true);
     try {
-      await cancelOrder(orderId, cancelPassword, cancelReason);
-      setStatus("CANCELADO");
-      setShowCancelModal(false);
-      setCancelPassword("");
-      setCancelReason("");
-      alert("✅ Pedido cancelado com sucesso!");
-      router.refresh();
+      const result = await cancelOrder(orderId, cancelPassword, cancelReason);
+      if (result.success) {
+        setStatus("CANCELADO");
+        setShowCancelModal(false);
+        setCancelPassword("");
+        setCancelReason("");
+        alert("✅ Pedido cancelado com sucesso!");
+        router.refresh();
+      } else {
+        alert("❌ " + (result.error || "Erro ao cancelar pedido."));
+      }
     } catch (err: any) {
       alert("❌ " + (err.message || "Erro ao cancelar pedido."));
     } finally {
