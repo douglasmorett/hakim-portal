@@ -52,6 +52,19 @@ export default async function MeusPedidosPage() {
       user: { select: { name: true, storeName: true, city: true } },
     };
 
+    // FireHub DB não tem colunas como emergencyFine, isEmergency, etc.
+    const firehubSelectOrders = {
+      id: true, userId: true, totalAmount: true, status: true, createdAt: true, updatedAt: true,
+      boletoUrl: true, asaasPaymentId: true,
+      items: { select: { id: true, orderId: true, productId: true, quantity: true, price: true, product: true } },
+      user: { select: { name: true, storeName: true, city: true } },
+    };
+    const addFirehubDefaults = (o: any) => ({
+      ...o,
+      cancelReason: null, emergencyStatus: null, emergencyFine: 0,
+      isEmergency: false, rejectionReason: null, deliveryDate: null,
+    });
+
     if (user.role === "FRANCHISEE") {
       // Buscar pedidos do FRANCHISEE nos dois bancos
       let hakimWhere: any = { userId: user.id };
@@ -88,10 +101,11 @@ export default async function MeusPedidosPage() {
         if (fbUser) firehubWhere = { userId: fbUser.id };
       }
 
-      const [hakimOrders, firehubOrders] = await Promise.all([
+      const [hakimOrders, rawFbOrders] = await Promise.all([
         prisma.order.findMany({ where: hakimWhere, include: includeOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
-        prismaFirehub.order.findMany({ where: firehubWhere, include: includeOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
+        prismaFirehub.order.findMany({ where: firehubWhere, select: firehubSelectOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
       ]);
+      const firehubOrders = rawFbOrders.map(addFirehubDefaults);
 
       const seen = new Set<string>();
       orders = [...hakimOrders, ...firehubOrders]
@@ -99,10 +113,11 @@ export default async function MeusPedidosPage() {
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else {
       // ADMIN: buscar todos de ambos os bancos
-      const [hakimOrders, firehubOrders] = await Promise.all([
+      const [hakimOrders, rawFbOrders] = await Promise.all([
         prisma.order.findMany({ include: includeOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
-        prismaFirehub.order.findMany({ include: includeOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
+        prismaFirehub.order.findMany({ select: firehubSelectOrders, orderBy: { createdAt: "desc" }, take: 100 }).catch(() => []),
       ]);
+      const firehubOrders = rawFbOrders.map(addFirehubDefaults);
 
       const seen = new Set<string>();
       orders = [...hakimOrders, ...firehubOrders]

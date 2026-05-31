@@ -23,19 +23,41 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     history: { orderBy: { createdAt: "desc" as const } }
   };
 
+  // FireHub DB não tem todas as colunas do Hakim (ex: emergencyFine, isEmergency, etc.)
+  // Precisamos usar select explícito para o FireHub e adicionar defaults depois
+  const firehubSelect = {
+    id: true, userId: true, totalAmount: true, status: true, createdAt: true, updatedAt: true,
+    user: { select: { id: true, name: true, email: true, city: true, storeName: true, cpfCnpj: true } },
+    items: { select: { id: true, orderId: true, productId: true, quantity: true, price: true, product: true } },
+    history: { orderBy: { createdAt: "desc" as const } as const, select: { id: true, orderId: true, statusFrom: true, statusTo: true, actionBy: true, actionEmail: true, notes: true, createdAt: true } },
+  };
+
   // Buscar pedidos dos DOIS bancos em paralelo
-  const [hakimOrders, firehubOrders] = await Promise.all([
+  const [hakimOrders, rawFirehubOrders] = await Promise.all([
     prisma.order.findMany({
       include: includeClause,
       orderBy: { createdAt: 'desc' },
       where: whereClause,
     }).catch(err => { console.error("[Orders] Erro banco Hakim:", err); return []; }),
     prismaFirehub.order.findMany({
-      include: includeClause,
+      select: firehubSelect,
       orderBy: { createdAt: 'desc' },
       where: whereClause,
     }).catch(err => { console.error("[Orders] Erro banco FireHub:", err); return []; }),
   ]);
+
+  // Adicionar defaults para colunas que não existem no FireHub
+  const firehubOrders = rawFirehubOrders.map((o: any) => ({
+    ...o,
+    boletoUrl: null,
+    asaasPaymentId: null,
+    deliveryDate: null,
+    cancelReason: null,
+    emergencyStatus: null,
+    emergencyFine: 0,
+    isEmergency: false,
+    rejectionReason: null,
+  }));
 
   // Mesclar e remover duplicatas (por ID), ordenar por data
   const seen = new Set<string>();
@@ -81,7 +103,12 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {await Promise.all(orders.map(async order => {
-            const deliveryInfo = await getNextDeliveryInfo(order.user?.city || null);
+            let deliveryInfo;
+            try {
+              deliveryInfo = await getNextDeliveryInfo(order.user?.city || null);
+            } catch {
+              deliveryInfo = { limitStr: "Erro ao calcular", deliveryStr: "A definir" };
+            }
             return (
               <AdminOrderCard key={order.id} order={order} deliveryInfo={deliveryInfo} />
             );

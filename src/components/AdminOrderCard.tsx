@@ -86,8 +86,8 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
             <MapPin size={14} color="var(--primary)" style={{ flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
-              <p className="font-bold" style={{ fontSize: "0.85rem", margin: 0 }}>{order.user.city || "Sem Rota"}</p>
-              <p className="text-muted" style={{ fontSize: "0.75rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.user.name}</p>
+              <p className="font-bold" style={{ fontSize: "0.85rem", margin: 0 }}>{order.user?.city || "Sem Rota"}</p>
+              <p className="text-muted" style={{ fontSize: "0.75rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.user?.name || "Sem nome"}</p>
             </div>
           </div>
 
