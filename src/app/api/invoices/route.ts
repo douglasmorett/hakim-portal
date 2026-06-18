@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       const imgBuffer = await imgResponse.arrayBuffer();
       base64 = Buffer.from(imgBuffer).toString("base64");
       mimeType = imgResponse.headers.get("content-type") || "image/jpeg";
+      console.log(`[Invoices/AI] Imagem baixada: ${(imgBuffer.byteLength / 1024).toFixed(0)}KB, tipo: ${mimeType}`);
     } catch (imgErr: any) {
       console.error("[Invoices/AI] Erro ao baixar imagem:", imgErr);
       return NextResponse.json(
@@ -62,20 +63,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Chamar Gemini 2.5 Flash para ler a nota
+    // 2. Chamar Gemini 2.5 Flash para ler a nota (com retry)
     let geminiText = "";
-    try {
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { inlineData: { mimeType, data: base64 } },
-                {
-                  text: `Você é um leitor especialista de notas fiscais e cupons fiscais brasileiros. Analise CUIDADOSAMENTE esta imagem e extraia:
+    const MAX_RETRIES = 2;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { inlineData: { mimeType, data: base64 } },
+                  {
+                    text: `Você é um leitor especialista de notas fiscais e cupons fiscais brasileiros. Analise CUIDADOSAMENTE esta imagem e extraia:
 
 1. VALOR TOTAL — procure "TOTAL", "TOTAL R$", "VALOR TOTAL", "TOTAL A PAGAR", "VL TOTAL". O valor usa vírgula decimal (ex: 125,50). Retorne como número com ponto (125.50).
 2. DATA DE EMISSÃO — procure "DATA", "DT.EMIS", "EMISSÃO", "DT EMISSÃO". Retorne no formato YYYY-MM-DD.
@@ -90,32 +93,62 @@ IMPORTANTE:
 
 Responda APENAS com JSON puro:
 {"valor": 125.50, "data": "2024-01-15", "categoria": "Outros"}`
-                }
-              ]
-            }],
-            generationConfig: { temperature: 0, responseMimeType: "application/json" }
-          }),
-        }
-      );
+                  }
+                ]
+              }],
+              generationConfig: { temperature: 0, responseMimeType: "application/json" }
+            }),
+          }
+        );
 
-      if (!geminiRes.ok) {
-        const errBody = await geminiRes.text();
-        console.error("[Invoices/AI] Gemini HTTP", geminiRes.status, errBody);
+        if (!geminiRes.ok) {
+          const errBody = await geminiRes.text();
+          console.error(`[Invoices/AI] Gemini HTTP ${geminiRes.status} (tentativa ${attempt}/${MAX_RETRIES}):`, errBody);
+
+          // Se for rate limit (429) ou erro do servidor (5xx), tenta novamente
+          if (attempt < MAX_RETRIES && (geminiRes.status === 429 || geminiRes.status >= 500)) {
+            console.log(`[Invoices/AI] Aguardando 2s antes de tentar novamente...`);
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+
+          // Extrair mensagem de erro mais útil do Gemini
+          let errorDetail = "Serviço de leitura temporariamente indisponível.";
+          try {
+            const errJson = JSON.parse(errBody);
+            const geminiMsg = errJson?.error?.message || "";
+            if (geminiRes.status === 429) {
+              errorDetail = "Limite de requisições atingido. Aguarde 1 minuto e tente novamente.";
+            } else if (geminiRes.status === 400 && geminiMsg.includes("size")) {
+              errorDetail = "A imagem é muito grande para processar. Tire uma foto com menor resolução.";
+            } else if (geminiRes.status === 403) {
+              errorDetail = "Chave de API sem permissão. Avise o administrador.";
+            } else if (geminiMsg) {
+              errorDetail = `Erro do serviço de IA: ${geminiMsg}`;
+            }
+          } catch { /* usa mensagem padrão */ }
+
+          return NextResponse.json(
+            { error: "NAO_LEU_VALOR", message: errorDetail },
+            { status: 422 }
+          );
+        }
+
+        const geminiData = await geminiRes.json();
+        geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        console.log("[Invoices/AI] Resposta Gemini:", geminiText);
+        break; // Sucesso, sai do loop
+      } catch (aiErr: any) {
+        console.error(`[Invoices/AI] Erro na chamada Gemini (tentativa ${attempt}/${MAX_RETRIES}):`, aiErr);
+        if (attempt < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
         return NextResponse.json(
-          { error: "NAO_LEU_VALOR", message: "Serviço de leitura temporariamente indisponível. Tente novamente em alguns segundos." },
+          { error: "NAO_LEU_VALOR", message: "Erro ao conectar com o serviço de leitura. Verifique sua conexão e tente novamente." },
           { status: 422 }
         );
       }
-
-      const geminiData = await geminiRes.json();
-      geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      console.log("[Invoices/AI] Resposta Gemini:", geminiText);
-    } catch (aiErr: any) {
-      console.error("[Invoices/AI] Erro na chamada Gemini:", aiErr);
-      return NextResponse.json(
-        { error: "NAO_LEU_VALOR", message: "Erro ao conectar com o serviço de leitura. Verifique sua conexão e tente novamente." },
-        { status: 422 }
-      );
     }
 
     // 3. Parsear o JSON da resposta do Gemini

@@ -27,6 +27,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   // Precisamos usar select explícito para o FireHub e adicionar defaults depois
   const firehubSelect = {
     id: true, userId: true, totalAmount: true, status: true, createdAt: true, updatedAt: true,
+    boletoUrl: true, asaasPaymentId: true,
     user: { select: { id: true, name: true, email: true, city: true, storeName: true, cpfCnpj: true } },
     items: { select: { id: true, orderId: true, productId: true, quantity: true, price: true, product: true } },
     history: { orderBy: { createdAt: "desc" as const } as const, select: { id: true, orderId: true, statusFrom: true, statusTo: true, actionBy: true, actionEmail: true, notes: true, createdAt: true } },
@@ -49,8 +50,6 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   // Adicionar defaults para colunas que não existem no FireHub
   const firehubOrders = rawFirehubOrders.map((o: any) => ({
     ...o,
-    boletoUrl: null,
-    asaasPaymentId: null,
     deliveryDate: null,
     cancelReason: null,
     emergencyStatus: null,
@@ -105,7 +104,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           {await Promise.all(orders.map(async order => {
             let deliveryInfo;
             try {
-              deliveryInfo = await getNextDeliveryInfo(order.user?.city || null);
+              deliveryInfo = await getNextDeliveryInfo(order.user?.city || null, new Date(order.createdAt));
             } catch {
               deliveryInfo = { limitStr: "Erro ao calcular", deliveryStr: "A definir" };
             }

@@ -58,32 +58,63 @@ REGRAS:
 Responda APENAS com JSON:
 {"codigoBarras": "string com apenas dígitos ou null"}`;
 
-  // 3. Chamar Gemini
-  let geminiText: string;
-  try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { inlineData: { mimeType, data: base64 } },
-            { text: prompt },
-          ]}],
-          generationConfig: { temperature: 0, responseMimeType: "application/json" },
-        }),
-      }
-    );
+  // 3. Chamar Gemini (com retry automático)
+  let geminiText: string = "";
+  const MAX_RETRIES = 2;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { inlineData: { mimeType, data: base64 } },
+              { text: prompt },
+            ]}],
+            generationConfig: { temperature: 0, responseMimeType: "application/json" },
+          }),
+        }
+      );
 
-    if (!geminiRes.ok) throw new Error("Gemini API error");
-    const geminiData = await geminiRes.json();
-    geminiText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  } catch {
-    return NextResponse.json(
-      { error: "Serviço de leitura indisponível. Tente novamente." },
-      { status: 422 }
-    );
+      if (!geminiRes.ok) {
+        const errBody = await geminiRes.text();
+        console.error(`[Payables/AI] Gemini HTTP ${geminiRes.status} (tentativa ${attempt}/${MAX_RETRIES}):`, errBody);
+
+        if (attempt < MAX_RETRIES && (geminiRes.status === 429 || geminiRes.status >= 500)) {
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+
+        let errorDetail = "Serviço de leitura indisponível. Tente novamente.";
+        try {
+          const errJson = JSON.parse(errBody);
+          const msg = errJson?.error?.message || "";
+          if (geminiRes.status === 429) {
+            errorDetail = "Limite de requisições atingido. Aguarde 1 minuto e tente novamente.";
+          } else if (msg) {
+            errorDetail = `Erro do serviço de IA: ${msg}`;
+          }
+        } catch { /* usa mensagem padrão */ }
+
+        return NextResponse.json({ error: errorDetail }, { status: 422 });
+      }
+
+      const geminiData = await geminiRes.json();
+      geminiText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      break;
+    } catch (aiErr: any) {
+      console.error(`[Payables/AI] Erro (tentativa ${attempt}/${MAX_RETRIES}):`, aiErr);
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+      return NextResponse.json(
+        { error: "Erro ao conectar com o serviço de leitura. Verifique sua conexão e tente novamente." },
+        { status: 422 }
+      );
+    }
   }
 
   if (!geminiText.trim()) {

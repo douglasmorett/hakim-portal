@@ -4,10 +4,50 @@ const ASAAS_HEADERS = (key: string) => ({
   "Content-Type": "application/json"
 });
 
+/**
+ * Retorna a chave do Asaas de forma segura.
+ * O Vercel interpreta `$` em env vars como referência a outra variável,
+ * o que corrompe a chave do Asaas (que começa com `$aact_prod_...`).
+ * Solução:
+ * 1. Priorizar base64 em ASAAS_API_KEY_B64 (imune à interpolação).
+ * 2. Suportar chave direta sem o '$' inicial (e.g. configurada como 'aact_prod_...').
+ *    Nossos métodos adicionam o '$' automaticamente em runtime se estiver faltando,
+ *    evitando qualquer interpolação ou corrupção do Vercel!
+ */
+export function getAsaasKey(): string | null {
+  const formatKey = (key: string | undefined): string | null => {
+    if (!key) return null;
+    const trimmed = key.trim();
+    if (trimmed.startsWith("$aact_")) return trimmed;
+    if (trimmed.startsWith("aact_")) return "$" + trimmed;
+    return null;
+  };
+
+  // 1. Tenta env var B64 (override limpo, se configurada)
+  const b64 = process.env.ASAAS_API_KEY_B64;
+  if (b64) {
+    try {
+      const decoded = Buffer.from(b64, "base64").toString("utf8");
+      const formatted = formatKey(decoded);
+      if (formatted) return formatted;
+    } catch (e) {
+      console.error("[Asaas] Erro ao decodificar ASAAS_API_KEY_B64:", e);
+    }
+  }
+
+  // 2. Env var direta (pode precisar de cuidado com '$' no Vercel)
+  const direct = process.env.ASAAS_API_KEY;
+  const formattedDirect = formatKey(direct);
+  if (formattedDirect) return formattedDirect;
+
+  console.error("[Asaas] ASAAS_API_KEY is not defined. Set ASAAS_API_KEY or ASAAS_API_KEY_B64 in your environment variables.");
+  return null;
+}
+
 export async function checkAsaasOverdue(cpfCnpj: string | null): Promise<boolean> {
   if (!cpfCnpj) return false;
   
-  const asaasKey = process.env.ASAAS_API_KEY;
+  const asaasKey = getAsaasKey();
   if (!asaasKey) return false;
 
   try {
@@ -40,7 +80,7 @@ export async function checkAsaasOverdue(cpfCnpj: string | null): Promise<boolean
 }
 
 export async function getAsaasDashboardData(month: number, year: number) {
-  const asaasKey = process.env.ASAAS_API_KEY;
+  const asaasKey = getAsaasKey();
   if (!asaasKey) return null;
 
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -101,7 +141,7 @@ export async function createAsaasPayment(opts: {
   orderId: string;
   description?: string;
 }): Promise<{ paymentId: string; boletoUrl: string | null } | null> {
-  const asaasKey = process.env.ASAAS_API_KEY;
+  const asaasKey = getAsaasKey();
   if (!asaasKey) {
     console.warn("ASAAS_API_KEY não configurada — cobrança não gerada.");
     return null;

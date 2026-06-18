@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
+import { getAsaasKey } from "@/lib/asaas";
 
 // Colunas seguras que existem em AMBOS os bancos
 const FIREHUB_ORDER_SELECT = {
@@ -80,7 +81,7 @@ export async function cancelOrder(orderId: string, adminPassword?: string, reaso
 
     // Se o pedido possui um ID de pagamento no Asaas, tentamos cancelar lá primeiro
     if (order.asaasPaymentId) {
-      const asaasKey = process.env.ASAAS_API_KEY;
+      const asaasKey = getAsaasKey();
       if (asaasKey) {
         const ASAAS_URL = asaasKey.startsWith("$aact_prod")
           ? "https://api.asaas.com/v3"

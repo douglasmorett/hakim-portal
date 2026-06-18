@@ -15,7 +15,7 @@ function getNextDayOfWeek(date: Date, targetDayOfWeek: number, pushToNextWeek: b
   return result;
 }
 
-export async function getNextDeliveryInfo(city: string | null): Promise<{ limitStr: string; deliveryStr: string; limitDateIso?: string }> {
+export async function getNextDeliveryInfo(city: string | null, baseDate: Date = new Date()): Promise<{ limitStr: string; deliveryStr: string; limitDateIso?: string }> {
   if (!city) return { limitStr: "Consulte o suporte", deliveryStr: "A definir" };
 
   const schedules = await prisma.routeSchedule.findMany({
@@ -26,13 +26,13 @@ export async function getNextDeliveryInfo(city: string | null): Promise<{ limitS
     return { limitStr: "Rota não cadastrada", deliveryStr: "A definir" };
   }
 
-  const now = new Date();
+  const now = new Date(baseDate);
   const day = now.getDay();
   const hour = now.getHours();
 
   // Calcula todas as próximas rotas disponíveis
   const upcomingDeliveries = schedules.map(schedule => {
-    let limitDay = (schedule.deliveryDay - 2 + 7) % 7;
+    const limitDay = (schedule.deliveryDay - 2 + 7) % 7;
     const limitHour = 16;
 
     let limitDate = new Date(now);

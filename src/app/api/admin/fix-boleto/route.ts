@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
-import { createAsaasPayment } from "@/lib/asaas";
+import { createAsaasPayment, getAsaasKey } from "@/lib/asaas";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 1. Cancelar boleto antigo no Asaas
-  const asaasKey = process.env.ASAAS_API_KEY;
+  const asaasKey = getAsaasKey();
   if (!asaasKey) {
     return NextResponse.json({ error: "ASAAS_API_KEY não configurada" }, { status: 500 });
   }

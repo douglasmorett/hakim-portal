@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getAsaasKey } from "@/lib/asaas";
 
 const ASAAS_BASE = "https://api.asaas.com/v3";
 
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const asaasKey = process.env.ASAAS_API_KEY;
+  const asaasKey = getAsaasKey();
   if (!asaasKey) return NextResponse.json({ error: "ASAAS_API_KEY não configurada" }, { status: 503 });
 
   const { barcode } = await req.json();
