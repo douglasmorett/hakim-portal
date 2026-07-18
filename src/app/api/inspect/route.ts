@@ -38,7 +38,39 @@ export async function GET() {
       }
     });
 
-    // 2. Busca todos os produtos para achar a massa (pacote de 500)
+    // 2. Busca pedidos recentes do Fabiano
+    const fabianoOrders = fabiano ? await prisma.order.findMany({
+      where: { userId: fabiano.id },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { id: true, name: true, price: true }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5
+    }) : [];
+
+    // 3. Busca pedidos recentes do Paulo
+    const pauloOrders = paulo ? await prisma.order.findMany({
+      where: { userId: paulo.id },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { id: true, name: true, price: true }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5
+    }) : [];
+
+    // 4. Busca todos os produtos para achar a massa (pacote de 500)
     const products = await prisma.product.findMany({
       select: {
         id: true,
@@ -52,8 +84,14 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        fabiano,
-        paulo,
+        fabiano: {
+          info: fabiano,
+          orders: fabianoOrders
+        },
+        paulo: {
+          info: paulo,
+          orders: pauloOrders
+        },
         products
       }
     });
