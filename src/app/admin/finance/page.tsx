@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/permissions";
+import { checkAndGenerateRecurringPayables } from "@/app/actions/finance";
 import FinanceClient from "./FinanceClient";
 
 // Emails autorizados para módulo pessoal (além de ADMINs)
@@ -35,6 +36,9 @@ export default async function AdminFinancePage() {
   // Só ADMINs e a Elis podem ver o módulo pessoal
   const canSeePersonal = isAdmin || PERSONAL_ALLOWED_EMAILS.includes(userEmail);
 
+  // Executar geração automática de contas fixas para o mês atual
+  await checkAndGenerateRecurringPayables();
+
   // Buscar contas empresariais pendentes
   const businessPayables = await prisma.payable.findMany({
     where: { status: "PENDING", category: "BUSINESS" },
@@ -62,12 +66,35 @@ export default async function AdminFinancePage() {
       })
     : [];
 
+  // Buscar contas recorrentes empresariais
+  const businessRecurring = await prisma.recurringPayable.findMany({
+    where: { category: "BUSINESS" },
+    orderBy: { dueDateDay: "asc" }
+  });
+
+  // Buscar contas recorrentes pessoais
+  const personalRecurring = canSeePersonal
+    ? await prisma.recurringPayable.findMany({
+        where: { category: "PERSONAL" },
+        orderBy: { dueDateDay: "asc" }
+      })
+    : [];
+
+  // Buscar cartões de crédito ativos
+  const creditCards = await prisma.creditCard.findMany({
+    where: { active: true },
+    select: { id: true, name: true, lastDigits: true }
+  });
+
   return (
     <FinanceClient
       businessPayables={JSON.parse(JSON.stringify(businessPayables))}
       personalPayables={JSON.parse(JSON.stringify(personalPayables))}
       businessPaidPayables={JSON.parse(JSON.stringify(businessPaidPayables))}
       personalPaidPayables={JSON.parse(JSON.stringify(personalPaidPayables))}
+      businessRecurring={JSON.parse(JSON.stringify(businessRecurring))}
+      personalRecurring={JSON.parse(JSON.stringify(personalRecurring))}
+      creditCards={JSON.parse(JSON.stringify(creditCards))}
       canSeePersonal={canSeePersonal}
       isAdmin={isAdmin}
     />

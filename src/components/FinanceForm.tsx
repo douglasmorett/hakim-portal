@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { createPayable } from "@/app/actions/finance";
 import BarcodeScanner from "./BarcodeScanner";
-import { Camera, ScanLine, Loader2, PenLine } from "lucide-react";
+import { Camera, ScanLine, Loader2, PenLine, Settings } from "lucide-react";
 
 type InputMode = "manual" | "confirm" | null;
 
@@ -16,7 +16,7 @@ interface BoletoData {
   barcode: string;
 }
 
-export default function FinanceForm({ category = "BUSINESS" }: { category?: string }) {
+export default function FinanceForm({ category = "BUSINESS", onSelectRecurring }: { category?: string; onSelectRecurring?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>(null);
@@ -32,7 +32,7 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
     dueDate: "",
     value: ""
   });
-  const formRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const clearMessages = () => { setErrorMsg(null); setSuccessMsg(null); };
@@ -336,6 +336,19 @@ export default function FinanceForm({ category = "BUSINESS" }: { category?: stri
                 📱 Escanear Barras
                 <span style={{ fontSize: "0.75rem", fontWeight: "normal", opacity: 0.85 }}>Aponte para o código de barras</span>
               </button>
+
+              {onSelectRecurring && (
+                <button
+                  type="button"
+                  onClick={onSelectRecurring}
+                  className="btn"
+                  style={{ flex: 1, minWidth: "200px", padding: "1rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem", backgroundColor: "#3b82f6", color: "white", borderRadius: "0.75rem", border: "none", cursor: "pointer", fontSize: "0.95rem", fontWeight: "bold", transition: "all 0.2s ease" }}
+                >
+                  <Settings size={28} />
+                  ⚙️ Cadastrar Conta Fixa
+                  <span style={{ fontSize: "0.75rem", fontWeight: "normal", opacity: 0.85 }}>Para contas recorrentes mensais</span>
+                </button>
+              )}
             </div>
           </div>
         )}

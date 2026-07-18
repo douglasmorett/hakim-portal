@@ -135,41 +135,63 @@ model RouteSchedule {
 }
 
 model Payable {
+  id                 String            @id @default(cuid())
+  supplierName       String
+  barcode            String?
+  receivedDate       DateTime
+  dueDate            DateTime
+  value              Float
+  status             String            @default("PENDING")
+  paidDate           DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  category           String            @default("BUSINESS")
+  asaasPayId         String?
+  creditCardId       String?
+  paymentType        String            @default("BOLETO")
+  pixKey             String?
+  pixKeyName         String?
+  pixKeyType         String?
+  creditCard         CreditCard?       @relation(fields: [creditCardId], references: [id])
+  recurringPayableId String?
+  recurringPayable   RecurringPayable? @relation(fields: [recurringPayableId], references: [id], onDelete: SetNull)
+}
+
+model RecurringPayable {
   id           String      @id @default(cuid())
   supplierName String
-  barcode      String?
-  receivedDate DateTime
-  dueDate      DateTime
   value        Float
-  status       String      @default("PENDING")
-  paidDate     DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  category     String      @default("BUSINESS")
-  asaasPayId   String?
-  creditCardId String?
-  paymentType  String      @default("BOLETO")
+  category     String      @default("BUSINESS") // "BUSINESS" or "PERSONAL"
+  paymentType  String      @default("BOLETO")   // "BOLETO", "PIX", "CREDIT_CARD", etc.
+  dueDateDay   Int         // Day of month (1 to 31)
+  barcode      String?
   pixKey       String?
   pixKeyName   String?
   pixKeyType   String?
+  creditCardId String?
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
   creditCard   CreditCard? @relation(fields: [creditCardId], references: [id])
+  payables     Payable[]
 }
 
 model CreditCard {
-  id         String    @id @default(cuid())
-  name       String
-  lastDigits String?
-  bankName   String?
-  limit      Float?
-  closingDay Int?
-  dueDay     Int?
-  pixKey     String
-  pixKeyType String    @default("CPF")
-  active     Boolean   @default(true)
-  color      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  payables   Payable[]
+  id                String             @id @default(cuid())
+  name              String
+  lastDigits        String?
+  bankName          String?
+  limit             Float?
+  closingDay        Int?
+  dueDay            Int?
+  pixKey            String
+  pixKeyType        String             @default("CPF")
+  active            Boolean            @default(true)
+  color             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  payables          Payable[]
+  recurringPayables RecurringPayable[]
 }
 
 model PurchaseInvoice {

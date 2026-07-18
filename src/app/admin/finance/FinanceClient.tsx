@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import FinanceForm from "@/components/FinanceForm";
+import RecurringFinanceForm from "@/components/RecurringFinanceForm";
 import { MarkPaidButton, DeletePayableButton, BarcodeDisplay, PayViaAsaasButton, PayViaPixButton, EditPayableButton } from "@/components/FinanceActionButtons";
+import { deleteRecurringPayable, toggleRecurringPayableActive } from "@/app/actions/finance";
 
 interface Payable {
   id: string;
@@ -18,18 +20,52 @@ interface Payable {
   paidDate: string | null;
 }
 
+interface RecurringPayable {
+  id: string;
+  supplierName: string;
+  value: number;
+  category: string;
+  paymentType: string;
+  dueDateDay: number;
+  barcode: string | null;
+  pixKey: string | null;
+  pixKeyName: string | null;
+  pixKeyType: string | null;
+  creditCardId: string | null;
+  active: boolean;
+}
+
+interface CreditCard {
+  id: string;
+  name: string;
+  lastDigits: string | null;
+}
+
 interface Props {
   businessPayables: Payable[];
   personalPayables: Payable[];
   businessPaidPayables: Payable[];
   personalPaidPayables: Payable[];
+  businessRecurring: RecurringPayable[];
+  personalRecurring: RecurringPayable[];
+  creditCards: CreditCard[];
   canSeePersonal: boolean;
   isAdmin: boolean;
 }
 
-export default function FinanceClient({ businessPayables, personalPayables, businessPaidPayables, personalPaidPayables, canSeePersonal, isAdmin }: Props) {
+export default function FinanceClient({
+  businessPayables,
+  personalPayables,
+  businessPaidPayables,
+  personalPaidPayables,
+  businessRecurring,
+  personalRecurring,
+  creditCards,
+  canSeePersonal,
+  isAdmin
+}: Props) {
   const [mode, setMode] = useState<"BUSINESS" | "PERSONAL">("BUSINESS");
-  const [view, setView] = useState<"PENDING" | "PAID">("PENDING");
+  const [view, setView] = useState<"PENDING" | "PAID" | "RECURRING">("PENDING");
   const [isMobile, setIsMobile] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -44,6 +80,7 @@ export default function FinanceClient({ businessPayables, personalPayables, busi
 
   const payables = mode === "BUSINESS" ? businessPayables : personalPayables;
   const paidPayables = mode === "BUSINESS" ? businessPaidPayables : personalPaidPayables;
+  const recurringList = mode === "BUSINESS" ? businessRecurring : personalRecurring;
 
   // ── Data de hoje no fuso Brasil (UTC-3) ─────────────────────────────────
   const todayBR = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
@@ -172,6 +209,133 @@ export default function FinanceClient({ businessPayables, personalPayables, busi
     </div>
   );
 
+  const renderRecurringTable = (list: RecurringPayable[]) => {
+    const handleToggleActive = async (id: string, currentStatus: boolean) => {
+      if (!confirm(`Deseja ${currentStatus ? "desativar" : "ativar"} esta conta fixa?`)) return;
+      const res = await toggleRecurringPayableActive(id, !currentStatus);
+      if (res && 'error' in res && res.error) {
+        alert(res.error);
+      } else {
+        window.location.reload();
+      }
+    };
+
+    const handleDeleteRecurring = async (id: string) => {
+      if (!confirm("⚠️ Tem certeza que deseja EXCLUIR esta conta fixa?\n\nAs contas já geradas nos meses anteriores continuarão salvas, mas novas parcelas não serão geradas.")) return;
+      const res = await deleteRecurringPayable(id);
+      if (res && 'error' in res && res.error) {
+        alert(res.error);
+      } else {
+        window.location.reload();
+      }
+    };
+
+    return (
+      <div className="card mb-8">
+        <h2 className="font-bold text-lg mb-4" style={{ color: "var(--primary, #3b82f6)" }}>⚙️ Contas Fixas Cadastradas ({list.length})</h2>
+        {list.length === 0 ? (
+          <p className="text-muted text-sm">Nenhuma conta fixa cadastrada nesta categoria.</p>
+        ) : isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {list.map(item => (
+              <div key={item.id} style={{
+                border: '1px solid var(--border-color)',
+                borderRadius: '12px',
+                padding: '12px',
+                background: 'var(--card-bg, white)',
+                opacity: item.active ? 1 : 0.6
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <strong style={{ fontSize: '0.95rem', lineHeight: 1.3 }}>{item.supplierName}</strong>
+                  <span style={{ color: 'var(--text-color)', fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', marginLeft: '8px' }}>{formatCurrency(item.value)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  <span>📅 Dia {item.dueDateDay}</span>
+                  <span>💳 {item.paymentType === "CREDIT_CARD" ? "Cartão" : item.paymentType === "PIX" ? "PIX" : "Boleto"}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {isAdmin && (
+                    <>
+                      <button
+                        onClick={() => handleToggleActive(item.id, item.active)}
+                        style={{ padding: "4px 8px", fontSize: "0.8rem", background: item.active ? "#64748b" : "#10b981", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        {item.active ? "Desativar" : "Ativar"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRecurring(item.id)}
+                        style={{ padding: "4px 8px", fontSize: "0.8rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        Excluir
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border-color)", textAlign: "left" }}>
+                  <th style={{ padding: "0.5rem" }}>Fornecedor</th>
+                  <th style={{ padding: "0.5rem" }}>Valor Estimado</th>
+                  <th style={{ padding: "0.5rem" }}>Dia do Vencimento</th>
+                  <th style={{ padding: "0.5rem" }}>Tipo de Pagamento</th>
+                  <th style={{ padding: "0.5rem" }}>Status</th>
+                  {isAdmin && <th style={{ padding: "0.5rem" }}>Ações</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {list.map(item => (
+                  <tr key={item.id} style={{ borderBottom: "1px solid var(--border-color)", opacity: item.active ? 1 : 0.6 }}>
+                    <td style={{ padding: "0.5rem", fontWeight: "bold" }}>{item.supplierName}</td>
+                    <td style={{ padding: "0.5rem" }}>{formatCurrency(item.value)}</td>
+                    <td style={{ padding: "0.5rem" }}>Dia {item.dueDateDay}</td>
+                    <td style={{ padding: "0.5rem" }}>
+                      {item.paymentType === "CREDIT_CARD" ? "💳 Cartão de Crédito" : item.paymentType === "PIX" ? "⚡ Pix" : "📄 Boleto"}
+                    </td>
+                    <td style={{ padding: "0.5rem" }}>
+                      <span style={{
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        fontSize: "0.75rem",
+                        fontWeight: 700,
+                        backgroundColor: item.active ? "#dcfce7" : "#f1f5f9",
+                        color: item.active ? "#15803d" : "#475569"
+                      }}>
+                        {item.active ? "Ativo" : "Inativo"}
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td style={{ padding: "0.5rem", display: "flex", gap: "0.5rem" }}>
+                        <button
+                          onClick={() => handleToggleActive(item.id, item.active)}
+                          className="btn"
+                          style={{ padding: "4px 8px", fontSize: "0.8rem", background: "transparent", border: "1px solid var(--border-color)", borderRadius: 6, cursor: "pointer" }}
+                        >
+                          {item.active ? "⏸️ Pausar" : "▶️ Ativar"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecurring(item.id)}
+                          className="btn"
+                          style={{ padding: "4px 8px", fontSize: "0.8rem", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Excluir
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
@@ -240,7 +404,7 @@ export default function FinanceClient({ businessPayables, personalPayables, busi
         </div>
       )}
 
-      {/* Toggle Pendentes / Pagas */}
+      {/* Toggle Pendentes / Pagas / Contas Fixas */}
       <div style={{
         display: "flex",
         background: "var(--card-bg, #f1f5f9)",
@@ -248,7 +412,8 @@ export default function FinanceClient({ businessPayables, personalPayables, busi
         padding: "4px",
         border: "1px solid var(--border-color, #e2e8f0)",
         marginBottom: "1.5rem",
-        width: "fit-content"
+        width: "fit-content",
+        gap: "4px"
       }}>
         <button
           onClick={() => setView("PENDING")}
@@ -284,11 +449,28 @@ export default function FinanceClient({ businessPayables, personalPayables, busi
         >
           ✅ Pagas
         </button>
+        <button
+          onClick={() => setView("RECURRING")}
+          style={{
+            padding: "8px 20px",
+            borderRadius: "8px",
+            border: "none",
+            cursor: "pointer",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            transition: "all 0.2s",
+            background: view === "RECURRING" ? "#3b82f6" : "transparent",
+            color: view === "RECURRING" ? "#fff" : "var(--text-muted, #64748b)",
+            fontFamily: "inherit"
+          }}
+        >
+          ⚙️ Contas Fixas
+        </button>
       </div>
 
       {view === "PENDING" && (
         <>
-          <FinanceForm category={mode} />
+          <FinanceForm category={mode} onSelectRecurring={() => setView("RECURRING")} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem" }}>
             {renderTable(overduePayables, "🔴 Pendentes / Atrasadas", "#ef4444")}
             {renderTable(todayPayables, "🟡 A Pagar Hoje", "#f59e0b")}
@@ -409,6 +591,13 @@ export default function FinanceClient({ businessPayables, personalPayables, busi
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {view === "RECURRING" && (
+        <div>
+          <RecurringFinanceForm category={mode} creditCards={creditCards} />
+          {renderRecurringTable(recurringList)}
         </div>
       )}
     </div>
