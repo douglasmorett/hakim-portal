@@ -203,7 +203,7 @@ export default function RecurringFinanceForm({ category = "BUSINESS", creditCard
                   className="input"
                   value={formData.pixKeyType}
                   onChange={e => setFormData({ ...formData, pixKeyType: e.target.value })}
-                  style={{ width: "100%", height: "40px" }}
+                  style={{ width: "100%", height: "42px", padding: "8px 12px" }}
                 >
                   <option value="CPF">CPF</option>
                   <option value="CNPJ">CNPJ</option>
