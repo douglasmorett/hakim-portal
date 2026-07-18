@@ -31,6 +31,15 @@ export async function GET(request: NextRequest) {
     const currentMonth = today.getMonth(); // 0 a 11
     const currentYear = today.getFullYear();
 
+    // Segurança: se for julho de 2026 e não for um teste forçado, ignora (pois o usuário já gerou manualmente)
+    const isJuly2026 = currentYear === 2026 && currentMonth === 6; // Julho é index 6
+    if (isJuly2026 && !force) {
+      return NextResponse.json({
+        success: true,
+        message: "As cobranças de julho de 2026 já foram geradas manualmente. A automação iniciará a partir de agosto de 2026."
+      });
+    }
+
     // Saber o último dia do mês atual
     const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
