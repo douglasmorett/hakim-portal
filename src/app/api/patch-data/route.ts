@@ -127,6 +127,7 @@ export async function GET() {
 
     // ── 5. CRIAÇÃO DOS TRIGGERS DE OVERRIDE PARA O PAULO ──
     // Trigger para alterar o preço para 200.00 se for o Paulo e o produto for a massa de esfirra
+    // ── 5. CRIAÇÃO DOS TRIGGERS DE OVERRIDE PARA O PAULO ──
     const pgSqlTriggerFunc = `
       CREATE OR REPLACE FUNCTION process_order_item_price()
       RETURNS TRIGGER AS $$
@@ -144,14 +145,6 @@ export async function GET() {
         RETURN NEW;
       END;
       $$ LANGUAGE plpgsql;
-    `;
-
-    const pgSqlTriggerCreate = `
-      DROP TRIGGER IF EXISTS trg_order_item_price_override ON "OrderItem";
-      CREATE TRIGGER trg_order_item_price_override
-      BEFORE INSERT OR UPDATE ON "OrderItem"
-      FOR EACH ROW
-      EXECUTE FUNCTION process_order_item_price();
     `;
 
     const pgSqlRecalcFunc = `
@@ -178,20 +171,14 @@ export async function GET() {
       $$ LANGUAGE plpgsql;
     `;
 
-    const pgSqlRecalcCreate = `
-      DROP TRIGGER IF EXISTS trg_order_total_recalc ON "OrderItem";
-      CREATE TRIGGER trg_order_total_recalc
-      AFTER INSERT OR UPDATE OR DELETE ON "OrderItem"
-      FOR EACH ROW
-      EXECUTE FUNCTION update_order_total_amount();
-    `;
-
     // Executa no banco Hakim
     try {
       await prisma.$executeRawUnsafe(pgSqlTriggerFunc);
-      await prisma.$executeRawUnsafe(pgSqlTriggerCreate);
+      await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_order_item_price_override ON "OrderItem"');
+      await prisma.$executeRawUnsafe('CREATE TRIGGER trg_order_item_price_override BEFORE INSERT OR UPDATE ON "OrderItem" FOR EACH ROW EXECUTE FUNCTION process_order_item_price()');
       await prisma.$executeRawUnsafe(pgSqlRecalcFunc);
-      await prisma.$executeRawUnsafe(pgSqlRecalcCreate);
+      await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_order_total_recalc ON "OrderItem"');
+      await prisma.$executeRawUnsafe('CREATE TRIGGER trg_order_total_recalc AFTER INSERT OR UPDATE OR DELETE ON "OrderItem" FOR EACH ROW EXECUTE FUNCTION update_order_total_amount()');
       log.push("Triggers de override de preço criados com sucesso no banco de dados Hakim (PostgreSQL).");
     } catch (err: any) {
       log.push(`Erro ao criar triggers no banco Hakim: ${err.message || err}`);
@@ -200,9 +187,11 @@ export async function GET() {
     // Executa no banco FireHub (se conexao ativa e for banco separado)
     try {
       await prismaFirehub.$executeRawUnsafe(pgSqlTriggerFunc);
-      await prismaFirehub.$executeRawUnsafe(pgSqlTriggerCreate);
+      await prismaFirehub.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_order_item_price_override ON "OrderItem"');
+      await prismaFirehub.$executeRawUnsafe('CREATE TRIGGER trg_order_item_price_override BEFORE INSERT OR UPDATE ON "OrderItem" FOR EACH ROW EXECUTE FUNCTION process_order_item_price()');
       await prismaFirehub.$executeRawUnsafe(pgSqlRecalcFunc);
-      await prismaFirehub.$executeRawUnsafe(pgSqlRecalcCreate);
+      await prismaFirehub.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_order_total_recalc ON "OrderItem"');
+      await prismaFirehub.$executeRawUnsafe('CREATE TRIGGER trg_order_total_recalc AFTER INSERT OR UPDATE OR DELETE ON "OrderItem" FOR EACH ROW EXECUTE FUNCTION update_order_total_amount()');
       log.push("Triggers de override de preço criados com sucesso no banco de dados FireHub (PostgreSQL).");
     } catch (err: any) {
       log.push(`Aviso: Falha ao criar triggers no banco FireHub: ${err.message || err}`);
