@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prismaFirehub } from "@/lib/prismaFirehub";
 
 export async function GET() {
   try {
-    // 1. Busca os franqueados
-    const fabiano = await prisma.user.findFirst({
+    // 1. Busca os franqueados no banco FireHub
+    const fabiano = await prismaFirehub.user.findFirst({
       where: {
         email: {
           contains: "tst.fabiano.andrade@gmail.com",
@@ -18,10 +18,11 @@ export async function GET() {
         role: true,
         storeName: true,
         isFranqueadoHakim: true,
+        cpfCnpj: true,
       }
     });
 
-    const paulo = await prisma.user.findFirst({
+    const paulo = await prismaFirehub.user.findFirst({
       where: {
         email: {
           contains: "paulocoutinhocastilho@gmail.com",
@@ -35,11 +36,12 @@ export async function GET() {
         role: true,
         storeName: true,
         isFranqueadoHakim: true,
+        cpfCnpj: true,
       }
     });
 
-    // 2. Busca pedidos recentes do Fabiano
-    const fabianoOrders = fabiano ? await prisma.order.findMany({
+    // 2. Busca pedidos recentes do Fabiano no banco FireHub
+    const fabianoOrders = fabiano ? await prismaFirehub.order.findMany({
       where: { userId: fabiano.id },
       include: {
         items: {
@@ -54,8 +56,8 @@ export async function GET() {
       take: 5
     }) : [];
 
-    // 3. Busca pedidos recentes do Paulo
-    const pauloOrders = paulo ? await prisma.order.findMany({
+    // 3. Busca pedidos recentes do Paulo no banco FireHub
+    const pauloOrders = paulo ? await prismaFirehub.order.findMany({
       where: { userId: paulo.id },
       include: {
         items: {
@@ -70,8 +72,8 @@ export async function GET() {
       take: 5
     }) : [];
 
-    // 4. Busca todos os produtos para achar a massa (pacote de 500)
-    const products = await prisma.product.findMany({
+    // 4. Busca todos os produtos no banco FireHub
+    const products = await prismaFirehub.product.findMany({
       select: {
         id: true,
         name: true,
@@ -83,6 +85,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
+      source: "prismaFirehub",
       data: {
         fabiano: {
           info: fabiano,
