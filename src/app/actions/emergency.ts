@@ -45,18 +45,28 @@ export async function approveEmergencyOrder(orderId: string) {
   let boletoUrl: string | null = null;
   let asaasPaymentId: string | null = null;
 
-  const description = fine > 0
-    ? `Pedido Emergência #${shortId} — Taxa de emergência de 30% cobrada conforme termos aceitos pelo cliente no site. — Hakim Congelados`
-    : `Pedido de Emergência #${shortId} — Hakim Congelados`;
+  const userEmailClean = order.user.email?.toLowerCase().replace(/\s+/g, "");
+  const bypassEmails = (process.env.BYPASS_BILLING_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  if (!bypassEmails.includes("viniciusmenezes.ofc@gmail.com")) {
+    bypassEmails.push("viniciusmenezes.ofc@gmail.com");
+  }
+  const isSpecialStore = bypassEmails.includes(userEmailClean ?? "");
 
-  const asaasResult = await createAsaasPayment({
-    userName: order.user.name || order.user.email || "",
-    userEmail: order.user.email || "",
-    cpfCnpj: order.user.cpfCnpj || "",
-    totalAmount: finalAmount,
-    orderId: order.id,
-    description,
-  });
+  let asaasResult = null;
+  if (!isSpecialStore) {
+    const description = fine > 0
+      ? `Pedido Emergência #${shortId} — Taxa de emergência de 30% cobrada conforme termos aceitos pelo cliente no site. — Hakim Congelados`
+      : `Pedido de Emergência #${shortId} — Hakim Congelados`;
+
+    asaasResult = await createAsaasPayment({
+      userName: order.user.name || order.user.email || "",
+      userEmail: order.user.email || "",
+      cpfCnpj: order.user.cpfCnpj || "",
+      totalAmount: finalAmount,
+      orderId: order.id,
+      description,
+    });
+  }
 
   if (asaasResult) {
     boletoUrl = asaasResult.boletoUrl;
@@ -67,7 +77,7 @@ export async function approveEmergencyOrder(orderId: string) {
   await prisma.order.update({
     where: { id: orderId },
     data: {
-      status: "PENDING_PAYMENT",
+      status: isSpecialStore ? "PAID" : "PENDING_PAYMENT",
       emergencyStatus: "APPROVED",
       emergencyFine: fine,
       totalAmount: finalAmount,
@@ -76,15 +86,17 @@ export async function approveEmergencyOrder(orderId: string) {
     },
   });
 
-  const fineNote = fine > 0
-    ? `Emergência Aprovada e Boleto Gerado. Multa de 30% aplicada: R$ ${fine.toFixed(2)} (${approvedThisMonth + 1}ª emergência do mês).`
-    : `Emergência Aprovada e Boleto Gerado (1ª do mês — sem multa).`;
+  const fineNote = isSpecialStore
+    ? "Emergência Aprovada e marcada como paga automaticamente (Loja Própria - Isenta)."
+    : fine > 0
+      ? `Emergência Aprovada e Boleto Gerado. Multa de 30% aplicada: R$ ${fine.toFixed(2)} (${approvedThisMonth + 1}ª emergência do mês).`
+      : `Emergência Aprovada e Boleto Gerado (1ª do mês — sem multa).`;
 
   await prisma.orderHistory.create({
     data: {
       orderId,
       statusFrom: "EMERGENCIA_PENDENTE",
-      statusTo: "PENDING_PAYMENT",
+      statusTo: isSpecialStore ? "PAID" : "PENDING_PAYMENT",
       actionBy: session?.user?.name || "Admin",
       actionEmail: session?.user?.email || "",
       notes: fineNote,
