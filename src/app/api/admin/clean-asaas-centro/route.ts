@@ -56,6 +56,11 @@ export async function GET(req: NextRequest) {
         where: {
           userId: userHakim.id,
           asaasPaymentId: { not: null }
+        },
+        select: {
+          id: true,
+          status: true,
+          asaasPaymentId: true
         }
       });
 
@@ -99,6 +104,11 @@ export async function GET(req: NextRequest) {
         where: {
           userId: userFirehub.id,
           asaasPaymentId: { not: null }
+        },
+        select: {
+          id: true,
+          status: true,
+          asaasPaymentId: true
         }
       });
 
