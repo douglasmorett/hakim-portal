@@ -82,6 +82,9 @@ export async function GET(req: NextRequest) {
             asaasPaymentId: null,
             boletoUrl: null,
             status: "PAID"
+          },
+          select: {
+            id: true
           }
         });
 
@@ -130,6 +133,9 @@ export async function GET(req: NextRequest) {
             asaasPaymentId: null,
             boletoUrl: null,
             status: "PAID"
+          },
+          select: {
+            id: true
           }
         });
 
