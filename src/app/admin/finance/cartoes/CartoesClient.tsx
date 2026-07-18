@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { CreditCard, Plus, Zap, ArrowLeft, Trash2, Receipt } from "lucide-react";
+import { getCardStatementStatus, CardStatementStatus } from "@/lib/creditCardUtils";
 
 interface Card {
   id: string; name: string; lastDigits: string | null; bankName: string | null;
   limit: number | null; closingDay: number | null; dueDay: number | null;
+  bestPurchaseDay: number | null;
   pixKey: string; pixKeyType: string; color: string;
   pendingCount: number; pendingAmount: number; createdAt: string;
 }
@@ -14,7 +16,7 @@ const PIX_TYPES = ["CPF", "CNPJ", "EMAIL", "PHONE", "RANDOM"];
 const COLORS = ["#4F46E5","#DC2626","#059669","#D97706","#0EA5E9","#7C3AED","#DB2777","#374151"];
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
-export default function CartoesClient({ cards: initialCards }: { cards: Card[] }) {
+export default function CartoesClient({ cards: initialCards, cardPayables }: { cards: Card[], cardPayables: { creditCardId: string | null, dueDate: string }[] }) {
   const [cards, setCards] = useState(initialCards);
   const [showAddCard, setShowAddCard] = useState(false);
   const [faturaCard, setFaturaCard] = useState<Card | null>(null);
@@ -24,13 +26,45 @@ export default function CartoesClient({ cards: initialCards }: { cards: Card[] }
   // Form novo cartão
   const [cardForm, setCardForm] = useState({
     name:"", lastDigits:"", bankName:"", limit:"",
-    closingDay:"", dueDay:"", pixKey:"", pixKeyType:"CPF", color:"#4F46E5"
+    closingDay:"", dueDay:"", bestPurchaseDay:"", pixKey:"", pixKeyType:"CPF", color:"#4F46E5"
   });
 
   // Form lançar fatura
   const [faturaForm, setFaturaForm] = useState({
     supplierName:"", value:"", dueDate:"", category:"BUSINESS"
   });
+
+  // Faturas pendentes de lançamento (fechadas mas sem Payable correspondente)
+  const pendingStatements = useMemo(() => {
+    return cards
+      .map(c => getCardStatementStatus(c, cardPayables))
+      .filter((s): s is CardStatementStatus => !!s && s.needsStatementLaunch);
+  }, [cards, cardPayables]);
+
+  // Abrir modal automaticamente se houver faturas fechadas pendentes de valor
+  useEffect(() => {
+    if (pendingStatements.length > 0) {
+      const first = pendingStatements[0];
+      const matchingCard = cards.find(c => c.id === first.cardId);
+      if (matchingCard) {
+        // Atrasar levemente para evitar warnings de renderização concorrente do React
+        const timer = setTimeout(() => {
+          setFaturaCard(matchingCard);
+          setFaturaForm({
+            supplierName: `Fatura ${matchingCard.name} (${first.statementPeriod})`,
+            value: "",
+            dueDate: first.expectedDueDate.toISOString().split("T")[0],
+            category: "BUSINESS"
+          });
+          setMsg({
+            type: "err",
+            text: `Atenção: O cartão final ${matchingCard.lastDigits || ""} já fechou a fatura de ${first.statementPeriod}! Favor informar o valor.`
+          });
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [pendingStatements, cards]);
 
   const showMsg = (type:"ok"|"err", text:string) => {
     setMsg({type,text});
@@ -51,7 +85,7 @@ export default function CartoesClient({ cards: initialCards }: { cards: Card[] }
       if (!res.ok) { showMsg("err", data.error || "Erro ao salvar"); return; }
       showMsg("ok", `Cartão "${cardForm.name}" cadastrado!`);
       setShowAddCard(false);
-      setCardForm({name:"",lastDigits:"",bankName:"",limit:"",closingDay:"",dueDay:"",pixKey:"",pixKeyType:"CPF",color:"#4F46E5"});
+      setCardForm({name:"",lastDigits:"",bankName:"",limit:"",closingDay:"",dueDay:"",bestPurchaseDay:"",pixKey:"",pixKeyType:"CPF",color:"#4F46E5"});
       window.location.reload();
     } catch { showMsg("err","Erro de conexão"); }
     finally { setLoading(false); }
@@ -112,6 +146,46 @@ export default function CartoesClient({ cards: initialCards }: { cards: Card[] }
         </button>
       </div>
 
+      {/* Alerta de faturas fechadas aguardando lançamento de valor */}
+      {pendingStatements.length > 0 && (
+        <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.25)",borderRadius:14,padding:"16px 20px",marginBottom:24}}>
+          <h3 style={{margin:"0 0 8px",color:"#DC2626",fontSize:".95rem",fontWeight:800,display:"flex",alignItems:"center",gap:6}}>
+            ⚠️ Faturas Fechadas Pendentes de Valor
+          </h3>
+          <p style={{margin:"0 0 12px",color:"var(--text-muted)",fontSize:".82rem"}}>
+            Identificamos que as faturas dos cartões abaixo já fecharam. Informe o valor para registrá-las no Contas a Pagar:
+          </p>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {pendingStatements.map(stmt => {
+              const card = cards.find(c => c.id === stmt.cardId);
+              if (!card) return null;
+              return (
+                <div key={stmt.cardId} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--surface)",border:"1px solid var(--border-color)",padding:"10px 14px",borderRadius:10,flexWrap:"wrap",gap:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{width:10,height:10,borderRadius:"50%",background:card.color}}/>
+                    <strong style={{fontSize:".85rem"}}>{card.name}</strong>
+                    <span style={{fontSize:".78rem",color:"var(--text-muted)"}}>
+                      (Final {card.lastDigits || "—"}) • Fatura {stmt.statementPeriod} (Fecha dia {card.closingDay})
+                    </span>
+                  </div>
+                  <button onClick={() => {
+                    setFaturaCard(card);
+                    setFaturaForm({
+                      supplierName: `Fatura ${card.name} (${stmt.statementPeriod})`,
+                      value: "",
+                      dueDate: stmt.expectedDueDate.toISOString().split("T")[0],
+                      category: "BUSINESS"
+                    });
+                  }} style={{background:"#DC2626",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:".78rem",fontWeight:700,cursor:"pointer",boxShadow:"0 2px 6px rgba(220,38,38,.2)"}}>
+                    ✍️ Informar Valor
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Feedback */}
       {msg && (
         <div style={{padding:"10px 16px",borderRadius:8,marginBottom:16,fontSize:".87rem",fontWeight:600,
@@ -158,6 +232,7 @@ export default function CartoesClient({ cards: initialCards }: { cards: Card[] }
               <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
                 {card.closingDay && <span style={{background:"var(--bg-color)",border:"1px solid var(--border-color)",borderRadius:6,padding:"2px 8px",fontSize:".75rem"}}>📅 Fecha dia {card.closingDay}</span>}
                 {card.dueDay && <span style={{background:"var(--bg-color)",border:"1px solid var(--border-color)",borderRadius:6,padding:"2px 8px",fontSize:".75rem"}}>💰 Vence dia {card.dueDay}</span>}
+                {card.bestPurchaseDay && <span style={{background:"rgba(16,185,129,.1)",border:"1px solid rgba(16,185,129,.2)",color:"#059669",borderRadius:6,padding:"2px 8px",fontSize:".75rem"}}>🛒 Melhor compra dia {card.bestPurchaseDay}</span>}
               </div>
 
               <div style={{background:"var(--bg-color)",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:".8rem"}}>
@@ -214,6 +289,10 @@ export default function CartoesClient({ cards: initialCards }: { cards: Card[] }
                 <div>
                   <label style={{display:"block",marginBottom:6,fontSize:".83rem",fontWeight:700}}>Dia de Vencimento</label>
                   <input className="input" type="number" min={1} max={31} placeholder="Ex: 25" value={cardForm.dueDay} onChange={e=>setCardForm({...cardForm,dueDay:e.target.value})}/>
+                </div>
+                <div>
+                  <label style={{display:"block",marginBottom:6,fontSize:".83rem",fontWeight:700}}>Melhor dia de compra</label>
+                  <input className="input" type="number" min={1} max={31} placeholder="Ex: 16" value={cardForm.bestPurchaseDay} onChange={e=>setCardForm({...cardForm,bestPurchaseDay:e.target.value})}/>
                 </div>
                 <div>
                   <label style={{display:"block",marginBottom:6,fontSize:".83rem",fontWeight:700}}>Limite (R$)</label>

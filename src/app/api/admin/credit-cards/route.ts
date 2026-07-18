@@ -27,7 +27,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const { name, lastDigits, bankName, limit, closingDay, dueDay, pixKey, pixKeyType, color } = await req.json();
+  const { name, lastDigits, bankName, limit, closingDay, dueDay, bestPurchaseDay, pixKey, pixKeyType, color } = await req.json();
 
   if (!name || !pixKey) {
     return NextResponse.json({ error: "Nome do cartão e chave PIX são obrigatórios" }, { status: 400 });
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       limit: limit ? parseFloat(limit) : null,
       closingDay: closingDay ? parseInt(closingDay) : null,
       dueDay: dueDay ? parseInt(dueDay) : null,
+      bestPurchaseDay: bestPurchaseDay ? parseInt(bestPurchaseDay) : null,
       pixKey,
       pixKeyType: pixKeyType || "CPF",
       color: color || "#4F46E5",

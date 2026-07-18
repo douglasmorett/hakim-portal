@@ -25,6 +25,12 @@ export default async function CartoesPage() {
     _sum: { value: true },
   });
 
+  // Buscar todos os pagáveis de cartões para detecção de fechamento
+  const cardPayables = await prisma.payable.findMany({
+    where: { creditCardId: { not: null } },
+    select: { creditCardId: true, dueDate: true }
+  });
+
   const cardsData = cards.map(c => ({
     id: c.id,
     name: c.name,
@@ -33,6 +39,7 @@ export default async function CartoesPage() {
     limit: c.limit,
     closingDay: c.closingDay,
     dueDay: c.dueDay,
+    bestPurchaseDay: c.bestPurchaseDay,
     pixKey: c.pixKey,
     pixKeyType: c.pixKeyType,
     color: c.color || "#4F46E5",
@@ -41,5 +48,5 @@ export default async function CartoesPage() {
     createdAt: c.createdAt.toISOString(),
   }));
 
-  return <CartoesClient cards={cardsData} />;
+  return <CartoesClient cards={cardsData} cardPayables={JSON.parse(JSON.stringify(cardPayables))} />;
 }

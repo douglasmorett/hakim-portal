@@ -83,7 +83,12 @@ export default async function AdminFinancePage() {
   // Buscar cartões de crédito ativos
   const creditCards = await prisma.creditCard.findMany({
     where: { active: true },
-    select: { id: true, name: true, lastDigits: true }
+    select: { id: true, name: true, lastDigits: true, bankName: true, closingDay: true, dueDay: true, bestPurchaseDay: true }
+  });
+
+  const cardPayables = await prisma.payable.findMany({
+    where: { creditCardId: { not: null } },
+    select: { creditCardId: true, dueDate: true }
   });
 
   return (
@@ -95,6 +100,7 @@ export default async function AdminFinancePage() {
       businessRecurring={JSON.parse(JSON.stringify(businessRecurring))}
       personalRecurring={JSON.parse(JSON.stringify(personalRecurring))}
       creditCards={JSON.parse(JSON.stringify(creditCards))}
+      cardPayables={JSON.parse(JSON.stringify(cardPayables))}
       canSeePersonal={canSeePersonal}
       isAdmin={isAdmin}
     />

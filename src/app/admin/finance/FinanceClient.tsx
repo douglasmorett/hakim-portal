@@ -1,9 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { CreditCard as CreditCardIcon } from "lucide-react";
 import FinanceForm from "@/components/FinanceForm";
 import RecurringFinanceForm from "@/components/RecurringFinanceForm";
 import { MarkPaidButton, DeletePayableButton, BarcodeDisplay, PayViaAsaasButton, PayViaPixButton, EditPayableButton } from "@/components/FinanceActionButtons";
 import { deleteRecurringPayable, toggleRecurringPayableActive } from "@/app/actions/finance";
+import { getCardStatementStatus, CardStatementStatus } from "@/lib/creditCardUtils";
 
 interface Payable {
   id: string;
@@ -39,6 +42,10 @@ interface CreditCard {
   id: string;
   name: string;
   lastDigits: string | null;
+  bankName: string | null;
+  closingDay: number | null;
+  dueDay: number | null;
+  bestPurchaseDay: number | null;
 }
 
 interface Props {
@@ -49,6 +56,7 @@ interface Props {
   businessRecurring: RecurringPayable[];
   personalRecurring: RecurringPayable[];
   creditCards: CreditCard[];
+  cardPayables: { creditCardId: string | null; dueDate: string }[];
   canSeePersonal: boolean;
   isAdmin: boolean;
 }
@@ -61,6 +69,7 @@ export default function FinanceClient({
   businessRecurring,
   personalRecurring,
   creditCards,
+  cardPayables,
   canSeePersonal,
   isAdmin
 }: Props) {
@@ -100,6 +109,13 @@ export default function FinanceClient({
       return true;
     });
   }, [paidPayables, dateFrom, dateTo]);
+
+  // Faturas pendentes de lançamento (fechadas mas sem Payable correspondente)
+  const pendingStatements = useMemo(() => {
+    return creditCards
+      .map(c => getCardStatementStatus(c, cardPayables))
+      .filter((s): s is CardStatementStatus => !!s && s.needsStatementLaunch);
+  }, [creditCards, cardPayables]);
 
   const paidTotal = filteredPaidPayables.reduce((acc, p) => acc + p.value, 0);
 
@@ -339,9 +355,57 @@ export default function FinanceClient({
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
-        <div>
-          <h1 className="text-2xl font-bold">Módulo Financeiro</h1>
-          <p className="text-muted">Gestão de Contas a Pagar e Inadimplência.</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+          <div>
+            <h1 className="text-2xl font-bold">Módulo Financeiro</h1>
+            <p className="text-muted">Gestão de Contas a Pagar e Inadimplência.</p>
+          </div>
+          {isAdmin && (
+            <Link
+              href="/admin/finance/cartoes"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "9px 18px",
+                borderRadius: "10px",
+                background: "linear-gradient(135deg, #4F46E5, #7C3AED)",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: "0.85rem",
+                textDecoration: "none",
+                boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
+                position: "relative",
+                fontFamily: "inherit"
+              }}
+            >
+              <CreditCardIcon size={16} /> Cartões de Crédito
+              {pendingStatements.length > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "-6px",
+                    right: "-6px",
+                    background: "#EF4444",
+                    color: "#fff",
+                    borderRadius: "50%",
+                    width: "20px",
+                    height: "20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                    boxShadow: "0 2px 5px rgba(239, 68, 68, 0.4)",
+                    border: "2px solid #fff"
+                  }}
+                  title={`${pendingStatements.length} faturas fechadas aguardando valor`}
+                >
+                  {pendingStatements.length}
+                </span>
+              )}
+            </Link>
+          )}
         </div>
 
         {canSeePersonal && (
@@ -467,6 +531,18 @@ export default function FinanceClient({
           ⚙️ Contas Fixas
         </button>
       </div>
+
+      {/* Alerta de faturas fechadas aguardando lançamento de valor */}
+      {isAdmin && pendingStatements.length > 0 && (
+        <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:10,padding:"14px 18px",marginBottom:"1.5rem",fontSize:".88rem",color:"#DC2626",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+          <span style={{display:"flex",alignItems:"center",gap:6}}>
+            ⚠️ <strong>Faturas Fechadas Pendentes de Valor</strong>: Você possui <strong>{pendingStatements.length} fatura(s) de cartão</strong> que já fecharam e precisam do valor lançado.
+          </span>
+          <Link href="/admin/finance/cartoes" style={{color:"#4F46E5",fontWeight:700,textDecoration:"none",fontSize:".83rem",background:"#fff",padding:"5px 12px",borderRadius:6,border:"1px solid #4F46E5",boxShadow:"0 1px 3px rgba(0,0,0,.05)"}}>
+            Informar Valores →
+          </Link>
+        </div>
+      )}
 
       {view === "PENDING" && (
         <>

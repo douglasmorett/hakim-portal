@@ -184,6 +184,7 @@ model CreditCard {
   limit             Float?
   closingDay        Int?
   dueDay            Int?
+  bestPurchaseDay   Int?
   pixKey            String
   pixKeyType        String             @default("CPF")
   active            Boolean            @default(true)
