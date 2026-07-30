@@ -10,6 +10,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getAsaasKey } from "@/lib/asaas";
 
+import { convert44ToLinhaDigitavel } from "@/lib/boleto";
+
 const ASAAS_BASE = "https://api.asaas.com/v3";
 
 export async function POST(req: NextRequest) {
@@ -24,10 +26,13 @@ export async function POST(req: NextRequest) {
   const { barcode } = await req.json();
   if (!barcode) return NextResponse.json({ error: "Código de barras obrigatório" }, { status: 400 });
 
-  const clean = barcode.replace(/\D/g, "");
+  let clean = barcode.replace(/\D/g, "");
   if (clean.length < 44) {
     return NextResponse.json({ error: "Código de barras inválido — deve ter pelo menos 44 dígitos" }, { status: 400 });
   }
+
+  // Converte 44 dígitos para Linha Digitável de 47 dígitos se necessário
+  const convertedCode = convert44ToLinhaDigitavel(clean);
 
   // Consulta o boleto no Asaas (simulação/validação) com timeout de 20s
   let simRes: Response;
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         "User-Agent": "hakim-portal/1.0",
       },
-      body: JSON.stringify({ identificationField: clean }),
+      body: JSON.stringify({ identificationField: convertedCode }),
       signal: controller.signal,
     });
 
@@ -100,7 +105,13 @@ export async function POST(req: NextRequest) {
   const totalValue = value - discount + fine + interest;
   const dueDate = bill.dueDate || simData.minimumScheduleDate || "";
 
-  // Retorna dados reais do boleto para confirmação na tela
+  // Retorna a linha digitável oficial validada pelo Asaas (47 ou 48 dígitos)
+  const officialBarcode = bill.identificationField
+    || simData.identificationField
+    || bill.barCode
+    || simData.barCode
+    || convertedCode;
+
   return NextResponse.json({
     success: true,
     boleto: {
@@ -112,7 +123,7 @@ export async function POST(req: NextRequest) {
       interest,
       totalValue,
       dueDate,
-      barcode: clean,
+      barcode: officialBarcode,
     },
   });
 }

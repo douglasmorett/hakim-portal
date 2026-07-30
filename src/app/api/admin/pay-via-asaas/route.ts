@@ -15,6 +15,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAsaasKey } from "@/lib/asaas";
+import { convert44ToLinhaDigitavel } from "@/lib/boleto";
 
 const ASAAS_BASE = "https://api.asaas.com/v3";
 
@@ -55,7 +56,28 @@ export async function POST(req: NextRequest) {
     "User-Agent": "hakim-portal/1.0",
   };
 
-  // 1. Simula o pagamento no Asaas para obter valor e vencimento real
+  // Limpa e normaliza o código de barras
+  let cleanBarcode = payable.barcode.replace(/\D/g, "");
+  let identificationField = convert44ToLinhaDigitavel(cleanBarcode);
+
+  // 1. Simula o pagamento no Asaas prévio para garantir que a linha digitável seja a oficial do Asaas
+  try {
+    const simRes = await fetch(`${ASAAS_BASE}/bill/simulate`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ identificationField }),
+    });
+    if (simRes.ok) {
+      const simData = await simRes.json();
+      const officialField = simData?.bankSlipInfo?.identificationField || simData?.identificationField;
+      if (officialField) {
+        identificationField = officialField;
+      }
+    }
+  } catch (simErr) {
+    console.warn("[pay-via-asaas] ⚠️ Erro na simulação prévia, usando código convertido:", simErr);
+  }
+
   let scheduleDate = payable.dueDate.toISOString().split("T")[0];
   // Se a data de vencimento já passou, paga hoje
   const today = new Date().toISOString().split("T")[0];
@@ -72,7 +94,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers,
       body: JSON.stringify({
-        identificationField: payable.barcode.replace(/\D/g, ""),
+        identificationField,
         scheduleDate,
         description: `Pgto ${payable.supplierName}`.slice(0, 50),
       }),
@@ -112,12 +134,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
-  // 3. Marca como pago no banco
+  // 3. Marca como pago no banco e atualiza barcode com a linha digitável oficial
   await prisma.payable.update({
     where: { id: payableId },
     data: {
       status: "PAID",
       paidDate: new Date(),
+      barcode: identificationField,
     },
   });
 

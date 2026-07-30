@@ -5,6 +5,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
+import { convert44ToLinhaDigitavel } from "@/lib/boleto";
+
 export async function createPayable(data: {
   supplierName: string;
   barcode?: string;
@@ -58,11 +60,15 @@ export async function createPayable(data: {
     return { error: "Data de vencimento inválida." };
   }
 
+  // Normaliza o código de barras
+  const rawBarcode = data.barcode?.replace(/\D/g, "") || "";
+  const normalizedBarcode = rawBarcode ? convert44ToLinhaDigitavel(rawBarcode) : null;
+
   try {
     await prisma.payable.create({
       data: {
         supplierName: data.supplierName.trim(),
-        barcode: data.barcode?.trim() || null,
+        barcode: normalizedBarcode,
         receivedDate,
         dueDate,
         value: data.value,
@@ -115,7 +121,10 @@ export async function updatePayable(id: string, data: {
 
   const updateData: any = {};
   if (data.supplierName !== undefined) updateData.supplierName = data.supplierName.trim();
-  if (data.barcode !== undefined) updateData.barcode = data.barcode.trim() || null;
+  if (data.barcode !== undefined) {
+    const raw = data.barcode.replace(/\D/g, "");
+    updateData.barcode = raw ? convert44ToLinhaDigitavel(raw) : null;
+  }
   if (data.dueDate !== undefined) updateData.dueDate = new Date(data.dueDate);
   if (data.value !== undefined) updateData.value = data.value;
 
