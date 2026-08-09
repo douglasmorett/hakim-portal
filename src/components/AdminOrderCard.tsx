@@ -155,38 +155,10 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
                 </div>
               )}
               {order.status === "PENDING_PAYMENT" && (
-                <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ marginTop: "1rem" }}>
                   <Link href={`/admin/orders/${order.id}/edit`} className="btn btn-outline" style={{ fontSize: "0.85rem", width: "100%", textAlign: "center", display: "block", wordBreak: "break-word" }}>
                     ✏️ Editar Itens e Valores
                   </Link>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (!confirm(`Deseja recriar o boleto no Asaas no valor exato do pedido (R$ ${order.totalAmount.toFixed(2)})? O boleto antigo será cancelado.`)) return;
-                      try {
-                        const res = await fetch("/api/admin/fix-boleto", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ orderId: order.id })
-                        });
-                        const text = await res.text();
-                        let data: any;
-                        try { data = JSON.parse(text); } catch { data = { error: text || "Erro na resposta do servidor" }; }
-                        if (res.ok && data.success) {
-                          alert(`✅ Boleto recriado no Asaas com sucesso no valor de R$ ${order.totalAmount.toFixed(2)}!\n\nNovo Link: ${data.newBoletoUrl}`);
-                          window.location.reload();
-                        } else {
-                          alert("Erro ao recriar boleto: " + (data.error || "Erro desconhecido"));
-                        }
-                      } catch (err: any) {
-                        alert("Erro na requisição: " + err.message);
-                      }
-                    }}
-                    className="btn btn-outline"
-                    style={{ fontSize: "0.85rem", width: "100%", textAlign: "center", borderColor: "var(--primary)", color: "var(--primary)" }}
-                  >
-                    🔄 Recriar Boleto no Asaas (R$ {order.totalAmount.toFixed(2)})
-                  </button>
                 </div>
               )}
             </div>

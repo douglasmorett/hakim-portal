@@ -93,6 +93,11 @@ export async function POST(req: NextRequest) {
         boletoUrl: asaasResult.boletoUrl,
         asaasPaymentId: asaasResult.paymentId,
       },
+      select: {
+        id: true,
+        boletoUrl: true,
+        asaasPaymentId: true,
+      }
     });
 
     // 4. Registrar no histórico
