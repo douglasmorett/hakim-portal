@@ -1,7 +1,7 @@
 /**
  * POST /api/admin/fix-boleto
  * 
- * Recria o boleto no Asaas para um pedido que teve o valor alterado.
+ * Recria o boleto no Asaas para um pedido que teve o valor alterado ou precisa ser corrigido.
  * Cancela o boleto antigo e gera um novo com o totalAmount atual.
  * 
  * Body: { orderId: string }
@@ -9,7 +9,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
+import { prismaFirehub } from "@/lib/prismaFirehub";
+import { prisma as prismaHakim } from "@/lib/prisma";
 import { createAsaasPayment, getAsaasKey } from "@/lib/asaas";
 
 export async function POST(req: NextRequest) {
@@ -28,26 +29,51 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "orderId é obrigatório" }, { status: 400 });
     }
 
-    // Usar select explícito compatível com Firehub DB
-    const order = await prisma.order.findUnique({
+    // Buscar pedido no Firehub DB ou Hakim DB
+    let order: any = await prismaFirehub.order.findUnique({
       where: { id: orderId },
       select: {
         id: true,
+        userId: true,
         totalAmount: true,
         status: true,
         asaasPaymentId: true,
-        user: {
-          select: {
-            name: true,
-            email: true,
-            cpfCnpj: true
-          }
-        }
       }
     });
 
+    let dbClient: any = prismaFirehub;
+
     if (!order) {
-      return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+      order = await prismaHakim.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          userId: true,
+          totalAmount: true,
+          status: true,
+          asaasPaymentId: true,
+        }
+      });
+      dbClient = prismaHakim;
+    }
+
+    if (!order) {
+      return NextResponse.json({ error: "Pedido não encontrado em nenhum dos bancos" }, { status: 404 });
+    }
+
+    // Buscar dados do usuário nos dois bancos
+    let user: any = null;
+    if (order.userId) {
+      user = await prismaFirehub.user.findUnique({
+        where: { id: order.userId },
+        select: { name: true, email: true, cpfCnpj: true }
+      });
+      if (!user) {
+        user = await prismaHakim.user.findUnique({
+          where: { id: order.userId },
+          select: { name: true, email: true, cpfCnpj: true }
+        });
+      }
     }
 
     // 1. Cancelar boleto antigo no Asaas
@@ -75,10 +101,14 @@ export async function POST(req: NextRequest) {
     const shortId = order.id.slice(-6).toUpperCase();
     const description = `Pedido #${shortId} — Icebox Congelados`;
 
+    const userName = user?.name || user?.email || "Hakim Cliente";
+    const userEmail = user?.email || "";
+    const cpfCnpj = user?.cpfCnpj || "";
+
     const asaasResult = await createAsaasPayment({
-      userName: order.user?.name || order.user?.email || "",
-      userEmail: order.user?.email || "",
-      cpfCnpj: order.user?.cpfCnpj || "",
+      userName,
+      userEmail,
+      cpfCnpj,
       totalAmount: order.totalAmount,
       orderId: order.id,
       description,
@@ -88,8 +118,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Falha ao gerar novo boleto no Asaas" }, { status: 500 });
     }
 
-    // 3. Atualizar pedido no banco
-    await prisma.order.update({
+    // 3. Atualizar pedido no banco com select limpo
+    await dbClient.order.update({
       where: { id: order.id },
       data: {
         boletoUrl: asaasResult.boletoUrl,
@@ -102,17 +132,21 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // 4. Registrar no histórico
-    await prisma.orderHistory.create({
-      data: {
-        orderId: order.id,
-        statusFrom: order.status,
-        statusTo: order.status,
-        actionBy: session.user?.name || "Admin",
-        actionEmail: session.user?.email || "",
-        notes: `Boleto recriado. Novo link gerado para R$ ${order.totalAmount.toFixed(2)}.`,
-      },
-    });
+    // 4. Registrar no histórico se a tabela existir
+    try {
+      await dbClient.orderHistory.create({
+        data: {
+          orderId: order.id,
+          statusFrom: order.status,
+          statusTo: order.status,
+          actionBy: session?.user?.name || "Suporte (Fix API)",
+          actionEmail: session?.user?.email || "admin@hakim.com.br",
+          notes: `Boleto recriado. Novo link gerado para R$ ${order.totalAmount.toFixed(2)}.`,
+        },
+      });
+    } catch (e) {
+      console.warn("[fix-boleto] Aviso ao gravar histórico:", e);
+    }
 
     return NextResponse.json({
       success: true,
