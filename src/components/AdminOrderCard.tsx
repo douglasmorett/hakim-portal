@@ -169,8 +169,10 @@ export default function AdminOrderCard({ order, deliveryInfo }: { order: any, de
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ orderId: order.id })
                         });
-                        const data = await res.json();
-                        if (data.success) {
+                        const text = await res.text();
+                        let data: any;
+                        try { data = JSON.parse(text); } catch { data = { error: text || "Erro na resposta do servidor" }; }
+                        if (res.ok && data.success) {
                           alert(`✅ Boleto recriado no Asaas com sucesso no valor de R$ ${order.totalAmount.toFixed(2)}!\n\nNovo Link: ${data.newBoletoUrl}`);
                           window.location.reload();
                         } else {
