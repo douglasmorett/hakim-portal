@@ -385,12 +385,16 @@ export function BarcodeDisplay({ barcode }: { barcode: string | null }) {
 }
 
 // ─── Editar Conta ─────────────────────────────────────────────────────────────
-export function EditPayableButton({ id, supplierName, value, dueDate, barcode }: {
+export function EditPayableButton({ id, supplierName, value, dueDate, barcode, pixKey, pixKeyName, pixKeyType, paymentType }: {
   id: string;
   supplierName: string;
   value: number;
   dueDate: string;
   barcode: string | null;
+  pixKey?: string | null;
+  pixKeyName?: string | null;
+  pixKeyType?: string | null;
+  paymentType?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -400,6 +404,10 @@ export function EditPayableButton({ id, supplierName, value, dueDate, barcode }:
     value,
     dueDate: dueDate.slice(0, 10),
     barcode: barcode || "",
+    paymentType: paymentType || (pixKey ? "PIX" : "BOLETO"),
+    pixKey: pixKey || "",
+    pixKeyName: pixKeyName || "",
+    pixKeyType: pixKeyType || "CPF",
   });
 
   const handleSave = async () => {
@@ -411,6 +419,10 @@ export function EditPayableButton({ id, supplierName, value, dueDate, barcode }:
         value: form.value,
         dueDate: form.dueDate,
         barcode: form.barcode,
+        paymentType: form.paymentType,
+        pixKey: form.pixKey,
+        pixKeyName: form.pixKeyName,
+        pixKeyType: form.pixKeyType,
       });
       if (res.error) {
         setError(res.error);
@@ -449,7 +461,7 @@ export function EditPayableButton({ id, supplierName, value, dueDate, barcode }:
           <div style={{
             background: "var(--surface)", borderRadius: 16, padding: "28px 28px 24px",
             maxWidth: 480, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-            border: "1px solid var(--border-color)",
+            border: "1px solid var(--border-color)", maxHeight: "90vh", overflowY: "auto"
           }}>
             <div style={{ marginBottom: 20, borderBottom: "1px solid var(--border-color)", paddingBottom: 16 }}>
               <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800 }}>✏️ Editar Conta</h2>
@@ -502,6 +514,57 @@ export function EditPayableButton({ id, supplierName, value, dueDate, barcode }:
                   }}
                 />
               </label>
+
+              <label style={{ fontSize: ".85rem", fontWeight: 600 }}>
+                Tipo de Pagamento
+                <select
+                  value={form.paymentType}
+                  onChange={e => setForm({ ...form, paymentType: e.target.value })}
+                  style={{
+                    display: "block", width: "100%", marginTop: 4, padding: "8px 12px",
+                    borderRadius: 8, border: "1px solid var(--border-color)",
+                    background: "var(--bg-color)", fontSize: ".9rem", fontFamily: "inherit",
+                  }}
+                >
+                  <option value="BOLETO">📄 Boleto Bancário</option>
+                  <option value="PIX">⚡ Pix</option>
+                  <option value="CREDIT_CARD">💳 Cartão de Crédito</option>
+                </select>
+              </label>
+
+              {form.paymentType === "PIX" && (
+                <>
+                  <label style={{ fontSize: ".85rem", fontWeight: 600 }}>
+                    Chave PIX
+                    <input
+                      type="text"
+                      value={form.pixKey}
+                      onChange={e => setForm({ ...form, pixKey: e.target.value })}
+                      placeholder="Insira a chave PIX"
+                      style={{
+                        display: "block", width: "100%", marginTop: 4, padding: "8px 12px",
+                        borderRadius: 8, border: "1px solid var(--border-color)",
+                        background: "var(--bg-color)", fontSize: ".9rem", fontFamily: "inherit",
+                      }}
+                    />
+                  </label>
+
+                  <label style={{ fontSize: ".85rem", fontWeight: 600 }}>
+                    Nome do Beneficiário
+                    <input
+                      type="text"
+                      value={form.pixKeyName}
+                      onChange={e => setForm({ ...form, pixKeyName: e.target.value })}
+                      placeholder="Opcional"
+                      style={{
+                        display: "block", width: "100%", marginTop: 4, padding: "8px 12px",
+                        borderRadius: 8, border: "1px solid var(--border-color)",
+                        background: "var(--bg-color)", fontSize: ".9rem", fontFamily: "inherit",
+                      }}
+                    />
+                  </label>
+                </>
+              )}
 
               <label style={{ fontSize: ".85rem", fontWeight: 600 }}>
                 Código de Barras

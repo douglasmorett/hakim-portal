@@ -113,6 +113,10 @@ export async function updatePayable(id: string, data: {
   barcode?: string;
   dueDate?: string;
   value?: number;
+  paymentType?: string;
+  pixKey?: string;
+  pixKeyName?: string;
+  pixKeyType?: string;
 }) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any)?.role !== "ADMIN") {
@@ -127,6 +131,10 @@ export async function updatePayable(id: string, data: {
   }
   if (data.dueDate !== undefined) updateData.dueDate = new Date(data.dueDate);
   if (data.value !== undefined) updateData.value = data.value;
+  if (data.paymentType !== undefined) updateData.paymentType = data.paymentType;
+  if (data.pixKey !== undefined) updateData.pixKey = data.pixKey.trim() || null;
+  if (data.pixKeyName !== undefined) updateData.pixKeyName = data.pixKeyName.trim() || null;
+  if (data.pixKeyType !== undefined) updateData.pixKeyType = data.pixKeyType;
 
   try {
     await prisma.payable.update({ where: { id }, data: updateData });

@@ -14,6 +14,7 @@ interface Payable {
   barcode: string | null;
   pixKey: string | null;
   pixKeyName: string | null;
+  pixKeyType: string | null;
   paymentType: string;
   receivedDate: string;
   dueDate: string;
@@ -141,15 +142,19 @@ export default function FinanceClient({
                 <strong style={{ fontSize: '0.95rem', lineHeight: 1.3 }}>{item.supplierName}</strong>
                 <span style={{ color: 'var(--danger)', fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', marginLeft: '8px' }}>{formatCurrency(item.value)}</span>
               </div>
-              <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', flexWrap: 'wrap' }}>
                 <span>📅 {formatDate(item.dueDate)}</span>
-                {item.barcode && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '150px' }}>🔢 {item.barcode}</span>}
+                {item.pixKey ? (
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>⚡ PIX: {item.pixKey}</span>
+                ) : item.barcode ? (
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '150px' }}>🔢 {item.barcode}</span>
+                ) : null}
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {isAdmin && item.paymentType === "CREDIT_CARD" && (
+                {isAdmin && (item.pixKey || item.paymentType === "PIX") && (
                   <PayViaPixButton id={item.id} pixKey={item.pixKey} pixKeyName={item.pixKeyName} supplierName={item.supplierName} value={item.value} />
                 )}
-                {isAdmin && item.paymentType !== "CREDIT_CARD" && (
+                {isAdmin && (item.barcode || item.paymentType === "BOLETO") && (
                   <PayViaAsaasButton id={item.id} barcode={item.barcode} supplierName={item.supplierName} value={item.value} />
                 )}
                 {isAdmin && (
@@ -159,6 +164,10 @@ export default function FinanceClient({
                     value={item.value}
                     dueDate={item.dueDate}
                     barcode={item.barcode}
+                    pixKey={item.pixKey}
+                    pixKeyName={item.pixKeyName}
+                    pixKeyType={item.pixKeyType}
+                    paymentType={item.paymentType}
                   />
                 )}
                 <MarkPaidButton id={item.id} />
@@ -175,7 +184,7 @@ export default function FinanceClient({
                 <th style={{ padding: "0.5rem" }}>Fornecedor</th>
                 <th style={{ padding: "0.5rem" }}>Valor</th>
                 <th style={{ padding: "0.5rem" }}>Vencimento</th>
-                <th style={{ padding: "0.5rem" }}>Cód. Barras</th>
+                <th style={{ padding: "0.5rem" }}>Cód. Barras / Chave PIX</th>
                 <th style={{ padding: "0.5rem" }}>Ações</th>
               </tr>
             </thead>
@@ -185,9 +194,20 @@ export default function FinanceClient({
                   <td style={{ padding: "0.5rem", fontWeight: "bold" }}>{item.supplierName}</td>
                   <td style={{ padding: "0.5rem", color: "var(--danger)" }}>{formatCurrency(item.value)}</td>
                   <td style={{ padding: "0.5rem" }}>{formatDate(item.dueDate)}</td>
-                  <td style={{ padding: "0.5rem" }}><BarcodeDisplay barcode={item.barcode} /></td>
+                  <td style={{ padding: "0.5rem" }}>
+                    {item.pixKey || item.paymentType === "PIX" ? (
+                      <span style={{ fontSize: "0.82rem", display: "inline-block" }}>
+                        ⚡ PIX: <strong>{item.pixKey || "Não informada"}</strong>
+                        {item.pixKeyName && <span style={{ color: "var(--text-muted)", marginLeft: "4px" }}>({item.pixKeyName})</span>}
+                      </span>
+                    ) : item.barcode ? (
+                      <BarcodeDisplay barcode={item.barcode} />
+                    ) : (
+                      <span style={{ color: "var(--text-muted)" }}>-</span>
+                    )}
+                  </td>
                   <td style={{ padding: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                    {isAdmin && item.paymentType === "CREDIT_CARD" && (
+                    {isAdmin && (item.pixKey || item.paymentType === "PIX") && (
                       <PayViaPixButton
                         id={item.id}
                         pixKey={item.pixKey}
@@ -196,7 +216,7 @@ export default function FinanceClient({
                         value={item.value}
                       />
                     )}
-                    {isAdmin && item.paymentType !== "CREDIT_CARD" && (
+                    {isAdmin && (item.barcode || item.paymentType === "BOLETO") && (
                       <PayViaAsaasButton
                         id={item.id}
                         barcode={item.barcode}
@@ -211,6 +231,10 @@ export default function FinanceClient({
                         value={item.value}
                         dueDate={item.dueDate}
                         barcode={item.barcode}
+                        pixKey={item.pixKey}
+                        pixKeyName={item.pixKeyName}
+                        pixKeyType={item.pixKeyType}
+                        paymentType={item.paymentType}
                       />
                     )}
                     <MarkPaidButton id={item.id} />
@@ -265,9 +289,11 @@ export default function FinanceClient({
                   <strong style={{ fontSize: '0.95rem', lineHeight: 1.3 }}>{item.supplierName}</strong>
                   <span style={{ color: 'var(--text-color)', fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', marginLeft: '8px' }}>{formatCurrency(item.value)}</span>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', flexWrap: 'wrap' }}>
                   <span>📅 Dia {item.dueDateDay}</span>
-                  <span>💳 {item.paymentType === "CREDIT_CARD" ? "Cartão" : item.paymentType === "PIX" ? "PIX" : "Boleto"}</span>
+                  <span>
+                    {item.paymentType === "CREDIT_CARD" ? "💳 Cartão" : item.paymentType === "PIX" ? `⚡ PIX: ${item.pixKey || "Sem chave"}` : "📄 Boleto"}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {isAdmin && (
@@ -298,7 +324,7 @@ export default function FinanceClient({
                   <th style={{ padding: "0.5rem" }}>Fornecedor</th>
                   <th style={{ padding: "0.5rem" }}>Valor Estimado</th>
                   <th style={{ padding: "0.5rem" }}>Dia do Vencimento</th>
-                  <th style={{ padding: "0.5rem" }}>Tipo de Pagamento</th>
+                  <th style={{ padding: "0.5rem" }}>Tipo de Pagamento / Chave</th>
                   <th style={{ padding: "0.5rem" }}>Status</th>
                   {isAdmin && <th style={{ padding: "0.5rem" }}>Ações</th>}
                 </tr>
@@ -310,7 +336,12 @@ export default function FinanceClient({
                     <td style={{ padding: "0.5rem" }}>{formatCurrency(item.value)}</td>
                     <td style={{ padding: "0.5rem" }}>Dia {item.dueDateDay}</td>
                     <td style={{ padding: "0.5rem" }}>
-                      {item.paymentType === "CREDIT_CARD" ? "💳 Cartão de Crédito" : item.paymentType === "PIX" ? "⚡ Pix" : "📄 Boleto"}
+                      {item.paymentType === "CREDIT_CARD" ? "💳 Cartão de Crédito" : item.paymentType === "PIX" ? (
+                        <span>
+                          ⚡ PIX: <strong>{item.pixKey || "Sem chave"}</strong>
+                          {item.pixKeyName && <span style={{ color: "var(--text-muted)", marginLeft: "4px" }}>({item.pixKeyName})</span>}
+                        </span>
+                      ) : "📄 Boleto"}
                     </td>
                     <td style={{ padding: "0.5rem" }}>
                       <span style={{

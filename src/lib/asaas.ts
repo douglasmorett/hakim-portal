@@ -189,9 +189,30 @@ export async function createAsaasPayment(opts: {
       const createData = await createRes.json();
       if (!createRes.ok) {
         console.error("Erro criar cliente Asaas:", JSON.stringify(createData));
-        return null;
+        
+        // Se falhou e tinha CPF/CNPJ, tenta criar sem ele como fallback
+        if (opts.cpfCnpj) {
+          console.warn("Tentando criar cliente Asaas sem CPF/CNPJ...");
+          const createResFallback = await fetch(`${BASE}/customers`, {
+            method: "POST",
+            headers: ASAAS_HEADERS(asaasKey),
+            body: JSON.stringify({
+              name: opts.userName || opts.userEmail,
+              email: opts.userEmail
+            })
+          });
+          const createDataFallback = await createResFallback.json();
+          if (createResFallback.ok) {
+            customerId = createDataFallback.id;
+          } else {
+            return null;
+          }
+        } else {
+          return null;
+        }
+      } else {
+        customerId = createData.id;
       }
-      customerId = createData.id;
     }
 
     if (!customerId) return null;

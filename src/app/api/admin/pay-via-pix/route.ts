@@ -14,11 +14,14 @@ import { getAsaasKey } from "@/lib/asaas";
 const ASAAS_BASE = "https://api.asaas.com/v3";
 
 const PIX_TYPE_MAP: Record<string, string> = {
-  CPF:    "CPF",
-  CNPJ:   "CNPJ",
-  EMAIL:  "EMAIL",
-  PHONE:  "PHONE",
-  RANDOM: "EVP",
+  CPF:       "CPF",
+  CNPJ:      "CNPJ",
+  EMAIL:     "EMAIL",
+  PHONE:     "PHONE",
+  TELEFONE:  "PHONE",
+  RANDOM:    "EVP",
+  ALEATORIA: "EVP",
+  EVP:       "EVP",
 };
 
 export async function POST(req: NextRequest) {
