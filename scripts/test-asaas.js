@@ -1,6 +1,10 @@
 const https = require('https');
 
-const asaasKey = process.env.ASAAS_API_KEY || '$aact_prod_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmZlYWIwNWI0LTcxMWMtNDllNi05ZmVhLWEzMzhkOGRiNmQzMjo6JGFhY2hfMDkyNmY3NzUtNWI2ZC00ZjQ2LTlmMTktZTI4YTBhODY2ZjUy';
+const asaasKey = process.env.ASAAS_API_KEY;
+if (!asaasKey) {
+  console.error("Defina ASAAS_API_KEY no ambiente antes de rodar este script.");
+  process.exit(1);
+}
 
 const options = {
   hostname: 'api.asaas.com',

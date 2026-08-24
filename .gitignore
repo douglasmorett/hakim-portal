@@ -45,3 +45,6 @@ next-env.d.ts
 .vercel
 .env*.local
 .env*
+
+# Scripts de diagnóstico avulsos — costumam nascer com credencial colada dentro
+scratch/

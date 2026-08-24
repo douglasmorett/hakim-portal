@@ -1,7 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
 require('dotenv').config({ path: '.env.local' });
 // Or we can just pass the key from Firecheck
-const ai = new GoogleGenAI({ apiKey: 'AIzaSyDdfsUv9UPZOpTKyGtQfZxRmesYqlNKyZQ' });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 async function listModels() {
   try {
