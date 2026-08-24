@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { calcMensalidade, FIREHUB_PLAN } from "@/lib/firehub-billing";
 import LojistasAdminClient from "./LojistasAdminClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLojistasPage() {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any)?.role !== "ADMIN") redirect("/admin");

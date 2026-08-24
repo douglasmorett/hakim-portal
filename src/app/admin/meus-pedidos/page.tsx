@@ -3,6 +3,8 @@ import { prismaFirehub } from "@/lib/prismaFirehub";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { ShoppingCart, ExternalLink, Clock, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
 

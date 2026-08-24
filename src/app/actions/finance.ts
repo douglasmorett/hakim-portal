@@ -204,10 +204,6 @@ export async function checkAndGenerateRecurringPayables() {
       }
     }
 
-    if (count > 0) {
-      revalidatePath("/admin/finance");
-    }
-
     return { success: true, count };
   } catch (err: any) {
     console.error("Erro ao gerar contas recorrentes:", err);

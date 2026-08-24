@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import CartoesClient from "./CartoesClient";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Cartões de Crédito — Hakim" };
 
 export default async function CartoesPage() {

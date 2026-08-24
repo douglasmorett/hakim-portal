@@ -3,6 +3,8 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import BillingDashboard from "./BillingDashboard";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Faturamento · FireHub Admin" };
 
 export default async function BillingPage() {

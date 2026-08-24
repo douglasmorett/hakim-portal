@@ -6,6 +6,8 @@ import { hasPermission } from "@/lib/permissions";
 import { checkAndGenerateRecurringPayables } from "@/app/actions/finance";
 import FinanceClient from "./FinanceClient";
 
+export const dynamic = "force-dynamic";
+
 // Emails autorizados para módulo pessoal (além de ADMINs)
 const PERSONAL_ALLOWED_EMAILS = ["elis@hakim.com.br"];
 
@@ -37,7 +39,11 @@ export default async function AdminFinancePage() {
   const canSeePersonal = isAdmin || PERSONAL_ALLOWED_EMAILS.includes(userEmail);
 
   // Executar geração automática de contas fixas para o mês atual
-  await checkAndGenerateRecurringPayables();
+  try {
+    await checkAndGenerateRecurringPayables();
+  } catch (e) {
+    console.error("[Finance] Erro ao gerar contas recorrentes:", e);
+  }
 
   // Buscar contas empresariais pendentes
   const businessPayables = await prisma.payable.findMany({

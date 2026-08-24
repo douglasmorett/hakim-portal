@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import CustomerOrdersList from "@/components/admin/CustomerOrdersList";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPedidosClientesPage() {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any)?.role !== "ADMIN") redirect("/");

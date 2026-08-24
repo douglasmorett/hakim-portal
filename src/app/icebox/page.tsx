@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getNextDeliveryInfo } from "@/lib/deliveryDates";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Icebox Congelados - Catálogo de Produtos",
   description: "Congelados, resfriados e insumos para seu negócio. Entrega em toda região. Veja nosso catálogo completo.",

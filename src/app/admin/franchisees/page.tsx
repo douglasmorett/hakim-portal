@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import FranchiseeForm, { DeleteFranchiseeButton, EditFranchiseeCity, ImpersonateButton } from "@/components/FranchiseeForm";
 import ToggleFranqueadoHakim from "@/components/ToggleFranqueadoHakim";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminFranchiseesPage() {
   const session = await getServerSession(authOptions);
 

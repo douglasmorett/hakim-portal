@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import MenuProductManager from "@/components/admin/MenuProductManager";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminCardapioPage() {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any)?.role !== "ADMIN") redirect("/");

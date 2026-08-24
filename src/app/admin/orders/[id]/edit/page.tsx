@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import EditOrderForm from "@/components/EditOrderForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminEditOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   
