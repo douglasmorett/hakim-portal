@@ -1,14 +1,14 @@
 "use server";
 
-import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createAsaasPayment, getAsaasKey } from "@/lib/asaas";
+import { findOrderInAnyDb } from "@/lib/orderDb";
 
 export async function adminUpdateOrderItems(orderId: string, items: { productId: string, quantity: number, price?: number }[]) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session || ((session.user as any)?.role !== "ADMIN" && (session.user as any)?.role !== "STAFF")) {
     throw new Error("Não autorizado");
   }
@@ -17,12 +17,12 @@ export async function adminUpdateOrderItems(orderId: string, items: { productId:
     throw new Error("O pedido não pode ficar vazio.");
   }
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: { user: true }
-  });
+  // O pedido pode estar no banco do Hakim ou no do FireHub — grava no mesmo
+  // banco de onde veio.
+  const resolved = await findOrderInAnyDb(orderId);
+  if (!resolved) throw new Error("Pedido não encontrado");
 
-  if (!order) throw new Error("Pedido não encontrado");
+  const { order, client: prisma } = resolved;
 
   // Fetch products to calculate total
   const productIds = items.map(i => i.productId);
@@ -67,22 +67,22 @@ export async function adminUpdateOrderItems(orderId: string, items: { productId:
     })
   ]);
 
-  // If order has Asaas payment and is still open, cancel it and recreate
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}/edit`);
+
+  // If order has Asaas payment and is still open, recreate it with the new value.
+  // Cria a nova cobrança ANTES de apagar a antiga: se a criação falhar, o
+  // cliente continua com um link válido em vez de ficar sem nenhum.
   if (order.asaasPaymentId && order.status === "PENDING_PAYMENT") {
     const asaasKey = getAsaasKey();
     if (asaasKey) {
-      const ASAAS_URL = asaasKey.startsWith("$aact_prod") 
-        ? "https://api.asaas.com/v3" 
+      const ASAAS_URL = asaasKey.startsWith("$aact_prod")
+        ? "https://api.asaas.com/v3"
         : "https://sandbox.asaas.com/v3";
-      
-      // 1. Delete old payment
-      await fetch(`${ASAAS_URL}/payments/${order.asaasPaymentId}`, {
-        method: "DELETE",
-        headers: { "access_token": asaasKey }
-      });
 
-      // 2. Create new payment using shared function
       const shortId = order.id.slice(-6).toUpperCase();
+
+      // 1. Create new payment using shared function
       const asaasResult = await createAsaasPayment({
         userName: order.user.name || order.user.email || "",
         userEmail: order.user.email || "",
@@ -92,18 +92,39 @@ export async function adminUpdateOrderItems(orderId: string, items: { productId:
         description: `Pedido #${shortId} — Hakim Congelados (Editado)`
       });
 
-      if (asaasResult) {
-        await prisma.order.update({
-          where: { id: orderId },
-          data: { 
-            boletoUrl: asaasResult.boletoUrl, 
-            asaasPaymentId: asaasResult.paymentId 
-          }
-        });
+      if (!asaasResult) {
+        throw new Error(
+          `Os itens foram salvos (novo total R$ ${newTotal.toFixed(2)}), mas a nova cobrança no Asaas NÃO foi criada. ` +
+          `A cobrança antiga de R$ ${order.totalAmount.toFixed(2)} continua ativa — verifique o CPF/CNPJ do franqueado e gere a cobrança novamente.`
+        );
       }
+
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          boletoUrl: asaasResult.boletoUrl,
+          asaasPaymentId: asaasResult.paymentId
+        }
+      });
+
+      // 2. Só agora apaga a cobrança antiga
+      const deleteRes = await fetch(`${ASAAS_URL}/payments/${order.asaasPaymentId}`, {
+        method: "DELETE",
+        headers: { "access_token": asaasKey }
+      }).catch(err => {
+        console.error("[adminOrderEdit] Falha ao apagar cobrança antiga no Asaas:", err);
+        return null;
+      });
+
+      if (!deleteRes || !deleteRes.ok) {
+        console.error(
+          `[adminOrderEdit] Cobrança antiga ${order.asaasPaymentId} do pedido ${orderId} não foi removida no Asaas ` +
+          `(status ${deleteRes?.status}). Remover manualmente para o cliente não pagar duas vezes.`
+        );
+      }
+
+      revalidatePath("/admin/orders");
+      revalidatePath(`/admin/orders/${orderId}/edit`);
     }
   }
-
-  revalidatePath("/admin/orders");
-  revalidatePath(`/admin/orders/${orderId}/edit`);
 }

@@ -1,33 +1,32 @@
-import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import EditOrderForm from "@/components/EditOrderForm";
+import { findOrderInAnyDb } from "@/lib/orderDb";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminEditOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session || ((session.user as any)?.role !== "ADMIN" && (session.user as any)?.role !== "STAFF")) {
     redirect("/");
   }
 
   const { id } = await params;
 
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: {
-      items: { include: { product: true } },
-      user: true
-    }
-  });
+  // O pedido pode estar no banco do Hakim ou no do FireHub
+  const resolved = await findOrderInAnyDb(id);
 
-  if (!order) {
+  if (!resolved) {
     return <div className="container"><p>Pedido não encontrado.</p></div>;
   }
 
-  const products = await prisma.product.findMany({
+  const { order, client } = resolved;
+
+  // Produtos precisam vir do MESMO banco do pedido — o productId do item
+  // referencia a tabela Product daquele banco.
+  const products = await client.product.findMany({
     where: { active: true },
     orderBy: { name: 'asc' }
   });
