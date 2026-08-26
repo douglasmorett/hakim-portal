@@ -87,11 +87,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         orderBy: { createdAt: "desc" },
         include: { user: { select: { name: true, city: true } } }
       }).catch(() => []),
+      // select explícito: o banco do FireHub não tem todas as colunas de Order
+      // (emergencyFine, deliveryDate, etc.) e um include traria todas
       prismaFirehub.order.findMany({
         take: 5,
         orderBy: { createdAt: "desc" },
-        include: { user: { select: { name: true, city: true } } }
-      }).catch(() => []),
+        select: {
+          id: true, userId: true, totalAmount: true, status: true,
+          createdAt: true, updatedAt: true, boletoUrl: true, asaasPaymentId: true,
+          user: { select: { name: true, city: true } }
+        }
+      }).catch(err => { console.error("[Dashboard] Erro banco FireHub:", err); return []; }),
     ]);
     // Mesclar, remover duplicatas, pegar os 5 mais recentes
     const seen = new Set<string>();

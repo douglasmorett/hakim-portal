@@ -2,12 +2,33 @@
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prismaFirehub as prisma } from "@/lib/prismaFirehub";
 import { revalidatePath } from "next/cache";
 import { createAsaasPayment } from "@/lib/asaas";
+import { resolveOrderClient } from "@/lib/orderDb";
 
 const EMERGENCY_FREE_QUOTA = 1;
 const EMERGENCY_FINE_PERCENT = 0.30;
+
+/**
+ * As colunas de emergência (isEmergency, emergencyStatus, emergencyFine,
+ * rejectionReason) existem só no banco do Hakim. Um pedido que veio do
+ * FireHub não tem onde guardar esses dados — melhor falhar com uma
+ * mensagem clara do que gravar pela metade.
+ */
+async function clientDoPedidoDeEmergencia(orderId: string) {
+  const resolved = await resolveOrderClient(orderId);
+  if (!resolved) throw new Error("Pedido não encontrado");
+
+  if (resolved.source === "firehub") {
+    throw new Error(
+      "Este pedido está no banco do FireHub, que não possui os campos de emergência " +
+      "(multa, status e motivo de recusa). Trate a emergência manualmente ou peça para " +
+      "adicionarem essas colunas no banco do FireHub."
+    );
+  }
+
+  return resolved.client;
+}
 
 export async function approveEmergencyOrder(orderId: string) {
   const session = await getServerSession(authOptions);
@@ -15,6 +36,8 @@ export async function approveEmergencyOrder(orderId: string) {
   if (!session || (role !== "ADMIN" && role !== "STAFF")) {
     throw new Error("Não autorizado");
   }
+
+  const prisma = await clientDoPedidoDeEmergencia(orderId);
 
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { user: true } });
   if (!order) throw new Error("Pedido não encontrado");
@@ -84,6 +107,7 @@ export async function approveEmergencyOrder(orderId: string) {
       boletoUrl,
       asaasPaymentId,
     },
+    select: { id: true },
   });
 
   const fineNote = isSpecialStore
@@ -101,6 +125,7 @@ export async function approveEmergencyOrder(orderId: string) {
       actionEmail: session?.user?.email || "",
       notes: fineNote,
     },
+    select: { id: true },
   });
 
   revalidatePath("/admin/orders");
@@ -114,6 +139,8 @@ export async function rejectEmergencyOrder(orderId: string, reason: string) {
     throw new Error("Não autorizado");
   }
 
+  const prisma = await clientDoPedidoDeEmergencia(orderId);
+
   await prisma.order.update({
     where: { id: orderId },
     data: {
@@ -121,6 +148,7 @@ export async function rejectEmergencyOrder(orderId: string, reason: string) {
       emergencyStatus: "REJECTED",
       rejectionReason: reason,
     },
+    select: { id: true },
   });
 
   await prisma.orderHistory.create({
@@ -132,6 +160,7 @@ export async function rejectEmergencyOrder(orderId: string, reason: string) {
       actionEmail: session?.user?.email || "",
       notes: `Emergência Reprovada: ${reason}`,
     },
+    select: { id: true },
   });
 
   revalidatePath("/admin/orders");

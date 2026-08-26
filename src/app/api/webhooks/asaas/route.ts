@@ -67,17 +67,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, skipped: "order already paid, ignoring cancel" });
     }
 
-    // Atualiza o status no banco correto
+    // Atualiza o status no banco correto.
+    // `select` explícito: sem ele o Prisma faz um SELECT de retorno com todas
+    // as colunas do schema, e o banco do FireHub não tem várias delas — o
+    // pagamento nunca era registrado nos pedidos vindos de lá.
     await db.order.update({
       where: { id: order.id },
       data: {
         status: newStatus,
         ...(newStatus === "PAID" ? { updatedAt: new Date() } : {}),
       },
+      select: { id: true },
     });
 
     // Registra no histórico
     await db.orderHistory.create({
+      select: { id: true },
       data: {
         orderId:     order.id,
         statusFrom:  order.status,

@@ -35,6 +35,55 @@ const FIREHUB_DEFAULTS = {
   rejectionReason: null,
 };
 
+/**
+ * Colunas de Order que existem SÓ no banco do Hakim. Nunca podem ser
+ * gravadas quando o pedido está no FireHub.
+ */
+export const COLUNAS_SO_DO_HAKIM = [
+  "deliveryDate",
+  "cancelReason",
+  "emergencyStatus",
+  "emergencyFine",
+  "isEmergency",
+  "rejectionReason",
+] as const;
+
+export type ResolvedOrderClient = {
+  client: PrismaClient;
+  source: "hakim" | "firehub";
+  status: string;
+};
+
+/**
+ * Versão leve do `findOrderInAnyDb`: descobre em qual banco o pedido está
+ * lendo só id e status. Use quando não precisar dos itens nem do usuário.
+ */
+export async function resolveOrderClient(orderId: string): Promise<ResolvedOrderClient | null> {
+  const noHakim = await prisma.order
+    .findUnique({ where: { id: orderId }, select: { id: true, status: true } })
+    .catch((err) => {
+      console.error("[orderDb] Erro banco Hakim:", err);
+      return null;
+    });
+
+  if (noHakim) {
+    return { client: prisma as PrismaClient, source: "hakim", status: noHakim.status };
+  }
+
+  const noFirehub = await prismaFirehub.order
+    .findUnique({ where: { id: orderId }, select: { id: true, status: true } })
+    .catch((err) => {
+      console.error("[orderDb] Erro banco FireHub:", err);
+      return null;
+    });
+
+  if (noFirehub) {
+    return { client: prismaFirehub as PrismaClient, source: "firehub", status: noFirehub.status };
+  }
+
+  return null;
+}
+
 export type ResolvedOrder = {
   order: any;
   client: PrismaClient;
