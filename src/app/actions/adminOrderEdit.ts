@@ -44,6 +44,9 @@ export async function adminUpdateOrderItems(orderId: string, items: { productId:
   });
 
   // Update Database
+  // `select: { id: true }` em todo write: sem isso o Prisma faz um SELECT de
+  // retorno com TODAS as colunas do schema, e o banco do FireHub não tem
+  // várias delas (emergencyFine, deliveryDate, etc.) — o write quebraria.
   await prisma.$transaction([
     prisma.orderItem.deleteMany({ where: { orderId } }),
     prisma.order.update({
@@ -53,9 +56,11 @@ export async function adminUpdateOrderItems(orderId: string, items: { productId:
         items: {
           create: itemsWithPrice
         }
-      }
+      },
+      select: { id: true }
     }),
     prisma.orderHistory.create({
+      select: { id: true },
       data: {
         orderId,
         statusFrom: order.status,
@@ -104,7 +109,8 @@ export async function adminUpdateOrderItems(orderId: string, items: { productId:
         data: {
           boletoUrl: asaasResult.boletoUrl,
           asaasPaymentId: asaasResult.paymentId
-        }
+        },
+        select: { id: true }
       });
 
       // 2. Só agora apaga a cobrança antiga
