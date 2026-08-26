@@ -1,11 +1,15 @@
 /**
  * Resolve em qual banco (Hakim ou FireHub) um pedido está.
  *
- * O banco do FireHub não tem todas as colunas do schema do Hakim
- * (deliveryDate, cancelReason, emergencyStatus, emergencyFine, isEmergency,
- * rejectionReason, e vários campos de User). Por isso qualquer consulta no
- * FireHub precisa usar `select` explícito — um `include` completo gera um
- * SELECT com colunas inexistentes e quebra em runtime.
+ * Os pedidos ficam em dois bancos: os feitos pelo portal no do Hakim
+ * (DATABASE_URL) e os feitos pelo FireHub no dele (FIREHUB_DATABASE_URL).
+ * Toda ação sobre um pedido precisa descobrir de qual banco ele veio antes
+ * de gravar.
+ *
+ * Em 25/08/2026 o FireHub estava sem a coluna Order.emergencyFine, e isso
+ * quebrava qualquer query que trouxesse todas as colunas de Order. A coluna
+ * foi criada e os schemas hoje batem, mas os `select` explícitos abaixo
+ * ficam como defesa: se os bancos divergirem de novo, a query continua de pé.
  */
 import { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -34,19 +38,6 @@ const FIREHUB_DEFAULTS = {
   isEmergency: false,
   rejectionReason: null,
 };
-
-/**
- * Colunas de Order que existem SÓ no banco do Hakim. Nunca podem ser
- * gravadas quando o pedido está no FireHub.
- */
-export const COLUNAS_SO_DO_HAKIM = [
-  "deliveryDate",
-  "cancelReason",
-  "emergencyStatus",
-  "emergencyFine",
-  "isEmergency",
-  "rejectionReason",
-] as const;
 
 export type ResolvedOrderClient = {
   client: PrismaClient;

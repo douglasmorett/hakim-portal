@@ -10,23 +10,13 @@ const EMERGENCY_FREE_QUOTA = 1;
 const EMERGENCY_FINE_PERCENT = 0.30;
 
 /**
- * As colunas de emergência (isEmergency, emergencyStatus, emergencyFine,
- * rejectionReason) existem só no banco do Hakim. Um pedido que veio do
- * FireHub não tem onde guardar esses dados — melhor falhar com uma
- * mensagem clara do que gravar pela metade.
+ * O pedido pode estar no banco do Hakim ou no do FireHub — devolve o client
+ * do banco certo. Os dois têm as colunas de emergência (isEmergency,
+ * emergencyStatus, emergencyFine, rejectionReason).
  */
 async function clientDoPedidoDeEmergencia(orderId: string) {
   const resolved = await resolveOrderClient(orderId);
   if (!resolved) throw new Error("Pedido não encontrado");
-
-  if (resolved.source === "firehub") {
-    throw new Error(
-      "Este pedido está no banco do FireHub, que não possui os campos de emergência " +
-      "(multa, status e motivo de recusa). Trate a emergência manualmente ou peça para " +
-      "adicionarem essas colunas no banco do FireHub."
-    );
-  }
-
   return resolved.client;
 }
 
