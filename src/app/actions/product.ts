@@ -1,6 +1,36 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { prismaFirehub } from "@/lib/prismaFirehub";
+
+/**
+ * ── OS PRODUTOS MORAM NO BANCO DO FIREHUB, NÃO NO DESTE PORTAL ──────────────
+ *
+ * O catálogo que o cliente da distribuidora compra em
+ * iceboxdistribuidora.com.br é servido pelo FireHub, lendo o banco
+ * `firehub_db`. Esta tela gravava no banco DESTE portal — outro banco, no mesmo
+ * Neon. Ou seja: o preço editado aqui nunca chegava a quem compra.
+ *
+ * Medido em 28/08/2026, comparando esta tela com o que o site realmente servia:
+ *
+ *     Salsicha 5kg            51,90  =  51,90   ok (não mudou desde a migração)
+ *     Pastel de Nata 48 und  144,00  = 144,00   ok
+ *     4 Queijos 3kg          168,90  → 134,70   DIVERGE  −34,20
+ *     Queijo Temperado 3kg   152,70  → 116,70   DIVERGE  −36,00
+ *     Queijo Mussarela Base  146,70  → 110,40   DIVERGE  −36,30
+ *
+ * Os três que divergiam eram os TRÊS QUEIJOS, todos por cerca de R$ 35: um
+ * reajuste lançado aqui que nunca chegou a quem compra. Toda a base da
+ * distribuidora estava levando queijo com R$ 35 de desconto que ninguém deu.
+ *
+ * `prismaFirehub` já existia e já era usado para os pedidos — os dois bancos
+ * vivem no mesmo Neon, então a conexão já estava de pé. Faltava só os produtos
+ * usarem ela.
+ *
+ * `select` explícito de propósito: o banco do FireHub não tem todas as colunas
+ * do schema deste portal, e sem `select` o Prisma monta o SELECT de retorno com
+ * todas elas e a escrita quebra — a mesma armadilha já documentada no commit
+ * 7092154 para os pedidos.
+ */
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -25,7 +55,8 @@ export async function createProduct(formData: FormData) {
   const imageUrl = formData.get("imageUrl") as string | null;
   const category = formData.get("category") as string | null;
 
-  await prisma.product.create({
+  await prismaFirehub.product.create({
+    select: { id: true },
     data: {
       name,
       description,
@@ -50,7 +81,8 @@ export async function deleteProduct(id: string) {
     throw new Error("Não autorizado");
   }
 
-  await prisma.product.delete({
+  await prismaFirehub.product.delete({
+    select: { id: true },
     where: { id },
   });
 
@@ -77,7 +109,8 @@ export async function updateProduct(id: string, formData: FormData) {
   const imageUrl = formData.get("imageUrl") as string | null;
   const category = formData.get("category") as string | null;
 
-  await prisma.product.update({
+  await prismaFirehub.product.update({
+    select: { id: true },
     where: { id },
     data: {
       name,
